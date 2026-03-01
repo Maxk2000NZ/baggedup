@@ -268,20 +268,97 @@ export default function App() {
         return points;
     };
 
+    // --- COMPREHENSIVE GAP ANALYSIS ---
+    // Covers all 12 key disc slots: Putter/Mid/Fairway/Distance × Straight/US/OS
     const gapAnalysis = useMemo(() => {
         const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
-        if (active.length === 0) return { text: "Bag is Empty", filter: (d) => true };
-        const hasOSApproach = active.some(d => d.speed <= 4 && parseFloat(d.fade) >= 2.5);
-        const hasUSMid = active.some(d => d.speed >= 4 && d.speed <= 6 && parseFloat(d.turn) <= -1.5);
-        const hasOSDriver = active.some(d => d.speed >= 9 && (parseFloat(d.turn) + parseFloat(d.fade)) >= 3.5);
-        if (!hasOSApproach) return { text: "Need: OS Approach", filter: (d) => d.Speed <= 4 && d.Fade >= 2.5 };
-        if (!hasUSMid) return { text: "Need: US Midrange", filter: (d) => d.Speed >= 4 && d.Speed <= 6 && d.Turn <= -2 };
-        if (!hasOSDriver) return { text: "Need: OS Utility", filter: (d) => d.Speed >= 9 && (d.Turn + d.Fade) >= 3.5 };
-        return { text: "Optimized", filter: null };
-    }, [discs, activeBagId]);
+        if (active.length === 0) return { gaps: [], text: "Bag is Empty", allFilled: false };
+
+        const ALL_DISCS = [...FACTORY_DB.map(d => ({
+            Model: d.Model, Manufacturer: d.Manufacturer,
+            Speed: d.Speed, Glide: d.Glide, Turn: d.Turn, Fade: d.Fade,
+            source: 'factory'
+        })), ...communitySuggestions.map(d => ({
+            Model: d.model, Manufacturer: d.brand,
+            Speed: d.speed, Glide: d.glide, Turn: d.turn, Fade: d.fade,
+            source: 'community'
+        }))];
+
+        // Helper: stability bucket for a disc
+        const stabBucket = (turn, fade) => {
+            const s = parseFloat(turn) + parseFloat(fade);
+            if (s >= 2) return 'OS';
+            if (s <= -1) return 'US';
+            return 'ST';
+        };
+
+        // Classify each active disc into a slot
+        const slot = (speed, turn, fade) => {
+            const sp = parseFloat(speed);
+            const bucket = stabBucket(turn, fade);
+            if (sp <= 3) return `putter_${bucket}`;
+            if (sp <= 6) return `mid_${bucket}`;
+            if (sp <= 8) return `fairway_${bucket}`;
+            return `distance_${bucket}`;
+        };
+
+        const filled = new Set(active.map(d => slot(d.speed, d.turn, d.fade)));
+
+        // All 12 desired slots with friendly names
+        const SLOTS = [
+            { key: 'putter_ST',    label: 'Straight Putter',          priority: 1 },
+            { key: 'putter_OS',    label: 'Overstable Putter',         priority: 2 },
+            { key: 'putter_US',    label: 'Understable Putter',        priority: 5 },
+            { key: 'mid_ST',       label: 'Straight Midrange',         priority: 1 },
+            { key: 'mid_OS',       label: 'Overstable Midrange',       priority: 2 },
+            { key: 'mid_US',       label: 'Understable Midrange',      priority: 3 },
+            { key: 'fairway_ST',   label: 'Straight Fairway Driver',   priority: 2 },
+            { key: 'fairway_OS',   label: 'Overstable Fairway Driver', priority: 3 },
+            { key: 'fairway_US',   label: 'Understable Fairway Driver',priority: 3 },
+            { key: 'distance_ST',  label: 'Straight Distance Driver',  priority: 3 },
+            { key: 'distance_OS',  label: 'Overstable Distance Driver',priority: 2 },
+            { key: 'distance_US',  label: 'Understable Distance Driver',priority: 4 },
+        ];
+
+        // Speed/turn/fade ranges per slot key
+        const SLOT_FILTER = {
+            putter_ST:    d => d.Speed <= 3 && stabBucket(d.Turn, d.Fade) === 'ST',
+            putter_OS:    d => d.Speed <= 3 && stabBucket(d.Turn, d.Fade) === 'OS',
+            putter_US:    d => d.Speed <= 3 && stabBucket(d.Turn, d.Fade) === 'US',
+            mid_ST:       d => d.Speed >= 4 && d.Speed <= 6 && stabBucket(d.Turn, d.Fade) === 'ST',
+            mid_OS:       d => d.Speed >= 4 && d.Speed <= 6 && stabBucket(d.Turn, d.Fade) === 'OS',
+            mid_US:       d => d.Speed >= 4 && d.Speed <= 6 && stabBucket(d.Turn, d.Fade) === 'US',
+            fairway_ST:   d => d.Speed >= 7 && d.Speed <= 8 && stabBucket(d.Turn, d.Fade) === 'ST',
+            fairway_OS:   d => d.Speed >= 7 && d.Speed <= 8 && stabBucket(d.Turn, d.Fade) === 'OS',
+            fairway_US:   d => d.Speed >= 7 && d.Speed <= 8 && stabBucket(d.Turn, d.Fade) === 'US',
+            distance_ST:  d => d.Speed >= 9 && stabBucket(d.Turn, d.Fade) === 'ST',
+            distance_OS:  d => d.Speed >= 9 && stabBucket(d.Turn, d.Fade) === 'OS',
+            distance_US:  d => d.Speed >= 9 && stabBucket(d.Turn, d.Fade) === 'US',
+        };
+
+        const gaps = SLOTS
+            .filter(s => !filled.has(s.key))
+            .sort((a, b) => a.priority - b.priority)
+            .map(s => ({
+                ...s,
+                suggestions: ALL_DISCS.filter(SLOT_FILTER[s.key]).slice(0, 4)
+            }));
+
+        // For the banner: show most important gap
+        const topGap = gaps[0];
+        const allFilled = gaps.length === 0;
+
+        return {
+            gaps,
+            allFilled,
+            text: allFilled ? '✓ Bag Optimised' : `Gap: ${topGap?.label}`,
+            filter: topGap ? SLOT_FILTER[topGap.key] : null,
+            topGapSuggestions: topGap?.suggestions || [],
+        };
+    }, [discs, activeBagId, communitySuggestions]);
 
     // --- SHARED CHART CONFIG BUILDER ---
-    // forExport=true → draws disc name pill-labels directly on the canvas (export only)
+    // forExport=true → draws disc name pill-labels directly on canvas (export only)
     const buildChartConfig = (filtered, mode, forExport = false) => {
 
         const exportLabelPlugin = {
@@ -289,6 +366,7 @@ export default function App() {
             afterDatasetsDraw(chart) {
                 if (!forExport) return;
                 const ctx = chart.ctx;
+                const W = chart.width; const H = chart.height;
                 const positions = [];
 
                 chart.data.datasets.forEach((ds, i) => {
@@ -297,52 +375,74 @@ export default function App() {
                     if (meta.hidden) return;
                     let px, py;
                     if (mode === 'path') {
-                        // Label at ~60% along the path — visible on the curve
-                        const idx = Math.floor(meta.data.length * 0.60);
+                        // Place at ~65% along the path — mid-arc bend area
+                        const idx = Math.floor(meta.data.length * 0.65);
                         const pt = meta.data[Math.min(idx, meta.data.length - 1)];
                         px = pt?.x; py = pt?.y;
                     } else {
                         const pt = meta.data[0];
                         px = pt?.x; py = pt?.y;
+                        // Offset label to the right of the dot
+                        if (px != null) px += 16;
                     }
-                    if (px == null) return;
+                    if (px == null || py == null) return;
+                    // Clamp to canvas with margin
+                    const margin = 40;
+                    px = Math.max(margin, Math.min(W - margin, px));
+                    py = Math.max(margin, Math.min(H - margin, py));
                     positions.push({ label: ds.label, color: ds.borderColor, px, py });
                 });
 
-                // Nudge overlapping labels apart (5 passes)
-                for (let iter = 0; iter < 5; iter++) {
+                // Iterative repulsion to prevent overlap (10 passes)
+                const FONT_SIZE = 14;
+                const PILL_H = FONT_SIZE + 10;
+                const EST_W = (label) => label.length * FONT_SIZE * 0.6 + 14;
+                for (let iter = 0; iter < 10; iter++) {
                     for (let a = 0; a < positions.length; a++) {
                         for (let b = a + 1; b < positions.length; b++) {
-                            const dx = positions[a].px - positions[b].px;
-                            const dy = positions[a].py - positions[b].py;
-                            const dist = Math.sqrt(dx * dx + dy * dy);
-                            if (dist < 30 && dist > 0) {
-                                const push = (30 - dist) / 2;
-                                const ang = Math.atan2(dy, dx);
-                                positions[a].py += Math.sin(ang) * push;
-                                positions[b].py -= Math.sin(ang) * push;
-                                positions[a].px += Math.cos(ang) * push * 0.4;
-                                positions[b].px -= Math.cos(ang) * push * 0.4;
+                            const pa = positions[a]; const pb = positions[b];
+                            const aw = EST_W(pa.label); const bw = EST_W(pb.label);
+                            const overlapX = (aw + bw) / 2 - Math.abs(pa.px - pb.px);
+                            const overlapY = PILL_H + 4 - Math.abs(pa.py - pb.py);
+                            if (overlapX > 0 && overlapY > 0) {
+                                // Push apart on the dominant axis
+                                const pushY = overlapY / 2 + 1;
+                                const pushX = overlapX / 4;
+                                if (pa.py <= pb.py) { pa.py -= pushY; pb.py += pushY; }
+                                else { pa.py += pushY; pb.py -= pushY; }
+                                if (pa.px <= pb.px) { pa.px -= pushX; pb.px += pushX; }
+                                else { pa.px += pushX; pb.px -= pushX; }
                             }
                         }
+                        // Re-clamp after each pass
+                        const m = 40;
+                        positions[a].px = Math.max(m, Math.min(W - m, positions[a].px));
+                        positions[a].py = Math.max(m, Math.min(H - m, positions[a].py));
                     }
                 }
 
                 positions.forEach(({ label, color, px, py }) => {
                     ctx.save();
-                    ctx.font = 'bold 11px system-ui, sans-serif';
+                    ctx.font = `bold ${FONT_SIZE}px system-ui, sans-serif`;
                     const tw = ctx.measureText(label).width;
-                    const bw = tw + 10; const bh = 18; const br = 5;
+                    const bw = tw + 14; const bh = PILL_H; const br = 6;
                     const bx = px - bw / 2; const by = py - bh / 2;
-                    ctx.fillStyle = 'rgba(11,15,26,0.80)';
+                    // Semi-transparent dark pill background
+                    ctx.fillStyle = 'rgba(11,15,26,0.85)';
                     ctx.beginPath();
                     ctx.roundRect(bx, by, bw, bh, br);
                     ctx.fill();
-                    ctx.fillStyle = color || '#fff';
+                    // Coloured left accent bar on pill
+                    ctx.fillStyle = color || '#f97316';
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by, 3, bh, [br, 0, 0, br]);
+                    ctx.fill();
+                    // Label text
+                    ctx.fillStyle = '#ffffff';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.shadowColor = 'rgba(0,0,0,0.9)';
-                    ctx.shadowBlur = 2;
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 3;
                     ctx.fillText(label, px, py + 1);
                     ctx.restore();
                 });
@@ -581,7 +681,7 @@ export default function App() {
             ===================================================== */}
             <div className="hidden lg:flex w-60 h-full bg-slate-900 border-r border-slate-800 p-6 flex-col gap-4 shrink-0">
                 <div className="flex justify-center w-full mb-1">
-                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-[4.5rem] w-[4.5rem] object-contain" />
+                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-[5.5rem] w-[5.5rem] object-contain" />
                 </div>
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
@@ -669,11 +769,18 @@ export default function App() {
                     MOBILE LAYOUT (below lg): stacked — chart then inventory
                 ===================================================== */}
                 <main className="lg:hidden flex-1 overflow-y-auto">
-                    {gapAnalysis.filter && view === 'active' && (
+                    {!gapAnalysis.allFilled && view === 'active' && (
                         <div className="px-4 pt-4">
-                            <button onClick={() => setSuggestionPool(FACTORY_DB.filter(gapAnalysis.filter).slice(0, 5))} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.text} — View Suggestions
+                            <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
+                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length !== 1 ? 's' : ''} in bag — {gapAnalysis.text} — View All
                             </button>
+                        </div>
+                    )}
+                    {gapAnalysis.allFilled && view === 'active' && (
+                        <div className="px-4 pt-4">
+                            <div className="w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">
+                                ✓ Bag Optimised — All 12 slots filled
+                            </div>
                         </div>
                     )}
                     <section className="p-4">
@@ -702,10 +809,15 @@ export default function App() {
                     <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden min-w-0">
 
                         {/* Gap analysis banner */}
-                        {gapAnalysis.filter && view === 'active' && (
-                            <button onClick={() => setSuggestionPool(FACTORY_DB.filter(gapAnalysis.filter).slice(0, 5))} className="shrink-0 w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.text} — View Suggestions
+                        {!gapAnalysis.allFilled && view === 'active' && (
+                            <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="shrink-0 w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
+                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length !== 1 ? 's' : ''} detected — {gapAnalysis.text} — View All Suggestions
                             </button>
+                        )}
+                        {gapAnalysis.allFilled && view === 'active' && (
+                            <div className="shrink-0 w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">
+                                ✓ Bag Optimised — All 12 disc slots covered
+                            </div>
                         )}
 
                         {/* Two charts side by side, filling all remaining vertical space */}
@@ -817,20 +929,93 @@ export default function App() {
                 </div>
             )}
 
-            {/* GAP SUGGESTIONS */}
+            {/* GAP ANALYSIS MODAL */}
             {suggestionPool && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-3xl font-black italic text-blue-500 uppercase">Suggested Discs</h2>
-                        <button onClick={() => setSuggestionPool(null)} className="text-2xl">✕</button>
+                    <div className="flex justify-between items-center mb-4 shrink-0">
+                        <div>
+                            <h2 className="text-2xl font-black italic text-blue-400 uppercase">🎯 Bag Gap Analysis</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">
+                                {suggestionPool.length === 0
+                                    ? 'All 12 slots covered — great bag!'
+                                    : `${suggestionPool.length} of 12 slots missing`}
+                            </p>
+                        </div>
+                        <button onClick={() => setSuggestionPool(null)} className="text-2xl text-slate-500 hover:text-white">✕</button>
                     </div>
-                    <div className="flex-grow overflow-y-auto space-y-3 pb-10 max-w-2xl w-full mx-auto">
-                        {suggestionPool.map(d => (
-                            <div key={d.Model} onClick={() => { addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setSuggestionPool(null); }} className="p-6 bg-blue-900/20 rounded-2xl border border-blue-600/30 flex justify-between items-center cursor-pointer hover:border-blue-500 transition">
-                                <div><div className="font-black uppercase italic text-lg text-blue-400">{d.Model}</div><div className="text-[10px] font-bold text-blue-600 uppercase">{d.Manufacturer} • {d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</div></div>
-                                <div className="text-blue-500 font-black text-xl">+</div>
+
+                    {/* 12-slot coverage grid */}
+                    <div className="shrink-0 mb-4">
+                        {[
+                            { label: 'Putter', slots: ['putter_ST','putter_OS','putter_US'] },
+                            { label: 'Midrange', slots: ['mid_ST','mid_OS','mid_US'] },
+                            { label: 'Fairway', slots: ['fairway_ST','fairway_OS','fairway_US'] },
+                            { label: 'Distance', slots: ['distance_ST','distance_OS','distance_US'] },
+                        ].map(row => {
+                            const missingKeys = new Set(suggestionPool.map(g => g.key));
+                            return (
+                                <div key={row.label} className="flex items-center gap-2 mb-1.5">
+                                    <span className="text-[9px] font-black uppercase text-slate-500 w-14 shrink-0">{row.label}</span>
+                                    {['ST','OS','US'].map((stab, i) => {
+                                        const key = row.slots[i];
+                                        const isMissing = missingKeys.has(key);
+                                        return (
+                                            <div key={stab} className={`flex-1 py-1 rounded-lg text-center text-[8px] font-black uppercase ${isMissing ? 'bg-red-900/40 border border-red-600/40 text-red-400' : 'bg-emerald-900/30 border border-emerald-600/30 text-emerald-400'}`}>
+                                                {isMissing ? '✗' : '✓'} {stab}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="flex-grow overflow-y-auto space-y-5 pb-10 max-w-2xl w-full mx-auto">
+                        {suggestionPool.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="text-5xl mb-4">🏆</div>
+                                <p className="text-emerald-400 font-black uppercase text-lg">Perfect Bag!</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase mt-2">All 12 disc categories are covered</p>
                             </div>
-                        ))}
+                        ) : (
+                            suggestionPool.map(gap => (
+                                <div key={gap.key} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                                        <span className="font-black uppercase text-sm text-white">{gap.label}</span>
+                                        <span className="ml-auto text-[9px] font-bold text-slate-600 uppercase">
+                                            Priority {gap.priority === 1 ? '🔴 High' : gap.priority <= 3 ? '🟡 Med' : '⚪ Low'}
+                                        </span>
+                                    </div>
+                                    {gap.suggestions.length > 0 ? (
+                                        <div className="space-y-2">
+                                            {gap.suggestions.map((d, i) => (
+                                                <div
+                                                    key={`${d.Model}-${i}`}
+                                                    onClick={() => {
+                                                        addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                                                        setSuggestionPool(null);
+                                                    }}
+                                                    className={`flex justify-between items-center p-3 rounded-xl border cursor-pointer transition ${d.source === 'community' ? 'bg-emerald-900/10 border-emerald-700/30 hover:border-emerald-500' : 'bg-slate-800/60 border-slate-700/40 hover:border-blue-500'}`}
+                                                >
+                                                    <div>
+                                                        <span className={`font-black uppercase text-sm ${d.source === 'community' ? 'text-emerald-400' : 'text-white'}`}>{d.Model}</span>
+                                                        <span className="text-slate-500 text-[10px] font-bold uppercase ml-2">{d.Manufacturer}</span>
+                                                        {d.source === 'community' && <span className="ml-2 text-[8px] font-black uppercase text-emerald-600 bg-emerald-900/30 px-1.5 py-0.5 rounded">Community</span>}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] font-bold text-slate-400">{d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</span>
+                                                        <span className="text-blue-400 font-black text-lg">+</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-slate-600 text-[10px] font-bold uppercase">No suggestions in database — add one via the + button</p>
+                                    )}
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}
@@ -978,36 +1163,32 @@ export default function App() {
                     ]);
                     const JSPDF = window.jspdf?.jsPDF || jsPDF;
 
-                    // ── Read live canvas aspect ratios from the DOM ──
-                    // This ensures we never stretch/squash charts vs what the user sees
+                    // Read live aspect ratio from DOM so charts match what user sees
                     const getLiveAspect = (id) => {
                         const el = document.getElementById(id);
-                        if (!el) return 1.6; // sensible fallback
-                        return el.offsetWidth / el.offsetHeight;
+                        return el && el.offsetHeight > 0 ? el.offsetWidth / el.offsetHeight : 1.6;
                     };
                     const pathAspect = getLiveAspect('desktopPathChart') || getLiveAspect('mainChart') || 1.6;
                     const stabAspect = getLiveAspect('desktopStabChart') || getLiveAspect('mainChart') || 1.3;
 
-                    // ── Render a Chart.js chart off-screen at exact pixel size with labels ──
+                    // Off-screen chart render with export labels
                     const renderChart = (mode, width, height) => new Promise(resolve => {
-                        const offscreen = document.createElement('canvas');
-                        offscreen.width = width; offscreen.height = height;
-                        offscreen.style.cssText = 'position:absolute;left:-9999px;top:0';
-                        document.body.appendChild(offscreen);
+                        const off = document.createElement('canvas');
+                        off.width = width; off.height = height;
+                        off.style.cssText = 'position:absolute;left:-9999px;top:0';
+                        document.body.appendChild(off);
                         const cfg = buildChartConfig(exportDiscs, mode, true);
                         cfg.options.animation = false;
                         cfg.options.responsive = false;
                         cfg.options.maintainAspectRatio = false;
-                        const ch = new Chart(offscreen.getContext('2d'), cfg);
+                        const ch = new Chart(off.getContext('2d'), cfg);
                         requestAnimationFrame(() => requestAnimationFrame(() => {
-                            const url = offscreen.toDataURL('image/png');
-                            ch.destroy();
-                            document.body.removeChild(offscreen);
+                            const url = off.toDataURL('image/png');
+                            ch.destroy(); document.body.removeChild(off);
                             resolve(url);
                         }));
                     });
 
-                    // ── Load logo ──
                     const loadLogoB64 = async () => {
                         try {
                             const res = await fetch('/baggedup.logo.png');
@@ -1021,16 +1202,13 @@ export default function App() {
                         img.src = '/baggedup.logo.png?' + Date.now();
                     });
 
-                    // ════════════════════════════════════════════
-                    // PDF EXPORT
-                    // ════════════════════════════════════════════
                     if (format === 'pdf') {
                         const doc = new JSPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                         const W = 210; const H = 297;
                         const dark = [11,15,26]; const orange = [249,115,22]; const slate = [30,41,59];
                         const logoB64 = await loadLogoB64();
 
-                        // ── Page 1: Summary ──
+                        // Page 1: Summary
                         doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
                         if (logoB64) {
                             doc.addImage(logoB64,'PNG',13,11,38,38);
@@ -1078,52 +1256,39 @@ export default function App() {
                         doc.text('* Orange = beat-in wear effect', 13, H-12);
                         doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
-                        // ── Page 2: Flight Paths — preserve live aspect ratio ──
-                        // Available content area on A4: W-26 wide, allow up to ~200mm tall
-                        const pdfContentW = W - 26; // 184mm
-                        const pdfPathH = Math.min(200, pdfContentW / pathAspect);
-                        const pdfPathW = pdfPathH * pathAspect; // may be less than full width if very wide
-                        const pathPx = 1200; const pathPy = Math.round(pathPx / pathAspect);
-                        const pathImg = await renderChart('path', pathPx, pathPy);
-
+                        // Page 2: Flight Paths — preserve live aspect ratio, fill page
+                        const pdfCW = W - 26;
+                        const pdfPathH = Math.min(240, pdfCW / pathAspect);
+                        const pdfPathW = pdfPathH * pathAspect;
+                        const pathImg = await renderChart('path', 1400, Math.round(1400 / pathAspect));
                         doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
                         doc.setTextColor(...orange); doc.setFontSize(16); doc.setFont('helvetica','bold');
                         doc.text('Flight Paths', 13, 16);
                         doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
                         doc.text(activeBag?.name||'My Bag', 13, 23);
-                        // Center horizontally, start just below heading
-                        const pxOff = (W - pdfPathW) / 2;
-                        doc.addImage(pathImg,'PNG', pxOff, 28, pdfPathW, pdfPathH);
+                        doc.addImage(pathImg,'PNG', (W-pdfPathW)/2, 28, pdfPathW, pdfPathH);
                         doc.setTextColor(71,85,105); doc.setFontSize(7);
                         doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
-                        // ── Page 3: Stability Matrix ──
-                        const pdfStabH = Math.min(200, pdfContentW / stabAspect);
+                        // Page 3: Stability Matrix
+                        const pdfStabH = Math.min(240, pdfCW / stabAspect);
                         const pdfStabW = pdfStabH * stabAspect;
-                        const stabPx = 1200; const stabPy = Math.round(stabPx / stabAspect);
-                        const stabImg = await renderChart('matrix', stabPx, stabPy);
-
+                        const stabImg = await renderChart('matrix', 1400, Math.round(1400 / stabAspect));
                         doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
                         doc.setTextColor(...orange); doc.setFontSize(16); doc.setFont('helvetica','bold');
                         doc.text('Stability Matrix', 13, 16);
                         doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
                         doc.text('Speed vs Stability (Turn + Fade)', 13, 23);
-                        const sxOff = (W - pdfStabW) / 2;
-                        doc.addImage(stabImg,'PNG', sxOff, 28, pdfStabW, pdfStabH);
+                        doc.addImage(stabImg,'PNG', (W-pdfStabW)/2, 28, pdfStabW, pdfStabH);
                         doc.setTextColor(71,85,105); doc.setFontSize(7);
                         doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
                         doc.save(`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}.pdf`);
 
-                    // ════════════════════════════════════════════
-                    // PNG STORY / POST EXPORT
-                    // ════════════════════════════════════════════
                     } else if (format === 'png-story' || format === 'png-post') {
                         const isStory = format === 'png-story';
-                        const CW = 1080;
-                        const CH = isStory ? 1920 : 1350; // 9:16 story or 4:5 post
+                        const CW = 1080; const CH = isStory ? 1920 : 1350;
                         const PAD = 52;
-
                         const logoImg = await loadLogoImg();
 
                         function rrPath(ctx, x, y, w, h, r) {
@@ -1135,13 +1300,10 @@ export default function App() {
                             ctx.closePath();
                         }
 
-                        // Compact header: logo left, title right, divider below
-                        // Returns the Y position where content should start
                         function drawHeader(ctx, title, subtitle) {
                             const logoSz = 80;
-                            if (logoImg) {
-                                ctx.drawImage(logoImg, PAD, PAD, logoSz, logoSz);
-                            } else {
+                            if (logoImg) { ctx.drawImage(logoImg, PAD, PAD, logoSz, logoSz); }
+                            else {
                                 ctx.fillStyle='#f97316'; rrPath(ctx,PAD,PAD,logoSz,logoSz,16); ctx.fill();
                                 ctx.fillStyle='#fff'; ctx.font='bold 16px system-ui,sans-serif'; ctx.textAlign='center';
                                 ctx.fillText('BAGGED',PAD+logoSz/2,PAD+40); ctx.fillText('UP',PAD+logoSz/2,PAD+60);
@@ -1151,10 +1313,9 @@ export default function App() {
                             ctx.fillText(title, PAD+logoSz+20, PAD+48);
                             ctx.fillStyle='#475569'; ctx.font='bold 20px system-ui,sans-serif';
                             ctx.fillText(subtitle, PAD+logoSz+20, PAD+76);
-                            // divider
                             ctx.strokeStyle='#1e293b'; ctx.lineWidth=2;
                             ctx.beginPath(); ctx.moveTo(PAD,PAD+logoSz+14); ctx.lineTo(CW-PAD,PAD+logoSz+14); ctx.stroke();
-                            return PAD + logoSz + 24; // content start Y
+                            return PAD + logoSz + 24;
                         }
 
                         function drawFooter(ctx) {
@@ -1162,100 +1323,75 @@ export default function App() {
                             ctx.textAlign='center'; ctx.fillText('baggedup.vercel.app', CW/2, CH-28);
                         }
 
-                        function makeCanvas() {
-                            const c = document.createElement('canvas'); c.width=CW; c.height=CH; return c;
-                        }
+                        function mkC() { const c=document.createElement('canvas'); c.width=CW; c.height=CH; return c; }
 
-                        // ── Slide 1: Disc Overview ──
-                        const s1 = makeCanvas(); const c1 = s1.getContext('2d');
+                        // Slide 1: Overview
+                        const s1=mkC(); const c1=s1.getContext('2d');
                         c1.fillStyle='#0b0f1a'; c1.fillRect(0,0,CW,CH);
-                        const contentTop1 = drawHeader(c1, activeBag?.name||'My Bag', 'BaggedUp • Disc Golf');
-                        const footerH = 50;
-                        const availH = CH - contentTop1 - footerH;
-                        const rowH = Math.min(90, Math.floor(availH / Math.max(exportDiscs.length, 1)));
-                        let rowY = contentTop1 + 4;
+                        const top1 = drawHeader(c1, activeBag?.name||'My Bag', 'BaggedUp • Disc Golf');
+                        const footH=50, avail1=CH-top1-footH;
+                        const rh=Math.min(90,Math.floor(avail1/Math.max(exportDiscs.length,1)));
+                        let ry=top1+4;
                         exportDiscs.forEach(d => {
-                            c1.fillStyle='#0f172a'; rrPath(c1,PAD,rowY,CW-PAD*2,rowH-8,14); c1.fill();
-                            c1.fillStyle=d.color||'#f97316'; rrPath(c1,PAD,rowY,10,rowH-8,4); c1.fill();
-                            const fs = Math.min(28, rowH * 0.34);
+                            c1.fillStyle='#0f172a'; rrPath(c1,PAD,ry,CW-PAD*2,rh-8,14); c1.fill();
+                            c1.fillStyle=d.color||'#f97316'; rrPath(c1,PAD,ry,10,rh-8,4); c1.fill();
+                            const fs=Math.min(28,rh*0.34);
                             c1.fillStyle='#fff'; c1.font=`bold ${fs}px system-ui,sans-serif`; c1.textAlign='left';
-                            c1.fillText(d.name.toUpperCase(), PAD+22, rowY+(rowH-8)*0.44);
-                            c1.fillStyle='#64748b'; c1.font=`bold ${Math.min(17,rowH*0.2)}px system-ui,sans-serif`;
-                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+22, rowY+(rowH-8)*0.72);
-                            const bw=70,bh=rowH-18,gx=8,sx=CW-PAD-(bw+gx)*4;
+                            c1.fillText(d.name.toUpperCase(), PAD+22, ry+(rh-8)*0.44);
+                            c1.fillStyle='#64748b'; c1.font=`bold ${Math.min(17,rh*0.2)}px system-ui,sans-serif`;
+                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+22, ry+(rh-8)*0.72);
+                            const bw=70,bh=rh-18,gx=8,sx=CW-PAD-(bw+gx)*4;
                             [d.speed,d.glide,d.turn,d.fade].forEach((v,i)=>{
                                 const bx=sx+i*(bw+gx);
-                                c1.fillStyle='#1e293b'; rrPath(c1,bx,rowY+5,bw,bh,10); c1.fill();
+                                c1.fillStyle='#1e293b'; rrPath(c1,bx,ry+5,bw,bh,10); c1.fill();
                                 c1.fillStyle='#475569'; c1.font='bold 12px system-ui,sans-serif'; c1.textAlign='center';
-                                c1.fillText(['S','G','T','F'][i],bx+bw/2,rowY+20);
-                                c1.fillStyle='#fff'; c1.font=`bold ${Math.min(22,rowH*0.26)}px system-ui,sans-serif`;
-                                c1.fillText(String(v),bx+bw/2,rowY+bh*0.72+5);
+                                c1.fillText(['S','G','T','F'][i],bx+bw/2,ry+20);
+                                c1.fillStyle='#fff'; c1.font=`bold ${Math.min(22,rh*0.26)}px system-ui,sans-serif`;
+                                c1.fillText(String(v),bx+bw/2,ry+bh*0.72+5);
                             });
-                            rowY += rowH;
+                            ry+=rh;
                         });
                         drawFooter(c1);
 
-                        // ── Slides 2 & 3: Charts — render at exact live aspect ratio ──
-                        // Chart pixel width = canvas width minus padding on both sides
-                        const chartPxW = CW - PAD * 2;
+                        // Slides 2 & 3: Charts at live aspect ratio
+                        const cpxW = CW - PAD*2;
 
-                        // Flight path: use live aspect ratio so it looks identical to app
-                        const pathPxH = Math.round(chartPxW / pathAspect);
-                        const pathDataUrl = await renderChart('path', chartPxW, pathPxH);
-                        const s2 = makeCanvas(); const c2 = s2.getContext('2d');
+                        const pathPxH = Math.round(cpxW / pathAspect);
+                        const pathUrl = await renderChart('path', cpxW, pathPxH);
+                        const s2=mkC(); const c2=s2.getContext('2d');
                         c2.fillStyle='#0b0f1a'; c2.fillRect(0,0,CW,CH);
-                        const contentTop2 = drawHeader(c2, 'Flight Paths', activeBag?.name||'My Bag');
-                        const pImg = new Image(); pImg.src = pathDataUrl;
-                        await new Promise(r => { pImg.onload = r; });
-                        // Center the chart in available vertical space
-                        const availH2 = CH - contentTop2 - footerH;
-                        const scaledPathH = Math.min(pathPxH, availH2);
-                        const scaledPathW = scaledPathH * pathAspect;
-                        const p2x = (CW - scaledPathW) / 2;
-                        const p2y = contentTop2 + (availH2 - scaledPathH) / 2;
-                        c2.drawImage(pImg, p2x, p2y, scaledPathW, scaledPathH);
+                        const top2=drawHeader(c2,'Flight Paths',activeBag?.name||'My Bag');
+                        const avail2=CH-top2-footH;
+                        const scH2=Math.min(pathPxH,avail2); const scW2=scH2*pathAspect;
+                        const pImg=new Image(); pImg.src=pathUrl; await new Promise(r=>{pImg.onload=r;});
+                        c2.drawImage(pImg,(CW-scW2)/2,top2+(avail2-scH2)/2,scW2,scH2);
                         drawFooter(c2);
 
-                        // Stability matrix
-                        const stabPxH = Math.round(chartPxW / stabAspect);
-                        const stabDataUrl = await renderChart('matrix', chartPxW, stabPxH);
-                        const s3 = makeCanvas(); const c3 = s3.getContext('2d');
+                        const stabPxH = Math.round(cpxW / stabAspect);
+                        const stabUrl = await renderChart('matrix', cpxW, stabPxH);
+                        const s3=mkC(); const c3=s3.getContext('2d');
                         c3.fillStyle='#0b0f1a'; c3.fillRect(0,0,CW,CH);
-                        const contentTop3 = drawHeader(c3, 'Stability Matrix', 'Speed vs Turn+Fade');
-                        const sImg = new Image(); sImg.src = stabDataUrl;
-                        await new Promise(r => { sImg.onload = r; });
-                        const availH3 = CH - contentTop3 - footerH;
-                        const scaledStabH = Math.min(stabPxH, availH3);
-                        const scaledStabW = scaledStabH * stabAspect;
-                        const s3x = (CW - scaledStabW) / 2;
-                        const s3y = contentTop3 + (availH3 - scaledStabH) / 2;
-                        c3.drawImage(sImg, s3x, s3y, scaledStabW, scaledStabH);
+                        const top3=drawHeader(c3,'Stability Matrix','Speed vs Turn+Fade');
+                        const avail3=CH-top3-footH;
+                        const scH3=Math.min(stabPxH,avail3); const scW3=scH3*stabAspect;
+                        const sImg=new Image(); sImg.src=stabUrl; await new Promise(r=>{sImg.onload=r;});
+                        c3.drawImage(sImg,(CW-scW3)/2,top3+(avail3-scH3)/2,scW3,scH3);
                         drawFooter(c3);
 
-                        // ── Download / Share ──
-                        const baseName = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}`;
-                        const slides = [
-                            { canvas: s1, suffix: 'overview' },
-                            { canvas: s2, suffix: 'flight-paths' },
-                            { canvas: s3, suffix: 'stability' },
-                        ];
+                        const base=`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}`;
+                        const slides=[{canvas:s1,suffix:'overview'},{canvas:s2,suffix:'flight-paths'},{canvas:s3,suffix:'stability'}];
 
                         if (isStory && navigator.share && navigator.canShare) {
-                            const files = await Promise.all(slides.map(sl => new Promise(res =>
-                                sl.canvas.toBlob(blob => res(new File([blob],`${baseName}-${sl.suffix}.png`,{type:'image/png'})))
-                            )));
-                            if (navigator.canShare({ files })) {
-                                try { await navigator.share({ files, title:`My ${activeBag?.name} — BaggedUp` }); setExportLoading(false); return; }
-                                catch(e) { /* fall through to download */ }
+                            const files=await Promise.all(slides.map(sl=>new Promise(res=>sl.canvas.toBlob(blob=>res(new File([blob],`${base}-${sl.suffix}.png`,{type:'image/png'}))))));
+                            if (navigator.canShare({files})) {
+                                try { await navigator.share({files,title:`My ${activeBag?.name} — BaggedUp`}); setExportLoading(false); return; }
+                                catch(e) {}
                             }
                         }
-
                         for (const sl of slides) {
-                            await new Promise(res => sl.canvas.toBlob(blob => {
-                                const a = document.createElement('a');
-                                a.download = `${baseName}-${sl.suffix}.png`;
-                                a.href = URL.createObjectURL(blob); a.click();
-                                setTimeout(res, 500);
+                            await new Promise(res=>sl.canvas.toBlob(blob=>{
+                                const a=document.createElement('a'); a.download=`${base}-${sl.suffix}.png`;
+                                a.href=URL.createObjectURL(blob); a.click(); setTimeout(res,500);
                             }));
                         }
                     }
@@ -1287,16 +1423,13 @@ export default function App() {
                                 </div>
                             </div>
                             <p className="text-[10px] text-slate-600 uppercase font-bold">Download and share via any app — email, WhatsApp, Messenger, etc.</p>
-                            <button
-                                onClick={() => runExport('pdf')}
-                                disabled={exportLoading}
-                                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition"
-                            >
-                                {exportLoading ? 'Generating...' : '⬇ Download PDF'}
+                            <button onClick={() => runExport('pdf')} disabled={exportLoading}
+                                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition">
+                                {exportLoading ? '⏳ Generating…' : '⬇ Download PDF'}
                             </button>
                         </div>
 
-                        {/* Story / Post PNG Export */}
+                        {/* Social PNG Export */}
                         <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 space-y-3">
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-2xl">📸</span>
@@ -1328,6 +1461,7 @@ export default function App() {
             );
         })()}
         {/* =====================================================
+            PLAY ROUND MODAL        {/* =====================================================
             PLAY ROUND MODAL
         ===================================================== */}
         {showPlayRound && (() => {
