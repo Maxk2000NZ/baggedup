@@ -642,6 +642,13 @@ export default function App() {
     const [cardMateSearchLoading, setCardMateSearchLoading] = useState(false);
     const [viewingMate, setViewingMate] = useState(null); // { userId, email, bags, discs }
     const [viewingMateBagId, setViewingMateBagId] = useState('');
+    const [mateBagLoading, setMateBagLoading] = useState(false);
+
+    // Settings tabs + account editing
+    const [settingsTab, setSettingsTab] = useState('bag'); // 'bag' | 'account'
+    const [accountEdit, setAccountEdit] = useState({ username: '', pdga_number: '', email: '' });
+    const [accountSaving, setAccountSaving] = useState(false);
+    const [accountMessage, setAccountMessage] = useState('');
 
     // Wear slider — local state for smooth dragging, synced to DB on release
     const [localWear, setLocalWear] = useState({});
@@ -823,11 +830,27 @@ export default function App() {
     };
 
     const loadMateBag = async (mateUserId, mateEmail, mateId) => {
-        const { data: mateBags } = await supabase.from('bags').select('*').eq('user_id', mateUserId);
-        const { data: mateDiscs } = await supabase.from('discs').select('*').eq('user_id', mateUserId);
+        setMateBagLoading(true);
+        setViewingMate(null);
+        // Only fetch bags the mate has made public
+        const { data: mateBags } = await supabase
+            .from('bags').select('*')
+            .eq('user_id', mateUserId)
+            .eq('is_public', true);
+        const bagIds = (mateBags || []).map(b => b.id);
+        let mateDiscs = [];
+        if (bagIds.length > 0) {
+            const { data: d } = await supabase
+                .from('discs').select('*')
+                .in('bag_id', bagIds)
+                .eq('status', 'active')
+                .eq('is_idea', false);
+            mateDiscs = d || [];
+        }
         const firstBagId = mateBags?.[0]?.id || '';
-        setViewingMate({ id: mateId, userId: mateUserId, email: mateEmail, bags: mateBags || [], discs: mateDiscs || [] });
+        setViewingMate({ id: mateId, userId: mateUserId, email: mateEmail, bags: mateBags || [], discs: mateDiscs });
         setViewingMateBagId(firstBagId);
+        setMateBagLoading(false);
     };
 
     const createBag = async (name) => {
@@ -1165,103 +1188,190 @@ export default function App() {
 
     // --- AUTH RENDER ---
     if (!session || authMode === 'profile_setup') return (
-        <div className="h-[100dvh] w-full flex items-center justify-center bg-[#0b0f1a] p-6">
-            <div className="w-full max-w-md text-center">
-                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-40 w-40 mx-auto mb-4 object-contain" />
-                <h1 className="text-3xl font-black italic uppercase text-white mb-2 tracking-tight">
-                    {authMode === 'profile_setup' ? 'Set Up Your Profile' : <>Welcome to <span className="text-orange-500">BaggedUp</span></>}
+        <div className="min-h-[100dvh] w-full bg-[#0b0f1a] flex flex-col lg:flex-row">
+
+            {/* ── LEFT PANEL — branding (desktop only) ── */}
+            <div className="hidden lg:flex w-[45%] shrink-0 flex-col items-center justify-center p-16 bg-gradient-to-br from-slate-900 via-[#0b0f1a] to-slate-900 border-r border-slate-800 relative overflow-hidden">
+                {/* subtle disc rings background */}
+                <div className="absolute inset-0 flex items-center justify-center opacity-5 pointer-events-none">
+                    {[320,240,160,80].map(s => <div key={s} style={{width:s,height:s}} className="absolute rounded-full border-2 border-orange-500" />)}
+                </div>
+                <img src={LOGO_URL} alt="BaggedUp" className="w-52 h-52 object-contain mb-8 relative z-10" />
+                <h1 className="text-4xl font-black italic uppercase text-white tracking-tight text-center relative z-10">
+                    Bagged<span className="text-orange-500">Up</span>
                 </h1>
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-8">
-                    {authMode === 'login' && 'Your disc golf bag, tracked.'}
-                    {authMode === 'signup' && 'Step 1 of 2 — Create your account'}
-                    {authMode === 'profile_setup' && 'Step 2 of 2 — Your player identity'}
+                <p className="text-slate-500 font-bold text-sm uppercase tracking-widest mt-3 text-center relative z-10">
+                    Your disc golf bag, tracked.
                 </p>
-
-                {authMessage && <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">{authMessage}</div>}
-
-                {/* LOGIN */}
-                {authMode === 'login' && (
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                        <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                        <button type="submit" disabled={authLoading} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50">
-                            {authLoading ? 'Logging in...' : 'Log In'}
-                        </button>
-                        <div className="flex justify-between items-center pt-1">
-                            <button type="button" onClick={async () => {
-                                if (!authEmail) { alert('Enter your email address above first.'); return; }
-                                const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin });
-                                if (error) alert(error.message);
-                                else setAuthMessage('Password reset email sent! Check your inbox.');
-                            }} className="text-slate-500 hover:text-orange-400 font-bold uppercase text-xs transition">Forgot Password?</button>
-                            <button type="button" onClick={() => { setAuthMode('signup'); setAuthMessage(''); }} className="text-orange-500 font-bold uppercase text-xs hover:text-orange-400 transition">Register →</button>
+                <div className="mt-12 space-y-3 relative z-10 w-full max-w-xs">
+                    {[
+                        { icon: '📊', text: 'Live flight path charts' },
+                        { icon: '🎯', text: 'Bag gap analysis & suggestions' },
+                        { icon: '🤝', text: 'Card Mates — view friends\' bags' },
+                        { icon: '🥏', text: 'Round tracker & graveyard' },
+                    ].map(f => (
+                        <div key={f.text} className="flex items-center gap-3 text-slate-400">
+                            <span className="text-lg">{f.icon}</span>
+                            <span className="font-bold text-sm">{f.text}</span>
                         </div>
-                    </form>
-                )}
+                    ))}
+                </div>
+            </div>
 
-                {/* SIGNUP STEP 1 — email + password */}
-                {authMode === 'signup' && (
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-left space-y-1">
-                            <div className="flex gap-2 items-center">
-                                <div className="w-6 h-6 rounded-full bg-orange-600 text-white text-[10px] font-black flex items-center justify-center">1</div>
-                                <span className="text-[10px] font-black uppercase text-orange-400">Account Details</span>
-                            </div>
-                            <div className="flex gap-2 items-center opacity-40">
-                                <div className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 text-[10px] font-black flex items-center justify-center">2</div>
-                                <span className="text-[10px] font-black uppercase text-slate-500">Player Profile</span>
-                            </div>
-                        </div>
-                        <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                        <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                        <button type="submit" disabled={authLoading} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50">
-                            {authLoading ? 'Creating Account...' : 'Next — Set Up Profile →'}
-                        </button>
-                        <button type="button" onClick={() => { setAuthMode('login'); setAuthMessage(''); }} className="w-full text-slate-500 font-bold uppercase text-xs py-2">← Back to Login</button>
-                    </form>
-                )}
+            {/* ── RIGHT PANEL — forms ── */}
+            <div className="flex-1 flex flex-col items-center justify-center p-6 lg:p-12 overflow-y-auto">
 
-                {/* SIGNUP STEP 2 — username + PDGA */}
-                {authMode === 'profile_setup' && (
-                    <form onSubmit={handleProfileSetup} className="space-y-4">
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-left space-y-1">
-                            <div className="flex gap-2 items-center opacity-40">
-                                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center">✓</div>
-                                <span className="text-[10px] font-black uppercase text-slate-500">Account Created</span>
+                {/* Mobile logo — only shows on small screens */}
+                <div className="lg:hidden flex flex-col items-center mb-6 shrink-0">
+                    <img src={LOGO_URL} alt="BaggedUp" className="w-20 h-20 object-contain" />
+                    <h1 className="text-2xl font-black italic uppercase text-white mt-2 tracking-tight">
+                        Bagged<span className="text-orange-500">Up</span>
+                    </h1>
+                </div>
+
+                <div className="w-full max-w-sm lg:max-w-md">
+
+                    {/* Step indicator for signup flow */}
+                    {(authMode === 'signup' || authMode === 'profile_setup') && (
+                        <div className="flex items-center gap-2 mb-6">
+                            <div className={`flex items-center gap-2 flex-1 ${authMode === 'signup' ? 'opacity-100' : 'opacity-40'}`}>
+                                <div className={`w-7 h-7 rounded-full text-[11px] font-black flex items-center justify-center shrink-0 ${authMode === 'signup' ? 'bg-orange-600 text-white' : 'bg-emerald-600 text-white'}`}>
+                                    {authMode === 'profile_setup' ? '✓' : '1'}
+                                </div>
+                                <span className="text-[10px] font-black uppercase text-slate-400 whitespace-nowrap">Account</span>
                             </div>
-                            <div className="flex gap-2 items-center">
-                                <div className="w-6 h-6 rounded-full bg-orange-600 text-white text-[10px] font-black flex items-center justify-center">2</div>
-                                <span className="text-[10px] font-black uppercase text-orange-400">Player Profile</span>
+                            <div className="h-px flex-1 bg-slate-700" />
+                            <div className={`flex items-center gap-2 flex-1 justify-end ${authMode === 'profile_setup' ? 'opacity-100' : 'opacity-30'}`}>
+                                <span className="text-[10px] font-black uppercase text-slate-400 whitespace-nowrap">Profile</span>
+                                <div className={`w-7 h-7 rounded-full text-[11px] font-black flex items-center justify-center shrink-0 ${authMode === 'profile_setup' ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-500'}`}>2</div>
                             </div>
                         </div>
-                        <div className="text-left space-y-1">
-                            <label className="text-[10px] font-black uppercase text-slate-500 pl-1">Username <span className="text-orange-500">*</span></label>
+                    )}
+
+                    {/* Title */}
+                    <div className="mb-6">
+                        <h2 className="text-2xl lg:text-3xl font-black italic uppercase text-white">
+                            {authMode === 'login' && 'Welcome Back'}
+                            {authMode === 'signup' && 'Create Account'}
+                            {authMode === 'profile_setup' && 'Your Player Profile'}
+                        </h2>
+                        <p className="text-slate-500 font-bold text-xs uppercase mt-1">
+                            {authMode === 'login' && 'Sign in to your bag'}
+                            {authMode === 'signup' && 'Step 1 of 2 — account details'}
+                            {authMode === 'profile_setup' && 'Step 2 of 2 — how others find you'}
+                        </p>
+                    </div>
+
+                    {authMessage && (
+                        <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">
+                            {authMessage}
+                        </div>
+                    )}
+
+                    {/* ── LOGIN ── */}
+                    {authMode === 'login' && (
+                        <form onSubmit={handleLogin} className="space-y-3">
                             <input
-                                type="text"
-                                placeholder="e.g. discgolfking"
-                                value={authUsername}
-                                onChange={e => setAuthUsername(e.target.value.replace(/\s/g, '').toLowerCase())}
-                                required
-                                className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500"
+                                type="email" placeholder="Email address"
+                                value={authEmail} onChange={e => setAuthEmail(e.target.value)}
+                                className="w-full bg-slate-900 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500 transition placeholder-slate-600"
                             />
-                            <p className="text-[10px] text-slate-600 font-bold pl-1">Lowercase, no spaces. Other players can find you by this.</p>
-                        </div>
-                        <div className="text-left space-y-1">
-                            <label className="text-[10px] font-black uppercase text-slate-500 pl-1">PDGA Number <span className="text-slate-600">(optional)</span></label>
                             <input
-                                type="text"
-                                placeholder="e.g. 12345"
-                                value={authPdga}
-                                onChange={e => setAuthPdga(e.target.value.replace(/[^0-9]/g, ''))}
-                                className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-cyan-500"
+                                type="password" placeholder="Password"
+                                value={authPassword} onChange={e => setAuthPassword(e.target.value)}
+                                className="w-full bg-slate-900 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500 transition placeholder-slate-600"
                             />
-                            <p className="text-[10px] text-slate-600 font-bold pl-1">Players can also find you by your PDGA number.</p>
-                        </div>
-                        <button type="submit" disabled={authLoading} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50">
-                            {authLoading ? 'Saving...' : '🚀 Create Profile & Get Started'}
-                        </button>
-                    </form>
-                )}
+                            <button type="submit" disabled={authLoading}
+                                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50 transition mt-1">
+                                {authLoading ? 'Signing in…' : 'Log In'}
+                            </button>
+                            <div className="flex justify-between items-center pt-1">
+                                <button type="button" onClick={async () => {
+                                    if (!authEmail) { alert('Enter your email above first.'); return; }
+                                    const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin });
+                                    if (error) alert(error.message);
+                                    else setAuthMessage('Password reset email sent!');
+                                }} className="text-slate-500 hover:text-orange-400 font-bold uppercase text-xs transition">
+                                    Forgot Password?
+                                </button>
+                                <button type="button" onClick={() => { setAuthMode('signup'); setAuthMessage(''); }}
+                                    className="text-orange-500 hover:text-orange-400 font-bold uppercase text-xs transition">
+                                    Create Account →
+                                </button>
+                            </div>
+                        </form>
+                    )}
+
+                    {/* ── SIGNUP STEP 1 ── */}
+                    {authMode === 'signup' && (
+                        <form onSubmit={handleLogin} className="space-y-3">
+                            <input
+                                type="email" placeholder="Email address"
+                                value={authEmail} onChange={e => setAuthEmail(e.target.value)} required
+                                className="w-full bg-slate-900 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500 transition placeholder-slate-600"
+                            />
+                            <input
+                                type="password" placeholder="Password (min 6 characters)"
+                                value={authPassword} onChange={e => setAuthPassword(e.target.value)} required
+                                className="w-full bg-slate-900 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500 transition placeholder-slate-600"
+                            />
+                            <button type="submit" disabled={authLoading}
+                                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50 transition">
+                                {authLoading ? 'Creating Account…' : 'Next →'}
+                            </button>
+                            <button type="button" onClick={() => { setAuthMode('login'); setAuthMessage(''); }}
+                                className="w-full text-slate-500 hover:text-slate-300 font-bold uppercase text-xs py-2 transition">
+                                ← Back to Login
+                            </button>
+                        </form>
+                    )}
+
+                    {/* ── SIGNUP STEP 2 — username + PDGA ── */}
+                    {authMode === 'profile_setup' && (
+                        <form onSubmit={handleProfileSetup} className="space-y-4">
+
+                            {/* Username */}
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                    Username <span className="text-orange-500">*</span>
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-sm pointer-events-none">@</span>
+                                    <input
+                                        type="text"
+                                        placeholder="discgolfking"
+                                        value={authUsername}
+                                        onChange={e => setAuthUsername(e.target.value.replace(/[^a-z0-9_]/g, '').toLowerCase())}
+                                        required
+                                        className="w-full bg-slate-900 pl-8 pr-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500 transition placeholder-slate-600"
+                                    />
+                                </div>
+                                <p className="text-[10px] text-slate-600 font-bold">Lowercase letters, numbers and _ only. Other players search you by this.</p>
+                            </div>
+
+                            {/* PDGA */}
+                            <div className="space-y-1.5">
+                                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">
+                                    PDGA Number <span className="text-slate-600 normal-case font-bold">(optional)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. 12345"
+                                    value={authPdga}
+                                    onChange={e => setAuthPdga(e.target.value.replace(/[^0-9]/g, ''))}
+                                    className="w-full bg-slate-900 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-cyan-500 transition placeholder-slate-600"
+                                />
+                                <p className="text-[10px] text-slate-600 font-bold">Players can also find you by your PDGA number.</p>
+                            </div>
+
+                            <button type="submit" disabled={authLoading}
+                                className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50 transition">
+                                {authLoading ? 'Saving…' : '🚀 Create Profile & Get Started'}
+                            </button>
+                        </form>
+                    )}
+
+                </div>
             </div>
         </div>
     );
@@ -1421,7 +1531,7 @@ export default function App() {
                     <span className="text-xl">🤝</span> Card Mates
                     {cardMates.length > 0 && <span className="ml-auto bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                 </button>
-                <button onClick={() => setShowSettings(true)} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
+                <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
                 <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
             </div>
 
@@ -1453,7 +1563,7 @@ export default function App() {
                             <span className="text-xl">🤝</span> Card Mates
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                         </button>
-                        <button onClick={() => { setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
+                        <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
                         <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
                     </div>
                 </div>
@@ -1820,70 +1930,212 @@ export default function App() {
 
             {/* SETTINGS */}
             {showSettings && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
-                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl space-y-6 my-auto">
-                        <h2 className="text-2xl font-black italic uppercase text-orange-500">Bag Settings</h2>
-                        <div className="flex flex-col gap-2 bg-slate-800 p-4 rounded-xl border border-slate-700">
-                            <span className="text-[10px] font-black uppercase text-slate-500">Home Territory</span>
-                            <input value={settings.country || ''} onChange={(e) => setSettings({ ...settings, country: e.target.value })} className="bg-transparent font-black text-white uppercase outline-none" />
-                        </div>
-                        <button onClick={() => {
-                            // maxPower always stored in feet internally; just flip the display unit
-                            setSettings({ ...settings, unit: settings.unit === 'ft' ? 'm' : 'ft' });
-                        }} className="w-full bg-slate-800 p-5 rounded-2xl font-black text-xs uppercase flex justify-between">
-                            <span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span>
-                        </button>
-                        <div className="bg-slate-800 p-5 rounded-2xl space-y-4">
-                            {/* maxPower stored in feet. Slider displays in current unit. */}
-                            {(() => {
-                                const displayVal = settings.unit === 'm'
-                                    ? Math.round(settings.maxPower * 0.3048)
-                                    : settings.maxPower;
-                                const displayMin = settings.unit === 'm' ? 30 : 100;
-                                const displayMax = settings.unit === 'm' ? 183 : 600;
-                                const displayStep = settings.unit === 'm' ? 1 : 5;
-                                return (
-                                    <>
-                                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                                            <span>Global Max Power</span>
-                                            <span className="text-orange-500">{displayVal}{settings.unit}</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min={displayMin}
-                                            max={displayMax}
-                                            step={displayStep}
-                                            value={displayVal}
-                                            onChange={(e) => {
-                                                const v = Number(e.target.value);
-                                                const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v;
-                                                setSettings({ ...settings, maxPower: inFeet });
-                                            }}
-                                            className="w-full"
-                                        />
-                                        <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mt-1">
-                                            <span>{settings.unit === 'm' ? '30m' : '100ft'}</span>
-                                            <span className="text-slate-600">100m / 328ft avg</span>
-                                            <span>{settings.unit === 'm' ? '183m' : '600ft'}</span>
-                                        </div>
-                                    </>
-                                );
-                            })()}
-                        </div>
-                        <button onClick={() => { saveSettings(settings); setShowSettings(false); }} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Save & Close</button>
-                        <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="w-full bg-blue-600/20 border border-blue-500/30 py-3 rounded-2xl font-black uppercase text-blue-400 text-xs hover:bg-blue-600/30 transition">📖 View Tutorial</button>
-                        <div className="space-y-2">
-                            <h3 className="text-[10px] font-black uppercase text-slate-500">Your Bags</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                            {bags.map(bag => (
-                                <div key={bag.id} className="flex items-center justify-between bg-slate-800 p-3 rounded-xl">
-                                    <span className={`text-sm font-black uppercase ${bag.id === activeBagId ? 'text-orange-500' : 'text-slate-400'}`}>{bag.name}</span>
-                                    {bags.length > 1 && <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black">✕</button>}
-                                </div>
-                            ))}
+                <div className="fixed inset-0 z-[200] bg-black/95 p-4 lg:p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
+                    <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl my-auto overflow-hidden">
+
+                        {/* Header + tabs */}
+                        <div className="px-8 pt-8 pb-0">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-2xl font-black italic uppercase text-orange-500">Settings</h2>
+                                <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                            </div>
+                            <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
+                                <button
+                                    onClick={() => setSettingsTab('bag')}
+                                    className={`flex-1 py-2.5 rounded-xl font-black uppercase text-xs transition ${settingsTab === 'bag' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                >⚙️ Bag Settings</button>
+                                <button
+                                    onClick={() => setSettingsTab('account')}
+                                    className={`flex-1 py-2.5 rounded-xl font-black uppercase text-xs transition ${settingsTab === 'account' ? 'bg-orange-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}
+                                >👤 My Account</button>
                             </div>
                         </div>
-                        <button onClick={() => { const n = prompt("New Bag Name:"); if (n) createBag(n); setShowSettings(false); }} className="w-full py-4 text-xs font-black uppercase text-slate-500">Create New Bag</button>
+
+                        <div className="p-8 space-y-5">
+
+                            {/* ── BAG SETTINGS TAB ── */}
+                            {settingsTab === 'bag' && (<>
+                                <div className="flex flex-col gap-2 bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                    <span className="text-[10px] font-black uppercase text-slate-500">Home Territory</span>
+                                    <input value={settings.country || ''} onChange={(e) => setSettings({ ...settings, country: e.target.value })} className="bg-transparent font-black text-white uppercase outline-none" />
+                                </div>
+                                <button onClick={() => setSettings({ ...settings, unit: settings.unit === 'ft' ? 'm' : 'ft' })}
+                                    className="w-full bg-slate-800 p-5 rounded-2xl font-black text-xs uppercase flex justify-between">
+                                    <span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span>
+                                </button>
+                                <div className="bg-slate-800 p-5 rounded-2xl space-y-4">
+                                    {(() => {
+                                        const displayVal = settings.unit === 'm' ? Math.round(settings.maxPower * 0.3048) : settings.maxPower;
+                                        const displayMin = settings.unit === 'm' ? 30 : 100;
+                                        const displayMax = settings.unit === 'm' ? 183 : 600;
+                                        const displayStep = settings.unit === 'm' ? 1 : 5;
+                                        return (<>
+                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                <span>Global Max Power</span>
+                                                <span className="text-orange-500">{displayVal}{settings.unit}</span>
+                                            </div>
+                                            <input type="range" min={displayMin} max={displayMax} step={displayStep} value={displayVal}
+                                                onChange={(e) => { const v = Number(e.target.value); const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v; setSettings({ ...settings, maxPower: inFeet }); }}
+                                                className="w-full" />
+                                            <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mt-1">
+                                                <span>{settings.unit === 'm' ? '30m' : '100ft'}</span>
+                                                <span className="text-slate-600">100m / 328ft avg</span>
+                                                <span>{settings.unit === 'm' ? '183m' : '600ft'}</span>
+                                            </div>
+                                        </>);
+                                    })()}
+                                </div>
+                                <button onClick={() => { saveSettings(settings); setShowSettings(false); }}
+                                    className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition">
+                                    Save & Close
+                                </button>
+                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }}
+                                    className="w-full bg-blue-600/20 border border-blue-500/30 py-3 rounded-2xl font-black uppercase text-blue-400 text-xs hover:bg-blue-600/30 transition">
+                                    📖 View Tutorial
+                                </button>
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-[10px] font-black uppercase text-slate-500">Your Bags</h3>
+                                        <span className="text-[9px] font-bold text-slate-600 uppercase">👁 = Visible to Card Mates</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {bags.map(bag => (
+                                            <div key={bag.id} className="flex items-center justify-between bg-slate-800 px-4 py-3 rounded-2xl gap-3">
+                                                <span className={`text-sm font-black uppercase flex-1 truncate ${bag.id === activeBagId ? 'text-orange-500' : 'text-slate-300'}`}>{bag.name}</span>
+                                                {/* Public toggle */}
+                                                <button
+                                                    onClick={async () => {
+                                                        const newVal = !bag.is_public;
+                                                        setBags(prev => prev.map(b => b.id === bag.id ? { ...b, is_public: newVal } : b));
+                                                        await supabase.from('bags').update({ is_public: newVal }).eq('id', bag.id);
+                                                    }}
+                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition shrink-0 ${bag.is_public ? 'bg-cyan-600/30 border border-cyan-500/40 text-cyan-400' : 'bg-slate-700 border border-slate-600 text-slate-500'}`}
+                                                >
+                                                    {bag.is_public ? '👁 Public' : '🔒 Private'}
+                                                </button>
+                                                {bags.length > 1 && <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black shrink-0">✕</button>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <p className="text-[9px] font-bold text-slate-700 uppercase">Public bags are visible to your Card Mates. Private bags are only visible to you.</p>
+                                </div>
+                                <button onClick={() => { const n = prompt("New Bag Name:"); if (n) createBag(n); setShowSettings(false); }}
+                                    className="w-full py-4 text-xs font-black uppercase text-slate-500 hover:text-slate-300 transition">
+                                    + Create New Bag
+                                </button>
+                            </>)}
+
+                            {/* ── MY ACCOUNT TAB ── */}
+                            {settingsTab === 'account' && (<>
+
+                                {accountMessage && (
+                                    <div className={`p-3 rounded-2xl text-xs font-black uppercase text-center ${accountMessage.startsWith('✓') ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                                        {accountMessage}
+                                    </div>
+                                )}
+
+                                {/* Profile card */}
+                                <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5 flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-orange-600/20 border border-orange-500/30 flex items-center justify-center text-2xl shrink-0">🎯</div>
+                                    <div className="min-w-0">
+                                        <div className="font-black uppercase text-white text-base truncate">
+                                            {myProfile?.username ? `@${myProfile.username}` : 'No username set'}
+                                        </div>
+                                        <div className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{session?.user?.email}</div>
+                                        {myProfile?.pdga_number && (
+                                            <div className="text-[10px] font-bold text-cyan-400 uppercase mt-0.5">PDGA #{myProfile.pdga_number}</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Username */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Username</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-black text-sm pointer-events-none">@</span>
+                                        <input
+                                            type="text"
+                                            value={accountEdit.username}
+                                            onChange={e => setAccountEdit({ ...accountEdit, username: e.target.value.replace(/[^a-z0-9_]/g, '').toLowerCase() })}
+                                            placeholder="your username"
+                                            className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 pl-8 pr-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none transition placeholder-slate-600"
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-600 font-bold">Lowercase letters, numbers and _ only.</p>
+                                </div>
+
+                                {/* PDGA */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">PDGA Number <span className="normal-case font-bold text-slate-600">(optional)</span></label>
+                                    <input
+                                        type="text"
+                                        value={accountEdit.pdga_number}
+                                        onChange={e => setAccountEdit({ ...accountEdit, pdga_number: e.target.value.replace(/[^0-9]/g, '') })}
+                                        placeholder="e.g. 12345"
+                                        className="w-full bg-slate-800 border border-slate-700 focus:border-cyan-500 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none transition placeholder-slate-600"
+                                    />
+                                </div>
+
+                                {/* Email (read-only display + change email) */}
+                                <div className="space-y-1.5">
+                                    <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Email Address</label>
+                                    <input
+                                        type="email"
+                                        value={accountEdit.email}
+                                        onChange={e => setAccountEdit({ ...accountEdit, email: e.target.value })}
+                                        placeholder="your@email.com"
+                                        className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none transition placeholder-slate-600"
+                                    />
+                                    <p className="text-[10px] text-slate-600 font-bold">Changing email will send a confirmation to the new address.</p>
+                                </div>
+
+                                {/* Save button */}
+                                <button
+                                    disabled={accountSaving}
+                                    onClick={async () => {
+                                        setAccountSaving(true);
+                                        setAccountMessage('');
+                                        try {
+                                            // Check username unique (if changed)
+                                            if (accountEdit.username !== myProfile?.username) {
+                                                const { data: taken } = await supabase.from('profiles').select('id').eq('username', accountEdit.username).single();
+                                                if (taken) { setAccountMessage('That username is already taken.'); setAccountSaving(false); return; }
+                                            }
+                                            // Update profile table
+                                            const { error: profErr } = await supabase.from('profiles').update({
+                                                username: accountEdit.username.trim().toLowerCase(),
+                                                pdga_number: accountEdit.pdga_number.trim() || null,
+                                                email: accountEdit.email.trim().toLowerCase(),
+                                            }).eq('user_id', session.user.id);
+                                            if (profErr) throw profErr;
+                                            // Update auth email if changed
+                                            if (accountEdit.email.trim().toLowerCase() !== session.user.email) {
+                                                const { error: emailErr } = await supabase.auth.updateUser({ email: accountEdit.email.trim() });
+                                                if (emailErr) throw emailErr;
+                                            }
+                                            setMyProfile(prev => ({ ...prev, username: accountEdit.username.trim().toLowerCase(), pdga_number: accountEdit.pdga_number.trim() || null }));
+                                            setAccountMessage('✓ Profile updated successfully!');
+                                        } catch (err) {
+                                            setAccountMessage('Error: ' + (err.message || 'Could not save changes.'));
+                                        }
+                                        setAccountSaving(false);
+                                    }}
+                                    className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50 transition"
+                                >
+                                    {accountSaving ? 'Saving…' : 'Save Changes'}
+                                </button>
+
+                                {/* Danger zone */}
+                                <div className="border-t border-slate-800 pt-4">
+                                    <p className="text-[10px] font-black uppercase text-slate-600 mb-3">Danger Zone</p>
+                                    <button
+                                        onClick={() => { if (confirm('Are you sure you want to sign out?')) supabase.auth.signOut(); }}
+                                        className="w-full py-3 bg-red-900/20 border border-red-500/20 rounded-2xl font-black uppercase text-xs text-red-400 hover:bg-red-900/40 transition"
+                                    >Sign Out</button>
+                                </div>
+
+                            </>)}
+                        </div>
                     </div>
                 </div>
             )}
@@ -2672,51 +2924,78 @@ export default function App() {
                         </div>
                     )}
 
+                    {/* Loading state */}
+                    {mateBagLoading && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center">
+                            <div className="text-3xl mb-3 animate-pulse">🎒</div>
+                            <p className="text-slate-500 font-black uppercase text-xs">Loading bag…</p>
+                        </div>
+                    )}
+
                     {/* Viewing a mate's bag */}
-                    {viewingMate && (
+                    {!mateBagLoading && viewingMate && (
                         <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
-                            {/* Mate bag header */}
-                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/80">
+
+                            {/* Header */}
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800">
                                 <div>
-                                    <p className="font-black uppercase text-white text-sm">🎒 {viewingMate.email}'s Bag</p>
-                                    <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{viewingMate.discs.filter(d => d.bag_id === viewingMateBagId && d.status === 'active').length} discs</p>
+                                    <p className="font-black uppercase text-white text-sm">🎒 {viewingMate.email}</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">
+                                        {viewingMate.bags.length > 0
+                                            ? `${viewingMate.bags.length} public bag${viewingMate.bags.length !== 1 ? 's' : ''}`
+                                            : 'No public bags'}
+                                    </p>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    {viewingMate.bags.length > 1 && (
-                                        <select value={viewingMateBagId} onChange={e => setViewingMateBagId(e.target.value)}
-                                            className="bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-2 rounded-xl outline-none">
-                                            {viewingMate.bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                                        </select>
-                                    )}
-                                    <button onClick={() => setViewingMate(null)} className="text-slate-500 hover:text-white text-sm font-black">✕</button>
-                                </div>
+                                <button onClick={() => setViewingMate(null)} className="text-slate-500 hover:text-white text-xl font-black transition">✕</button>
                             </div>
-                            {/* Disc list */}
-                            <div className="max-h-80 overflow-y-auto p-4 space-y-2">
-                                {viewingMate.discs
-                                    .filter(d => d.bag_id === viewingMateBagId && d.status === 'active' && !d.is_idea)
-                                    .length === 0 ? (
-                                    <p className="text-center text-slate-600 font-bold uppercase text-xs py-8">No discs in this bag</p>
-                                ) : viewingMate.discs
-                                    .filter(d => d.bag_id === viewingMateBagId && d.status === 'active' && !d.is_idea)
-                                    .map(d => (
-                                    <div key={d.id} className="flex items-center gap-3 bg-slate-800/60 rounded-2xl px-4 py-3 relative overflow-hidden">
-                                        <div className="absolute left-0 top-0 h-full w-1 rounded-l-2xl" style={{ backgroundColor: d.color || '#f97316' }} />
-                                        <div className="pl-2 flex-1 min-w-0">
-                                            <div className="font-black uppercase italic text-sm text-white truncate">{d.name}</div>
-                                            <div className="text-[10px] font-bold text-slate-500 uppercase">{d.brand} • {d.plastic || 'Premium'}</div>
-                                        </div>
-                                        <div className="flex gap-1.5 shrink-0">
-                                            {[['S',d.speed],['G',d.glide],['T',d.turn],['F',d.fade]].map(([l,v]) => (
-                                                <div key={l} className="bg-slate-700 px-1.5 py-1 rounded-lg text-center min-w-[26px]">
-                                                    <div className="text-[6px] font-black text-slate-500 uppercase">{l}</div>
-                                                    <div className="text-[10px] font-black text-white">{v}</div>
-                                                </div>
-                                            ))}
-                                        </div>
+
+                            {viewingMate.bags.length === 0 ? (
+                                <div className="p-10 text-center">
+                                    <div className="text-4xl mb-3">🔒</div>
+                                    <p className="text-slate-500 font-black uppercase text-xs">This player hasn't made any bags public yet</p>
+                                </div>
+                            ) : (<>
+                                {/* Bag tabs */}
+                                {viewingMate.bags.length > 1 && (
+                                    <div className="flex gap-1.5 px-4 pt-4 overflow-x-auto pb-0 scrollbar-hide">
+                                        {viewingMate.bags.map(b => (
+                                            <button
+                                                key={b.id}
+                                                onClick={() => setViewingMateBagId(b.id)}
+                                                className={`shrink-0 px-4 py-2 rounded-xl font-black uppercase text-xs transition whitespace-nowrap ${viewingMateBagId === b.id ? 'bg-cyan-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-white'}`}
+                                            >
+                                                {b.name}
+                                                <span className="ml-1.5 opacity-60 font-bold text-[9px]">
+                                                    {viewingMate.discs.filter(d => d.bag_id === b.id).length}
+                                                </span>
+                                            </button>
+                                        ))}
                                     </div>
-                                ))}
-                            </div>
+                                )}
+
+                                {/* Disc list */}
+                                <div className="max-h-96 overflow-y-auto p-4 space-y-2">
+                                    {viewingMate.discs.filter(d => d.bag_id === viewingMateBagId).length === 0 ? (
+                                        <p className="text-center text-slate-600 font-bold uppercase text-xs py-8">No discs in this bag</p>
+                                    ) : viewingMate.discs.filter(d => d.bag_id === viewingMateBagId).map(d => (
+                                        <div key={d.id} className="flex items-center gap-3 bg-slate-800/60 rounded-2xl px-4 py-3 relative overflow-hidden">
+                                            <div className="absolute left-0 top-0 h-full w-1 rounded-l-2xl" style={{ backgroundColor: d.color || '#f97316' }} />
+                                            <div className="pl-2 flex-1 min-w-0">
+                                                <div className="font-black uppercase italic text-sm text-white truncate">{d.name}</div>
+                                                <div className="text-[10px] font-bold text-slate-500 uppercase">{d.brand}{d.plastic ? ` • ${d.plastic}` : ''}</div>
+                                            </div>
+                                            <div className="flex gap-1 shrink-0">
+                                                {[['S',d.speed],['G',d.glide],['T',d.turn],['F',d.fade]].map(([l,v]) => (
+                                                    <div key={l} className="bg-slate-700 px-1.5 py-1 rounded-lg text-center min-w-[26px]">
+                                                        <div className="text-[6px] font-black text-slate-500 uppercase">{l}</div>
+                                                        <div className="text-[10px] font-black text-white">{v}</div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>)}
                         </div>
                     )}
 
