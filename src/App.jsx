@@ -962,9 +962,9 @@ export default function App() {
                             doc.setTextColor(255,255,255);
                             doc.text(String(d.speed||''), cols[4], y);
                             doc.text(String(d.glide||''), cols[5], y);
-                            doc.setTextColor(s.turn < (parseFloat(d.turn)||0)-0.1 ? [251,146,60] : [255,255,255]);
+                            if (s.turn < (parseFloat(d.turn)||0)-0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
                             doc.text(s.turn.toFixed(1), cols[6], y);
-                            doc.setTextColor(s.fade < (parseFloat(d.fade)||0)-0.1 ? [251,146,60] : [255,255,255]);
+                            if (s.fade < (parseFloat(d.fade)||0)-0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
                             doc.text(s.fade.toFixed(1), cols[7], y);
                             y += 10;
                         });
@@ -1033,17 +1033,138 @@ export default function App() {
 
                         doc.save(`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}.pdf`);
 
-                    } else if (format === 'png-story') {
-                        // Export as 1080x1920 story PNG
-                        const storyEl = document.getElementById('export-story-preview');
-                        if (storyEl && window.html2canvas) {
-                            const canvas = await window.html2canvas(storyEl, { scale: 2, backgroundColor: '#0b0f1a', useCORS: true });
-                            const link = document.createElement('a');
-                            link.download = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}-story.png`;
-                            link.href = canvas.toDataURL('image/png');
-                            link.click();
+                    } else if (format === 'png-story' || format === 'png-post') {
+                        // Draw story/post PNG directly on canvas — no html2canvas, no oklch issues
+                        const isStory = format === 'png-story';
+                        const CW = isStory ? 1080 : 1080;
+                        const CH = isStory ? 1920 : 1080;
+                        const canvas = document.createElement('canvas');
+                        canvas.width = CW; canvas.height = CH;
+                        const ctx = canvas.getContext('2d');
+
+                        // Background
+                        ctx.fillStyle = '#0b0f1a';
+                        ctx.fillRect(0, 0, CW, CH);
+
+                        // Orange logo box
+                        const logoSize = 90;
+                        const pad = 60;
+                        ctx.fillStyle = '#f97316';
+                        roundRect(ctx, pad, pad, logoSize, logoSize, 20);
+                        ctx.fill();
+                        ctx.fillStyle = '#ffffff';
+                        ctx.font = 'bold 18px system-ui, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('BAGGED', pad + logoSize/2, pad + 46);
+                        ctx.fillText('UP', pad + logoSize/2, pad + 68);
+
+                        // Bag name
+                        ctx.textAlign = 'left';
+                        ctx.fillStyle = '#f97316';
+                        ctx.font = 'bold 52px system-ui, sans-serif';
+                        ctx.fillText(activeBag?.name || 'My Bag', pad + logoSize + 28, pad + 52);
+                        ctx.fillStyle = '#475569';
+                        ctx.font = 'bold 22px system-ui, sans-serif';
+                        ctx.fillText('BaggedUp • Disc Golf', pad + logoSize + 28, pad + 82);
+
+                        // Divider
+                        ctx.strokeStyle = '#1e293b';
+                        ctx.lineWidth = 3;
+                        ctx.beginPath();
+                        ctx.moveTo(pad, pad + logoSize + 24);
+                        ctx.lineTo(CW - pad, pad + logoSize + 24);
+                        ctx.stroke();
+
+                        // Disc rows
+                        const rowH = isStory ? 88 : 76;
+                        let rowY = pad + logoSize + 48;
+                        const maxDiscs = isStory ? 18 : 10;
+                        exportDiscs.slice(0, maxDiscs).forEach(d => {
+                            // Row background
+                            ctx.fillStyle = '#0f172a';
+                            roundRect(ctx, pad, rowY, CW - pad*2, rowH - 8, 16);
+                            ctx.fill();
+
+                            // Color bar
+                            ctx.fillStyle = d.color || '#f97316';
+                            roundRect(ctx, pad, rowY, 8, rowH - 8, 4);
+                            ctx.fill();
+
+                            // Disc name
+                            ctx.fillStyle = '#ffffff';
+                            ctx.font = 'bold 28px system-ui, sans-serif';
+                            ctx.textAlign = 'left';
+                            ctx.fillText(d.name.toUpperCase(), pad + 28, rowY + 34);
+
+                            // Brand / plastic
+                            ctx.fillStyle = '#64748b';
+                            ctx.font = 'bold 18px system-ui, sans-serif';
+                            ctx.fillText(`${d.brand} • ${d.plastic || 'Premium'}`, pad + 28, rowY + 58);
+
+                            // Flight numbers on the right
+                            const nums = [d.speed, d.glide, d.turn, d.fade];
+                            const labels = ['S','G','T','F'];
+                            const boxW = 72; const boxH = rowH - 18; const gapX = 12;
+                            const startX = CW - pad - (boxW + gapX) * 4;
+                            nums.forEach((v, i) => {
+                                const bx = startX + i * (boxW + gapX);
+                                ctx.fillStyle = '#1e293b';
+                                roundRect(ctx, bx, rowY + 4, boxW, boxH, 10);
+                                ctx.fill();
+                                ctx.fillStyle = '#475569';
+                                ctx.font = 'bold 14px system-ui, sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.fillText(labels[i], bx + boxW/2, rowY + 22);
+                                ctx.fillStyle = '#ffffff';
+                                ctx.font = 'bold 22px system-ui, sans-serif';
+                                ctx.fillText(v, bx + boxW/2, rowY + 48);
+                            });
+
+                            rowY += rowH;
+                        });
+
+                        // Footer
+                        ctx.fillStyle = '#1e293b';
+                        ctx.font = 'bold 22px system-ui, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('bagged-up.app', CW/2, CH - 40);
+
+                        // Helper: rounded rect polyfill
+                        function roundRect(c, x, y, w, h, r) {
+                            c.beginPath();
+                            c.moveTo(x + r, y);
+                            c.lineTo(x + w - r, y);
+                            c.quadraticCurveTo(x + w, y, x + w, y + r);
+                            c.lineTo(x + w, y + h - r);
+                            c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                            c.lineTo(x + r, y + h);
+                            c.quadraticCurveTo(x, y + h, x, y + h - r);
+                            c.lineTo(x, y + r);
+                            c.quadraticCurveTo(x, y, x + r, y);
+                            c.closePath();
+                        }
+
+                        const filename = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}-${isStory?'story':'post'}.png`;
+
+                        // Try Web Share API first (mobile — share directly to Instagram/Facebook)
+                        if (format === 'png-story' && navigator.share && navigator.canShare) {
+                            canvas.toBlob(async (blob) => {
+                                const file = new File([blob], filename, { type: 'image/png' });
+                                if (navigator.canShare({ files: [file] })) {
+                                    try {
+                                        await navigator.share({ files: [file], title: `My ${activeBag?.name} — BaggedUp` });
+                                        setExportLoading(false);
+                                        return;
+                                    } catch(e) { /* user cancelled or not supported, fall through to download */ }
+                                }
+                                const link = document.createElement('a');
+                                link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
+                                setExportLoading(false);
+                            });
+                            return; // early return; setExportLoading handled in blob callback
                         } else {
-                            alert('Story export requires html2canvas. Try the PDF export instead.');
+                            const link = document.createElement('a');
+                            link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
                         }
                     }
                 } catch(err) {
@@ -1088,52 +1209,31 @@ export default function App() {
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-2xl">📸</span>
                                 <div>
-                                    <div className="font-black uppercase text-sm text-white">Story / Social PNG</div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold">1080×1920 — Instagram, Facebook Stories</div>
+                                    <div className="font-black uppercase text-sm text-white">Social Media Images</div>
+                                    <div className="text-[10px] text-slate-500 uppercase font-bold">Story (1080×1920) or Square Post (1080×1080)</div>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-600 uppercase font-bold">Save the image then share directly to your story.</p>
-                            <button
-                                onClick={() => runExport('png-story')}
-                                disabled={exportLoading}
-                                className="w-full bg-pink-600 hover:bg-pink-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition"
-                            >
-                                {exportLoading ? 'Generating...' : '📸 Download Story PNG'}
-                            </button>
-                        </div>
-
-                        {/* Hidden story template for html2canvas */}
-                        <div id="export-story-preview" style={{
-                            position:'absolute', left:'-9999px', top:0,
-                            width:'540px', height:'960px',
-                            background:'#0b0f1a', padding:'40px', fontFamily:'system-ui, sans-serif',
-                            display:'flex', flexDirection:'column', gap:'16px'
-                        }}>
-                            <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'8px'}}>
-                                <div style={{width:'56px',height:'56px',background:'#f97316',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'900',color:'white',fontSize:'10px',textAlign:'center',lineHeight:'1.2'}}>BAGGED<br/>UP</div>
-                                <div>
-                                    <div style={{color:'#f97316',fontWeight:'900',fontSize:'22px',textTransform:'uppercase',letterSpacing:'-0.5px'}}>{activeBag?.name}</div>
-                                    <div style={{color:'#475569',fontWeight:'700',fontSize:'10px',textTransform:'uppercase',letterSpacing:'2px'}}>BaggedUp • Disc Golf</div>
-                                </div>
+                            <p className="text-[10px] text-slate-600 uppercase font-bold">On mobile: tapping Story will open the share sheet so you can post directly to Instagram / Facebook. On desktop: saves a PNG you can upload manually.</p>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={() => runExport('png-story')}
+                                    disabled={exportLoading}
+                                    className="flex-1 bg-gradient-to-br from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-xs text-white transition"
+                                >
+                                    {exportLoading ? '⏳' : '📱 Story (9:16)'}
+                                </button>
+                                <button
+                                    onClick={() => runExport('png-post')}
+                                    disabled={exportLoading}
+                                    className="flex-1 bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-xs text-white transition"
+                                >
+                                    {exportLoading ? '⏳' : '🖼 Post (1:1)'}
+                                </button>
                             </div>
-                            <div style={{width:'100%',height:'2px',background:'#1e293b'}} />
-                            {exportDiscs.map(d => (
-                                <div key={d.id} style={{display:'flex',alignItems:'center',gap:'12px',background:'#0f172a',borderRadius:'16px',padding:'12px 16px',borderLeft:`4px solid ${d.color||'#f97316'}`}}>
-                                    <div style={{flex:1}}>
-                                        <div style={{color:'white',fontWeight:'900',fontSize:'13px',textTransform:'uppercase'}}>{d.name}</div>
-                                        <div style={{color:'#64748b',fontWeight:'700',fontSize:'9px',textTransform:'uppercase'}}>{d.brand} • {d.plastic||'Premium'}</div>
-                                    </div>
-                                    <div style={{display:'flex',gap:'6px'}}>
-                                        {[d.speed,d.glide,d.turn,d.fade].map((v,i) => (
-                                            <div key={i} style={{background:'#1e293b',borderRadius:'8px',padding:'4px 6px',textAlign:'center'}}>
-                                                <div style={{color:'#475569',fontWeight:'900',fontSize:'7px',textTransform:'uppercase'}}>{['S','G','T','F'][i]}</div>
-                                                <div style={{color:'white',fontWeight:'900',fontSize:'11px'}}>{v}</div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            ))}
-                            <div style={{marginTop:'auto',color:'#1e293b',fontWeight:'700',fontSize:'9px',textTransform:'uppercase',textAlign:'center'}}>bagged-up.app</div>
+                            <div className="flex items-start gap-2 bg-slate-800/50 rounded-2xl p-3">
+                                <span className="text-lg shrink-0">💡</span>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">After saving, open Instagram → + → Story or Post → select image. For Facebook, go to Stories → Create → Photo.</p>
+                            </div>
                         </div>
 
                         <button onClick={() => setShowExport(false)} className="w-full py-4 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Close</button>
