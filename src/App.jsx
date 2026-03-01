@@ -3592,8 +3592,8 @@ export default function App() {
                         {/* Wind tip */}
                         {windConfig.type !== 'calm' && windConfig.speed > 0 && (
                             <div className="bg-blue-900/20 border border-blue-500/30 rounded-2xl px-5 py-4">
-                                <p className="text-[10px] font-black uppercase text-blue-400 mb-1">💨 Wind Tip — {windMode.replace(/([0-9]+)/, ' $1mph')}</p>
-                                <p className="text-sm font-bold text-blue-300">{windConfig.type !== 'calm' && windConfig.speed > 0}</p>
+                                <p className="text-[10px] font-black uppercase text-blue-400 mb-1">💨 Wind Tip</p>
+                                <p className="text-sm font-bold text-blue-300">{windTipText}</p>
                             </div>
                         )}
 
@@ -3688,7 +3688,7 @@ export default function App() {
                                             if (slot.startsWith('fairway') && (sp < 7 || sp > 8)) return false;
                                             if (slot.startsWith('distance') && sp < 9) return false;
                                             return slot.endsWith(b);
-                                        }).filter(d => d.Speed <= maxUsableSpeed + 2).slice(0, 2);
+                                        }).filter(d => d.Speed <= hardMax).slice(0, 2);
                                         return (
                                             <div key={slot} className="bg-slate-800 rounded-2xl p-3">
                                                 <div className="text-[9px] font-black uppercase text-slate-500 mb-1">{SLOT_LABELS[slot]}</div>
