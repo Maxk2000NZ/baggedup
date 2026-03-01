@@ -603,7 +603,9 @@ export default function App() {
     const [authPdga, setAuthPdga] = useState('');
     const [myProfile, setMyProfile] = useState(null); // { username, pdga_number }
     const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both' });
-    const [windMode, setWindMode] = useState('calm'); // 'calm'|'headwind10'|'headwind20'|'tailwind10'|'tailwind20'|'crosswind'
+    // windConfig: { type: 'calm'|'headwind'|'tailwind'|'crosswind', speed: number (mph or km/h in display), direction: 'ltr'|'rtl' }
+    const [windConfig, setWindConfig] = useState({ type: 'calm', speed: 0, direction: 'ltr' });
+    const [showWindPanel, setShowWindPanel] = useState(false);
     const [showCoach, setShowCoach] = useState(false);
     const [activeBagId, setActiveBagId] = useState('');
     const [bags, setBags] = useState([]);
@@ -936,20 +938,100 @@ export default function App() {
         const maxFadeReduction = baseFade * 0.65;
         let fade = Math.max(0, baseFade - (w * maxFadeReduction));
 
-        // Wind modifiers
-        const wind = windOverride || windMode;
-        if (wind === 'headwind10')  { turn = Math.max(-5, turn - 0.5); fade = Math.min(5, fade + 0.5); }
-        if (wind === 'headwind20')  { turn = Math.max(-5, turn - 1.2); fade = Math.min(5, fade + 1.2); }
-        if (wind === 'tailwind10')  { turn = Math.min(3, turn + 0.5);  fade = Math.max(0, fade - 0.4); }
-        if (wind === 'tailwind20')  { turn = Math.min(3, turn + 1.1);  fade = Math.max(0, fade - 0.8); }
-        if (wind === 'crosswind')   { turn = turn - 0.3; fade = Math.min(5, fade + 0.6); }
+        // ── WIND PHYSICS ENGINE ──
+        // Convert display speed to mph for internal calculations
+        const wc = windOverride || windConfig;
+        const rawSpeed = wc.speed || 0;
+        // If unit is metric the user enters km/h, convert to mph for physics
+        const windMph = settings.unit === 'm' ? rawSpeed * 0.621371 : rawSpeed;
+
+        if (wc.type !== 'calm' && windMph > 0) {
+            // Stability class: OS (stability>=2), ST (-1<stability<2), US (stability<=-1)
+            const stability = baseTurn + baseFade;
+            const isOS = stability >= 2;
+            const isST = stability > -1 && stability < 2;
+            const isUS = stability <= -1;
+            // Speed class: putter(<=3), mid(4-6), fairway(7-8), driver(9+)
+            const isPutter = baseSpeed <= 3;
+            const isMid = baseSpeed >= 4 && baseSpeed <= 6;
+            const isFairway = baseSpeed >= 7 && baseSpeed <= 8;
+            const isDriver = baseSpeed >= 9;
+
+            // Escalation factor — how much the wind shifts things
+            // 5-10mph = subtle, 10-20mph = 1 stability class shift, 20-30mph = 2 class shifts
+            const escalation = windMph <= 10
+                ? windMph / 10 * 0.6          // subtle
+                : windMph <= 20
+                    ? 0.6 + (windMph - 10) / 10 * 0.8   // moderate
+                    : windMph <= 30
+                        ? 1.4 + (windMph - 20) / 10 * 0.8   // strong
+                        : 2.2 + (windMph - 30) / 10 * 0.4;  // extreme
+
+            if (wc.type === 'headwind') {
+                // Headwind: increases effective airspeed → more turn, delayed then stronger fade
+                // OS: turn minimal, fade slight increase
+                // ST: noticeable drift, fade reduced
+                // US: early flip, ballooning, almost no fade
+                const turnIncrease = isOS ? escalation * 0.3
+                    : isST ? escalation * 0.7
+                    : escalation * 1.3; // US flips hard
+                const fadeChange = isOS ? escalation * 0.2
+                    : isST ? -escalation * 0.15
+                    : -escalation * 0.5; // US loses fade
+                // Drivers amplified vs putters (more speed = more effect)
+                const discMult = isPutter ? 0.6 : isMid ? 0.8 : isFairway ? 1.0 : 1.3;
+                turn = Math.max(-5, turn - turnIncrease * discMult);
+                fade = Math.max(0, Math.min(6, fade + fadeChange * discMult));
+                // Distance: headwind reduces carry but lifts early
+                // Handled in dist calc below
+
+            } else if (wc.type === 'tailwind') {
+                // Tailwind: reduces effective airspeed → disc acts more overstable, less glide, earlier fade
+                // OS: drops fast, fade early, very short
+                // ST: reduced glide, moderate fade — reliable
+                // US: best option, controlled flip, max distance in tailwind
+                const turnDecrease = isOS ? escalation * 0.8
+                    : isST ? escalation * 0.3
+                    : escalation * 0.1; // US still gets slight flip
+                const fadeIncrease = isOS ? escalation * 0.6
+                    : isST ? escalation * 0.2
+                    : -escalation * 0.1; // US fade reduces slightly
+                const discMult = isPutter ? 0.6 : isMid ? 0.8 : isFairway ? 1.0 : 1.2;
+                turn = Math.min(3, turn + turnDecrease * discMult);
+                fade = Math.max(0, Math.min(6, fade + fadeIncrease * discMult));
+
+            } else if (wc.type === 'crosswind') {
+                // Left-to-right: lifts left wing → increases turn, weakens fade, carries right
+                // Right-to-left: pushes top plate → reduces turn, increases fade, forces left
+                if (wc.direction === 'ltr') {
+                    // LtR: OS holds, ST drifts right, US turns hard
+                    const turnIncrease = isOS ? escalation * 0.2 : isST ? escalation * 0.5 : escalation * 1.1;
+                    const fadeDecrease = isOS ? 0 : isST ? escalation * 0.2 : escalation * 0.4;
+                    const discMult = isPutter ? 0.5 : isMid ? 0.7 : isFairway ? 0.9 : 1.1;
+                    turn = Math.max(-5, turn - turnIncrease * discMult);
+                    fade = Math.max(0, fade - fadeDecrease * discMult);
+                } else {
+                    // RtL: OS dumps hard, ST reliable strong finish, US flies surprisingly straight
+                    const turnDecrease = isOS ? escalation * 0.5 : isST ? escalation * 0.1 : -escalation * 0.2;
+                    const fadeIncrease = isOS ? escalation * 0.8 : isST ? escalation * 0.4 : -escalation * 0.1;
+                    const discMult = isPutter ? 0.5 : isMid ? 0.7 : isFairway ? 0.9 : 1.1;
+                    turn = Math.min(3, turn + turnDecrease * discMult);
+                    fade = Math.max(0, Math.min(6, fade + fadeIncrease * discMult));
+                }
+            }
+        }
 
         // Use real throw data if available, otherwise scale from arm speed
         const armPower = settings.bhPower || settings.maxPower;
         const distBoost = w < 0.7 ? 1 + (w * 0.05) : 1 + (0.035 - (w - 0.7) * 0.1);
+        // Wind affects distance: headwind reduces, tailwind adds (capped)
+        const windDistMult = wc.type === 'headwind' ? Math.max(0.65, 1 - (windMph / 100))
+            : wc.type === 'tailwind' ? Math.min(1.15, 1 + (windMph / 200))
+            : 1;
+        const calcDist = armPower * (0.4 + (baseSpeed / 12 * 0.6)) * distBoost * windDistMult;
         const dist = d.max_dist && parseFloat(d.max_dist) > 0
-            ? parseFloat(d.max_dist)
-            : armPower * (0.4 + (baseSpeed / 12 * 0.6)) * distBoost;
+            ? parseFloat(d.max_dist) * windDistMult
+            : calcDist;
 
         return { turn, fade, stability: turn + fade, dist };
     };
@@ -1245,7 +1327,7 @@ export default function App() {
             if (desktopStabRef.current) desktopStabRef.current.destroy();
             desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildChartConfig(filtered, 'matrix'));
         }
-    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windMode]);
+    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windConfig]);
 
     // --- AUTH RENDER ---
     if (!session || authMode === 'profile_setup') return (
@@ -1678,26 +1760,69 @@ export default function App() {
                             <div className="w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 slots filled</div>
                         </div>
                     )}
-                    {/* WIND BAR — mobile */}
+                    {/* WIND PANEL — mobile */}
                     {view === 'active' && (
                         <div className="px-4 pt-3">
-                            <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1.5 overflow-x-auto">
-                                {[
-                                    { id: 'calm', label: '😌 Calm', color: 'text-slate-300' },
-                                    { id: 'headwind10', label: '💨 HW 10', color: 'text-blue-400' },
-                                    { id: 'headwind20', label: '💨 HW 20', color: 'text-blue-500' },
-                                    { id: 'tailwind10', label: '🌬 TW 10', color: 'text-green-400' },
-                                    { id: 'tailwind20', label: '🌬 TW 20', color: 'text-green-500' },
-                                    { id: 'crosswind', label: '↔ Cross', color: 'text-yellow-400' },
-                                ].map(w => (
-                                    <button key={w.id} onClick={() => setWindMode(w.id)}
-                                        className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition whitespace-nowrap ${windMode === w.id ? 'bg-slate-700 ' + w.color : 'text-slate-600 hover:text-slate-400'}`}>
-                                        {w.label}
-                                    </button>
-                                ))}
-                            </div>
+                            {/* Collapsed bar */}
+                            <button
+                                onClick={() => setShowWindPanel(p => !p)}
+                                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-2xl border transition ${windConfig.type === 'calm' ? 'bg-slate-900/60 border-slate-800 text-slate-500' : 'bg-blue-900/20 border-blue-500/40 text-blue-300'}`}
+                            >
+                                <span className="text-[10px] font-black uppercase">
+                                    {windConfig.type === 'calm' ? '😌 Calm — No Wind' :
+                                     windConfig.type === 'headwind' ? `💨 Headwind ${windConfig.speed}${settings.unit === 'm' ? 'km/h' : 'mph'}` :
+                                     windConfig.type === 'tailwind' ? `🌬 Tailwind ${windConfig.speed}${settings.unit === 'm' ? 'km/h' : 'mph'}` :
+                                     windConfig.direction === 'ltr' ? `↔ Crosswind L→R ${windConfig.speed}${settings.unit === 'm' ? 'km/h' : 'mph'}` :
+                                     `↔ Crosswind R→L ${windConfig.speed}${settings.unit === 'm' ? 'km/h' : 'mph'}`}
+                                </span>
+                                <span className="text-[9px] font-black uppercase text-slate-500">{showWindPanel ? '▲' : '🌬 Set Wind'}</span>
+                            </button>
+                            {showWindPanel && (
+                                <div className="mt-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+                                    {/* Type row */}
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {[['calm','😌','Calm'],['headwind','💨','Head'],['tailwind','🌬','Tail'],['crosswind','↔','Cross']].map(([t,e,l]) => (
+                                            <button key={t} onClick={() => setWindConfig(wc => ({ ...wc, type: t, speed: t === 'calm' ? 0 : (wc.speed || 10) }))}
+                                                className={`py-2 rounded-xl text-[9px] font-black uppercase transition ${windConfig.type === t ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                                {e}<br/>{l}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {/* Speed input — only when not calm */}
+                                    {windConfig.type !== 'calm' && (
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-[9px] font-black uppercase text-slate-500">
+                                                <span>Wind Speed</span>
+                                                <span className="text-blue-400">{windConfig.speed} {settings.unit === 'm' ? 'km/h' : 'mph'}</span>
+                                            </div>
+                                            <input type="range" min="1" max={settings.unit === 'm' ? 80 : 50} value={windConfig.speed || 10}
+                                                onChange={e => setWindConfig(wc => ({ ...wc, speed: Number(e.target.value) }))}
+                                                className="w-full" />
+                                            <div className="flex justify-between text-[8px] font-bold text-slate-700 uppercase">
+                                                <span>Gentle</span>
+                                                <span>{settings.unit === 'm' ? '16-32km/h' : '10-20mph'} = 1 class shift</span>
+                                                <span>Extreme</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                    {/* Crosswind direction */}
+                                    {windConfig.type === 'crosswind' && (
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'ltr' }))}
+                                                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase transition ${windConfig.direction === 'ltr' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                                ← Left to Right
+                                            </button>
+                                            <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'rtl' }))}
+                                                className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase transition ${windConfig.direction === 'rtl' ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                                Right to Left →
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
+
 
                     {/* BAG SCORE STRIP — mobile */}
                     {bagScore && view === 'active' && (
@@ -1760,26 +1885,44 @@ export default function App() {
                             <div className="shrink-0 w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 disc slots covered</div>
                         )}
 
-                        {/* WIND BAR + SCORE — desktop */}
+                        {/* WIND CONTROL + SCORE — desktop */}
                         {view === 'active' && (
-                            <div className="shrink-0 flex gap-3 items-center">
+                            <div className="shrink-0 flex gap-3 items-center flex-wrap">
+                                {/* Wind type buttons */}
                                 <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1">
-                                    {[
-                                        { id: 'calm', label: '😌 Calm' },
-                                        { id: 'headwind10', label: '💨 HW 10mph' },
-                                        { id: 'headwind20', label: '💨 HW 20mph' },
-                                        { id: 'tailwind10', label: '🌬 TW 10mph' },
-                                        { id: 'tailwind20', label: '🌬 TW 20mph' },
-                                        { id: 'crosswind', label: '↔ Crosswind' },
-                                    ].map(w => (
-                                        <button key={w.id} onClick={() => setWindMode(w.id)}
-                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition whitespace-nowrap ${windMode === w.id ? 'bg-slate-700 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
-                                            {w.label}
+                                    {[['calm','😌','Calm'],['headwind','💨','Headwind'],['tailwind','🌬','Tailwind'],['crosswind','↔','Crosswind']].map(([t,e,l]) => (
+                                        <button key={t} onClick={() => setWindConfig(wc => ({ ...wc, type: t, speed: t === 'calm' ? 0 : (wc.speed || 10) }))}
+                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition whitespace-nowrap ${windConfig.type === t ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
+                                            {e} {l}
                                         </button>
                                     ))}
                                 </div>
+                                {/* Speed input */}
+                                {windConfig.type !== 'calm' && (
+                                    <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-2xl px-3 py-1.5">
+                                        <span className="text-[9px] font-black uppercase text-slate-500">Speed</span>
+                                        <input type="number" min="1" max={settings.unit === 'm' ? 80 : 50}
+                                            value={windConfig.speed || 10}
+                                            onChange={e => setWindConfig(wc => ({ ...wc, speed: Math.max(1, Number(e.target.value)) }))}
+                                            className="w-12 bg-transparent text-blue-400 font-black text-sm text-center outline-none" />
+                                        <span className="text-[9px] font-black text-blue-400">{settings.unit === 'm' ? 'km/h' : 'mph'}</span>
+                                    </div>
+                                )}
+                                {/* Crosswind direction */}
+                                {windConfig.type === 'crosswind' && (
+                                    <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1">
+                                        <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'ltr' }))}
+                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${windConfig.direction === 'ltr' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
+                                            ← L to R
+                                        </button>
+                                        <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'rtl' }))}
+                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${windConfig.direction === 'rtl' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
+                                            R to L →
+                                        </button>
+                                    </div>
+                                )}
                                 {bagScore && (
-                                    <button onClick={() => setShowCoach(true)} className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 rounded-2xl px-4 py-2 transition shrink-0">
+                                    <button onClick={() => setShowCoach(true)} className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 rounded-2xl px-4 py-2 transition shrink-0 ml-auto">
                                         <span className={`text-xl font-black italic ${bagScore.color}`}>{bagScore.grade}</span>
                                         <div>
                                             <div className="flex items-center gap-2">
@@ -3254,14 +3397,28 @@ export default function App() {
                 pro: 'Optimise for shot shape diversity. Make sure every stability and speed range is covered.',
             };
 
-            const windTips = {
-                calm: null,
-                headwind10: 'In a 10mph headwind: overstable discs become more predictable. Understable discs will flip more aggressively.',
-                headwind20: 'In a 20mph headwind: throw lower and harder. Understable discs become nearly unthrowable; overstable discs fly straighter.',
-                tailwind10: 'In a 10mph tailwind: discs fly farther but your overstable discs lose their reliable fade.',
-                tailwind20: 'In a 20mph tailwind: understable discs become your friend. Overstable discs may fly nearly straight.',
-                crosswind: 'In crosswind: hyzer angle is your friend. Throw overstable discs to fight the wind or understable discs to use it.',
+            const getWindTip = () => {
+                const { type, speed, direction } = windConfig;
+                const unit = settings.unit === 'm' ? 'km/h' : 'mph';
+                const isStrong = settings.unit === 'm' ? speed >= 32 : speed >= 20;
+                const isModerate = settings.unit === 'm' ? speed >= 16 : speed >= 10;
+                if (type === 'calm') return null;
+                if (type === 'headwind') return isStrong
+                    ? `${speed}${unit} headwind: disc stability effectively shifts 2 classes. US drivers become rollers. Throw OS discs only. Throw lower and harder.`
+                    : isModerate
+                    ? `${speed}${unit} headwind: stability shifts ~1 class. US discs flip aggressively. OS discs become your most reliable tools.`
+                    : `${speed}${unit} headwind: subtle effect. OS discs hold straighter, understable discs drift further right than normal.`;
+                if (type === 'tailwind') return isStrong
+                    ? `${speed}${unit} tailwind: disc sees less airspeed — everything acts more overstable. US discs become your distance weapons. OS discs dump early.`
+                    : isModerate
+                    ? `${speed}${unit} tailwind: reduced glide on OS discs. US discs carry further with controlled flip. ST discs are reliable all-rounders.`
+                    : `${speed}${unit} tailwind: mild overstability boost. Slightly less distance on OS, slightly more on US.`;
+                if (type === 'crosswind') return direction === 'ltr'
+                    ? `${speed}${unit} crosswind left→right: lifts left wing — adds turn, weakens fade. OS holds straight, ST drifts right, US can ride wind 30-50ft offline.`
+                    : `${speed}${unit} crosswind right→left: pushes top plate — reduces turn, increases fade. OS dumps hard left, ST reliable with strong finish, US flies surprisingly straight.`;
+                return null;
             };
+            const windTipText = getWindTip();
 
             return (
                 <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl overflow-y-auto p-4 lg:p-6">
@@ -3300,10 +3457,10 @@ export default function App() {
                         )}
 
                         {/* Wind tip */}
-                        {windTips[windMode] && (
+                        {windConfig.type !== 'calm' && windConfig.speed > 0 && (
                             <div className="bg-blue-900/20 border border-blue-500/30 rounded-2xl px-5 py-4">
                                 <p className="text-[10px] font-black uppercase text-blue-400 mb-1">💨 Wind Tip — {windMode.replace(/([0-9]+)/, ' $1mph')}</p>
-                                <p className="text-sm font-bold text-blue-300">{windTips[windMode]}</p>
+                                <p className="text-sm font-bold text-blue-300">{windConfig.type !== 'calm' && windConfig.speed > 0}</p>
                             </div>
                         )}
 
