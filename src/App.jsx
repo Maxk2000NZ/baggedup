@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
+const LOGO_URL = '/baggedup.logo.png'; // Your logo file
+
 const FACTORY_DB = [
     {Manufacturer:"Innova",Model:"Destroyer",Speed:12,Glide:5,Turn:-1,Fade:3},
     {Manufacturer:"Innova",Model:"Wraith",Speed:11,Glide:5,Turn:-1,Fade:3},
@@ -265,7 +267,7 @@ export default function App() {
     if (!session) return (
         <div className="h-[100dvh] w-full flex items-center justify-center bg-[#0b0f1a] p-6">
             <div className="w-full max-w-md text-center">
-                <div className="text-7xl mb-4 italic font-black text-orange-500">B</div>
+                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-24 w-24 mx-auto mb-4 object-contain" />
                 <h1 className="text-4xl font-black italic text-white uppercase mb-8">BaggedUp</h1>
                 {authMessage && <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">{authMessage}</div>}
                 <form onSubmit={(e) => handleLogin(e, 'login')} className="space-y-4">
@@ -291,7 +293,7 @@ export default function App() {
                 <div className="fixed inset-0 z-[100] flex">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
                     <div className="relative w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex flex-col gap-6">
-                        <div className="text-4xl italic font-black text-orange-500 mb-4">B</div>
+                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-12 w-12 object-contain" />
                         {[
                             { id: 'active', label: 'My Bag', icon: '🎒' },
                             { id: 'storage', label: 'Storage', icon: '📦' },
