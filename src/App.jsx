@@ -102,6 +102,7 @@ export default function App() {
 
     // Wear slider — local state for smooth dragging, synced to DB on release
     const [localWear, setLocalWear] = useState({});
+    const [favSubView, setFavSubView] = useState('all'); // 'all' | 'aces'
     const wearDebounce = useRef({});
 
     // Mobile: one toggled chart
@@ -229,9 +230,11 @@ export default function App() {
     };
 
     const updateDiscInDB = async (u) => {
-        setDiscs(discs.map(d => d.id === u.id ? u : d));
-        const p = { ...u }; delete p.id; delete p.user_id; delete p.created_at;
-        await supabase.from('discs').update(p).eq('id', u.id);
+        // Auto-favourite any disc that has at least one ace
+        const updated = (u.aces > 0) ? { ...u, favorite: true } : u;
+        setDiscs(discs.map(d => d.id === updated.id ? updated : d));
+        const p = { ...updated }; delete p.id; delete p.user_id; delete p.created_at;
+        await supabase.from('discs').update(p).eq('id', updated.id);
     };
 
     const deleteDiscInDB = async (id) => {
@@ -268,97 +271,61 @@ export default function App() {
         return points;
     };
 
-    // --- COMPREHENSIVE GAP ANALYSIS ---
-    // Covers all 12 key disc slots: Putter/Mid/Fairway/Distance × Straight/US/OS
     const gapAnalysis = useMemo(() => {
         const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
-        if (active.length === 0) return { gaps: [], text: "Bag is Empty", allFilled: false };
+        if (active.length === 0) return { gaps: [], text: 'Bag is Empty', allFilled: false };
 
-        const ALL_DISCS = [...FACTORY_DB.map(d => ({
-            Model: d.Model, Manufacturer: d.Manufacturer,
-            Speed: d.Speed, Glide: d.Glide, Turn: d.Turn, Fade: d.Fade,
-            source: 'factory'
-        })), ...communitySuggestions.map(d => ({
-            Model: d.model, Manufacturer: d.brand,
-            Speed: d.speed, Glide: d.glide, Turn: d.turn, Fade: d.fade,
-            source: 'community'
-        }))];
+        const ALL_DISCS = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Glide:d.Glide, Turn:d.Turn, Fade:d.Fade, source:'factory' })),
+            ...communitySuggestions.map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community' }))];
 
-        // Helper: stability bucket for a disc
-        const stabBucket = (turn, fade) => {
-            const s = parseFloat(turn) + parseFloat(fade);
-            if (s >= 2) return 'OS';
-            if (s <= -1) return 'US';
-            return 'ST';
+        const stabBucket = (turn, fade) => { const s=parseFloat(turn)+parseFloat(fade); return s>=2?'OS':s<=-1?'US':'ST'; };
+        const slotKey = (speed, turn, fade) => {
+            const sp=parseFloat(speed), b=stabBucket(turn,fade);
+            if(sp<=3) return `putter_${b}`; if(sp<=6) return `mid_${b}`; if(sp<=8) return `fairway_${b}`; return `distance_${b}`;
         };
+        const filled = new Set(active.map(d => slotKey(d.speed, d.turn, d.fade)));
 
-        // Classify each active disc into a slot
-        const slot = (speed, turn, fade) => {
-            const sp = parseFloat(speed);
-            const bucket = stabBucket(turn, fade);
-            if (sp <= 3) return `putter_${bucket}`;
-            if (sp <= 6) return `mid_${bucket}`;
-            if (sp <= 8) return `fairway_${bucket}`;
-            return `distance_${bucket}`;
-        };
-
-        const filled = new Set(active.map(d => slot(d.speed, d.turn, d.fade)));
-
-        // All 12 desired slots with friendly names
         const SLOTS = [
-            { key: 'putter_ST',    label: 'Straight Putter',          priority: 1 },
-            { key: 'putter_OS',    label: 'Overstable Putter',         priority: 2 },
-            { key: 'putter_US',    label: 'Understable Putter',        priority: 5 },
-            { key: 'mid_ST',       label: 'Straight Midrange',         priority: 1 },
-            { key: 'mid_OS',       label: 'Overstable Midrange',       priority: 2 },
-            { key: 'mid_US',       label: 'Understable Midrange',      priority: 3 },
-            { key: 'fairway_ST',   label: 'Straight Fairway Driver',   priority: 2 },
-            { key: 'fairway_OS',   label: 'Overstable Fairway Driver', priority: 3 },
-            { key: 'fairway_US',   label: 'Understable Fairway Driver',priority: 3 },
-            { key: 'distance_ST',  label: 'Straight Distance Driver',  priority: 3 },
-            { key: 'distance_OS',  label: 'Overstable Distance Driver',priority: 2 },
-            { key: 'distance_US',  label: 'Understable Distance Driver',priority: 4 },
+            {key:'putter_ST', label:'Straight Putter', priority:1},
+            {key:'putter_OS', label:'Overstable Putter', priority:2},
+            {key:'putter_US', label:'Understable Putter', priority:5},
+            {key:'mid_ST', label:'Straight Midrange', priority:1},
+            {key:'mid_OS', label:'Overstable Midrange', priority:2},
+            {key:'mid_US', label:'Understable Midrange', priority:3},
+            {key:'fairway_ST', label:'Straight Fairway Driver', priority:2},
+            {key:'fairway_OS', label:'Overstable Fairway Driver', priority:3},
+            {key:'fairway_US', label:'Understable Fairway Driver', priority:3},
+            {key:'distance_ST', label:'Straight Distance Driver', priority:3},
+            {key:'distance_OS', label:'Overstable Distance Driver', priority:2},
+            {key:'distance_US', label:'Understable Distance Driver', priority:4},
         ];
-
-        // Speed/turn/fade ranges per slot key
         const SLOT_FILTER = {
-            putter_ST:    d => d.Speed <= 3 && stabBucket(d.Turn, d.Fade) === 'ST',
-            putter_OS:    d => d.Speed <= 3 && stabBucket(d.Turn, d.Fade) === 'OS',
-            putter_US:    d => d.Speed <= 3 && stabBucket(d.Turn, d.Fade) === 'US',
-            mid_ST:       d => d.Speed >= 4 && d.Speed <= 6 && stabBucket(d.Turn, d.Fade) === 'ST',
-            mid_OS:       d => d.Speed >= 4 && d.Speed <= 6 && stabBucket(d.Turn, d.Fade) === 'OS',
-            mid_US:       d => d.Speed >= 4 && d.Speed <= 6 && stabBucket(d.Turn, d.Fade) === 'US',
-            fairway_ST:   d => d.Speed >= 7 && d.Speed <= 8 && stabBucket(d.Turn, d.Fade) === 'ST',
-            fairway_OS:   d => d.Speed >= 7 && d.Speed <= 8 && stabBucket(d.Turn, d.Fade) === 'OS',
-            fairway_US:   d => d.Speed >= 7 && d.Speed <= 8 && stabBucket(d.Turn, d.Fade) === 'US',
-            distance_ST:  d => d.Speed >= 9 && stabBucket(d.Turn, d.Fade) === 'ST',
-            distance_OS:  d => d.Speed >= 9 && stabBucket(d.Turn, d.Fade) === 'OS',
-            distance_US:  d => d.Speed >= 9 && stabBucket(d.Turn, d.Fade) === 'US',
+            putter_ST:d=>d.Speed<=3&&stabBucket(d.Turn,d.Fade)==='ST',
+            putter_OS:d=>d.Speed<=3&&stabBucket(d.Turn,d.Fade)==='OS',
+            putter_US:d=>d.Speed<=3&&stabBucket(d.Turn,d.Fade)==='US',
+            mid_ST:d=>d.Speed>=4&&d.Speed<=6&&stabBucket(d.Turn,d.Fade)==='ST',
+            mid_OS:d=>d.Speed>=4&&d.Speed<=6&&stabBucket(d.Turn,d.Fade)==='OS',
+            mid_US:d=>d.Speed>=4&&d.Speed<=6&&stabBucket(d.Turn,d.Fade)==='US',
+            fairway_ST:d=>d.Speed>=7&&d.Speed<=8&&stabBucket(d.Turn,d.Fade)==='ST',
+            fairway_OS:d=>d.Speed>=7&&d.Speed<=8&&stabBucket(d.Turn,d.Fade)==='OS',
+            fairway_US:d=>d.Speed>=7&&d.Speed<=8&&stabBucket(d.Turn,d.Fade)==='US',
+            distance_ST:d=>d.Speed>=9&&stabBucket(d.Turn,d.Fade)==='ST',
+            distance_OS:d=>d.Speed>=9&&stabBucket(d.Turn,d.Fade)==='OS',
+            distance_US:d=>d.Speed>=9&&stabBucket(d.Turn,d.Fade)==='US',
         };
 
-        const gaps = SLOTS
-            .filter(s => !filled.has(s.key))
-            .sort((a, b) => a.priority - b.priority)
-            .map(s => ({
-                ...s,
-                suggestions: ALL_DISCS.filter(SLOT_FILTER[s.key]).slice(0, 4)
-            }));
-
-        // For the banner: show most important gap
-        const topGap = gaps[0];
-        const allFilled = gaps.length === 0;
+        const gaps = SLOTS.filter(s=>!filled.has(s.key)).sort((a,b)=>a.priority-b.priority)
+            .map(s=>({...s, suggestions:ALL_DISCS.filter(SLOT_FILTER[s.key]).slice(0,4)}));
 
         return {
-            gaps,
-            allFilled,
-            text: allFilled ? '✓ Bag Optimised' : `Gap: ${topGap?.label}`,
-            filter: topGap ? SLOT_FILTER[topGap.key] : null,
-            topGapSuggestions: topGap?.suggestions || [],
+            gaps, allFilled: gaps.length===0,
+            text: gaps.length===0 ? '✓ Bag Optimised' : `Gap: ${gaps[0]?.label}`,
+            filter: gaps[0] ? SLOT_FILTER[gaps[0].key] : null,
         };
     }, [discs, activeBagId, communitySuggestions]);
 
     // --- SHARED CHART CONFIG BUILDER ---
-    // forExport=true → draws disc name pill-labels directly on canvas (export only)
+    // forExport=true → draws disc name pill-labels on canvas (no overlap, larger text)
     const buildChartConfig = (filtered, mode, forExport = false) => {
 
         const exportLabelPlugin = {
@@ -375,75 +342,52 @@ export default function App() {
                     if (meta.hidden) return;
                     let px, py;
                     if (mode === 'path') {
-                        // Place at ~65% along the path — mid-arc bend area
                         const idx = Math.floor(meta.data.length * 0.65);
-                        const pt = meta.data[Math.min(idx, meta.data.length - 1)];
+                        const pt = meta.data[Math.min(idx, meta.data.length-1)];
                         px = pt?.x; py = pt?.y;
                     } else {
                         const pt = meta.data[0];
                         px = pt?.x; py = pt?.y;
-                        // Offset label to the right of the dot
                         if (px != null) px += 16;
                     }
                     if (px == null || py == null) return;
-                    // Clamp to canvas with margin
-                    const margin = 40;
-                    px = Math.max(margin, Math.min(W - margin, px));
-                    py = Math.max(margin, Math.min(H - margin, py));
+                    px = Math.max(50, Math.min(W-50, px));
+                    py = Math.max(20, Math.min(H-20, py));
                     positions.push({ label: ds.label, color: ds.borderColor, px, py });
                 });
 
-                // Iterative repulsion to prevent overlap (10 passes)
-                const FONT_SIZE = 14;
-                const PILL_H = FONT_SIZE + 10;
-                const EST_W = (label) => label.length * FONT_SIZE * 0.6 + 14;
-                for (let iter = 0; iter < 10; iter++) {
+                // Iterative box-overlap repulsion (12 passes)
+                const FS = 14; const PH = FS + 10;
+                const estW = (l) => l.length * FS * 0.58 + 16;
+                for (let iter = 0; iter < 12; iter++) {
                     for (let a = 0; a < positions.length; a++) {
-                        for (let b = a + 1; b < positions.length; b++) {
-                            const pa = positions[a]; const pb = positions[b];
-                            const aw = EST_W(pa.label); const bw = EST_W(pb.label);
-                            const overlapX = (aw + bw) / 2 - Math.abs(pa.px - pb.px);
-                            const overlapY = PILL_H + 4 - Math.abs(pa.py - pb.py);
-                            if (overlapX > 0 && overlapY > 0) {
-                                // Push apart on the dominant axis
-                                const pushY = overlapY / 2 + 1;
-                                const pushX = overlapX / 4;
-                                if (pa.py <= pb.py) { pa.py -= pushY; pb.py += pushY; }
-                                else { pa.py += pushY; pb.py -= pushY; }
-                                if (pa.px <= pb.px) { pa.px -= pushX; pb.px += pushX; }
-                                else { pa.px += pushX; pb.px -= pushX; }
+                        for (let b = a+1; b < positions.length; b++) {
+                            const pa = positions[a], pb = positions[b];
+                            const overX = (estW(pa.label)+estW(pb.label))/2 - Math.abs(pa.px-pb.px);
+                            const overY = PH+4 - Math.abs(pa.py-pb.py);
+                            if (overX > 0 && overY > 0) {
+                                const py2 = overY/2+1, px2 = overX/4;
+                                if (pa.py <= pb.py) { pa.py -= py2; pb.py += py2; } else { pa.py += py2; pb.py -= py2; }
+                                if (pa.px <= pb.px) { pa.px -= px2; pb.px += px2; } else { pa.px += px2; pb.px -= px2; }
                             }
                         }
-                        // Re-clamp after each pass
-                        const m = 40;
-                        positions[a].px = Math.max(m, Math.min(W - m, positions[a].px));
-                        positions[a].py = Math.max(m, Math.min(H - m, positions[a].py));
+                        positions[a].px = Math.max(50, Math.min(W-50, positions[a].px));
+                        positions[a].py = Math.max(20, Math.min(H-20, positions[a].py));
                     }
                 }
 
                 positions.forEach(({ label, color, px, py }) => {
                     ctx.save();
-                    ctx.font = `bold ${FONT_SIZE}px system-ui, sans-serif`;
+                    ctx.font = `bold ${FS}px system-ui,sans-serif`;
                     const tw = ctx.measureText(label).width;
-                    const bw = tw + 14; const bh = PILL_H; const br = 6;
-                    const bx = px - bw / 2; const by = py - bh / 2;
-                    // Semi-transparent dark pill background
-                    ctx.fillStyle = 'rgba(11,15,26,0.85)';
-                    ctx.beginPath();
-                    ctx.roundRect(bx, by, bw, bh, br);
-                    ctx.fill();
-                    // Coloured left accent bar on pill
-                    ctx.fillStyle = color || '#f97316';
-                    ctx.beginPath();
-                    ctx.roundRect(bx, by, 3, bh, [br, 0, 0, br]);
-                    ctx.fill();
-                    // Label text
-                    ctx.fillStyle = '#ffffff';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                    ctx.shadowBlur = 3;
-                    ctx.fillText(label, px, py + 1);
+                    const bw=tw+14, bh=PH, br=6, bx=px-bw/2, by=py-bh/2;
+                    ctx.fillStyle='rgba(11,15,26,0.85)';
+                    ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,br); ctx.fill();
+                    ctx.fillStyle=color||'#f97316';
+                    ctx.beginPath(); ctx.roundRect(bx,by,3,bh,[br,0,0,br]); ctx.fill();
+                    ctx.fillStyle='#ffffff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+                    ctx.shadowColor='rgba(0,0,0,0.8)'; ctx.shadowBlur=3;
+                    ctx.fillText(label, px, py+1);
                     ctx.restore();
                 });
             }
@@ -455,58 +399,45 @@ export default function App() {
                 datasets: filtered.map(d => ({
                     label: d.name,
                     data: mode === 'path' ? calculatePath(d) : [{ x: getStats(d).stability, y: parseFloat(d.speed) }],
-                    borderColor: d.color,
-                    backgroundColor: d.color,
+                    borderColor: d.color, backgroundColor: d.color,
                     showLine: mode === 'path',
                     pointRadius: mode === 'path' ? 0 : 9,
                     pointStyle: 'circle',
-                    borderDash: d.is_idea ? [5, 5] : [],
+                    borderDash: d.is_idea ? [5,5] : [],
                     borderWidth: mode === 'path' ? 1.5 : 2,
                     tension: 0.4,
                     cubicInterpolationMode: 'monotone',
                 }))
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
+                responsive: true, maintainAspectRatio: false,
                 scales: {
-                    x: { min: mode === 'path' ? -100 : -6, max: mode === 'path' ? 100 : 6, reverse: mode !== 'path', grid: { color: '#1e293b' } },
+                    x: { min: mode==='path'?-100:-6, max: mode==='path'?100:6, reverse: mode!=='path', grid:{color:'#1e293b'} },
                     y: {
                         min: 0,
-                        max: mode === 'path' ? (settings.unit === 'm' ? 180 : 550) : 14,
-                        grid: { color: '#1e293b' },
-                        ticks: mode === 'path' ? {} : { stepSize: 1, callback: v => v }
+                        max: mode==='path'?(settings.unit==='m'?180:550):14,
+                        grid:{color:'#1e293b'},
+                        ticks: mode==='path'?{}:{stepSize:1,callback:v=>v}
                     }
                 },
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#0f172a',
-                        borderColor: '#1e293b',
-                        borderWidth: 1,
-                        padding: 12,
+                        backgroundColor:'#0f172a', borderColor:'#1e293b', borderWidth:1, padding:12,
                         callbacks: {
-                            title: (items) => items[0]?.dataset?.label || '',
+                            title: (items) => items[0]?.dataset?.label||'',
                             label: (item) => {
-                                const disc = filtered.find(d => d.name === item.dataset.label);
+                                const disc = filtered.find(d => d.name===item.dataset.label);
                                 if (!disc) return '';
-                                const plastic = disc.plastic || 'Premium';
-                                const weight = disc.weight ? disc.weight + 'g' : '';
-                                return `${plastic}${weight ? '  •  ' + weight : ''}`;
+                                const plastic=disc.plastic||'Premium', weight=disc.weight?disc.weight+'g':'';
+                                return `${plastic}${weight?'  •  '+weight:''}`;
                             },
-                            labelColor: (item) => ({
-                                borderColor: item.dataset.borderColor,
-                                backgroundColor: item.dataset.backgroundColor,
-                                borderRadius: 4,
-                            }),
+                            labelColor: (item) => ({ borderColor:item.dataset.borderColor, backgroundColor:item.dataset.backgroundColor, borderRadius:4 }),
                         },
-                        titleFont: { family: 'system-ui', weight: 'bold', size: 13 },
-                        bodyFont: { family: 'system-ui', size: 11 },
-                        titleColor: '#f1f5f9',
-                        bodyColor: '#94a3b8',
-                        displayColors: true,
-                        boxWidth: 10,
-                        boxHeight: 10,
+                        titleFont:{family:'system-ui',weight:'bold',size:13},
+                        bodyFont:{family:'system-ui',size:11},
+                        titleColor:'#f1f5f9', bodyColor:'#94a3b8',
+                        displayColors:true, boxWidth:10, boxHeight:10,
                     }
                 }
             },
@@ -566,7 +497,11 @@ export default function App() {
     // --- FILTERED DISCS (used in both layouts) ---
     const filteredDiscs = discs.filter(d => {
         if (view === 'graveyard') return d.status === 'lost';
-        if (view === 'favorites') return d.favorite;
+        if (view === 'favorites') {
+            if (!d.favorite) return false;
+            if (favSubView === 'aces') return d.aces > 0;
+            return true;
+        }
         if (view === 'storage') return d.status === 'active' && !d.bag_id;
         return d.bag_id === activeBagId && d.status === 'active';
     });
@@ -582,7 +517,17 @@ export default function App() {
                         <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
                         <div className="flex justify-between items-start">
                             <div className="min-w-0 pr-4">
-                                <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
+                                <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">
+                                    {d.name}
+                                    {d.aces > 0 && (
+                                        <span className="ml-2 inline-flex gap-0.5">
+                                            {Array.from({length: Math.min(d.aces, 5)}).map((_, i) => (
+                                                <span key={i} className="text-yellow-400" title={`${d.aces} ace${d.aces !== 1 ? 's' : ''}`}>🏆</span>
+                                            ))}
+                                            {d.aces > 5 && <span className="text-yellow-400 text-[10px] font-black">×{d.aces}</span>}
+                                        </span>
+                                    )}
+                                </h4>
                                 <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
                                 {d.status === 'lost' && d.lost_note && (
                                     <p className="text-[10px] font-bold text-red-400/70 mt-0.5 truncate">📍 {d.lost_note}</p>
@@ -681,7 +626,7 @@ export default function App() {
             ===================================================== */}
             <div className="hidden lg:flex w-60 h-full bg-slate-900 border-r border-slate-800 p-6 flex-col gap-4 shrink-0">
                 <div className="flex justify-center w-full mb-1">
-                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-[5.5rem] w-[5.5rem] object-contain" />
+                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-[6.25rem] w-[6.25rem] object-contain" />
                 </div>
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
@@ -772,15 +717,13 @@ export default function App() {
                     {!gapAnalysis.allFilled && view === 'active' && (
                         <div className="px-4 pt-4">
                             <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length !== 1 ? 's' : ''} in bag — {gapAnalysis.text} — View All
+                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length!==1?'s':''} — {gapAnalysis.text} — View All
                             </button>
                         </div>
                     )}
                     {gapAnalysis.allFilled && view === 'active' && (
                         <div className="px-4 pt-4">
-                            <div className="w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">
-                                ✓ Bag Optimised — All 12 slots filled
-                            </div>
+                            <div className="w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 slots filled</div>
                         </div>
                     )}
                     <section className="p-4">
@@ -793,7 +736,15 @@ export default function App() {
                         </div>
                     </section>
                     <section className="px-4 pb-24">
-                        <h2 className="px-2 italic text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4">{view} Inventory</h2>
+                        <div className="flex items-center justify-between px-2 mb-4">
+                            <h2 className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</h2>
+                            {view === 'favorites' && (
+                                <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
+                                    <button onClick={() => setFavSubView('all')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'all' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>All</button>
+                                    <button onClick={() => setFavSubView('aces')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'aces' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>🏆 Aces</button>
+                                </div>
+                            )}
+                        </div>
                         <InventoryCards />
                     </section>
                 </main>
@@ -811,13 +762,11 @@ export default function App() {
                         {/* Gap analysis banner */}
                         {!gapAnalysis.allFilled && view === 'active' && (
                             <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="shrink-0 w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length !== 1 ? 's' : ''} detected — {gapAnalysis.text} — View All Suggestions
+                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length!==1?'s':''} detected — {gapAnalysis.text} — View All Suggestions
                             </button>
                         )}
                         {gapAnalysis.allFilled && view === 'active' && (
-                            <div className="shrink-0 w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">
-                                ✓ Bag Optimised — All 12 disc slots covered
-                            </div>
+                            <div className="shrink-0 w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 disc slots covered</div>
                         )}
 
                         {/* Two charts side by side, filling all remaining vertical space */}
@@ -848,8 +797,14 @@ export default function App() {
 
                     {/* RIGHT: Inventory panel — fixed width, full height, scrollable */}
                     <div className="w-[380px] shrink-0 h-full border-l border-slate-800 bg-slate-950/50 flex flex-col">
-                        <div className="px-5 py-4 border-b border-slate-800 shrink-0">
+                        <div className="px-5 py-4 border-b border-slate-800 shrink-0 flex items-center justify-between">
                             <span className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</span>
+                            {view === 'favorites' && (
+                                <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
+                                    <button onClick={() => setFavSubView('all')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'all' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>All</button>
+                                    <button onClick={() => setFavSubView('aces')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'aces' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>🏆 Aces</button>
+                                </div>
+                            )}
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 pb-6">
                             <InventoryCards />
@@ -936,40 +891,25 @@ export default function App() {
                         <div>
                             <h2 className="text-2xl font-black italic text-blue-400 uppercase">🎯 Bag Gap Analysis</h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">
-                                {suggestionPool.length === 0
-                                    ? 'All 12 slots covered — great bag!'
-                                    : `${suggestionPool.length} of 12 slots missing`}
+                                {suggestionPool.length === 0 ? 'All 12 slots covered!' : `${suggestionPool.length} of 12 slots missing`}
                             </p>
                         </div>
                         <button onClick={() => setSuggestionPool(null)} className="text-2xl text-slate-500 hover:text-white">✕</button>
                     </div>
-
-                    {/* 12-slot coverage grid */}
                     <div className="shrink-0 mb-4">
-                        {[
-                            { label: 'Putter', slots: ['putter_ST','putter_OS','putter_US'] },
-                            { label: 'Midrange', slots: ['mid_ST','mid_OS','mid_US'] },
-                            { label: 'Fairway', slots: ['fairway_ST','fairway_OS','fairway_US'] },
-                            { label: 'Distance', slots: ['distance_ST','distance_OS','distance_US'] },
-                        ].map(row => {
+                        {[{label:'Putter',slots:['putter_ST','putter_OS','putter_US']},{label:'Midrange',slots:['mid_ST','mid_OS','mid_US']},{label:'Fairway',slots:['fairway_ST','fairway_OS','fairway_US']},{label:'Distance',slots:['distance_ST','distance_OS','distance_US']}].map(row => {
                             const missingKeys = new Set(suggestionPool.map(g => g.key));
                             return (
                                 <div key={row.label} className="flex items-center gap-2 mb-1.5">
                                     <span className="text-[9px] font-black uppercase text-slate-500 w-14 shrink-0">{row.label}</span>
-                                    {['ST','OS','US'].map((stab, i) => {
-                                        const key = row.slots[i];
-                                        const isMissing = missingKeys.has(key);
-                                        return (
-                                            <div key={stab} className={`flex-1 py-1 rounded-lg text-center text-[8px] font-black uppercase ${isMissing ? 'bg-red-900/40 border border-red-600/40 text-red-400' : 'bg-emerald-900/30 border border-emerald-600/30 text-emerald-400'}`}>
-                                                {isMissing ? '✗' : '✓'} {stab}
-                                            </div>
-                                        );
+                                    {['ST','OS','US'].map((stab,i) => {
+                                        const key=row.slots[i]; const isMissing=missingKeys.has(key);
+                                        return <div key={stab} className={`flex-1 py-1 rounded-lg text-center text-[8px] font-black uppercase ${isMissing?'bg-red-900/40 border border-red-600/40 text-red-400':'bg-emerald-900/30 border border-emerald-600/30 text-emerald-400'}`}>{isMissing?'✗':'✓'} {stab}</div>;
                                     })}
                                 </div>
                             );
                         })}
                     </div>
-
                     <div className="flex-grow overflow-y-auto space-y-5 pb-10 max-w-2xl w-full mx-auto">
                         {suggestionPool.length === 0 ? (
                             <div className="text-center py-12">
@@ -977,45 +917,34 @@ export default function App() {
                                 <p className="text-emerald-400 font-black uppercase text-lg">Perfect Bag!</p>
                                 <p className="text-slate-500 text-xs font-bold uppercase mt-2">All 12 disc categories are covered</p>
                             </div>
-                        ) : (
-                            suggestionPool.map(gap => (
-                                <div key={gap.key} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                                        <span className="font-black uppercase text-sm text-white">{gap.label}</span>
-                                        <span className="ml-auto text-[9px] font-bold text-slate-600 uppercase">
-                                            Priority {gap.priority === 1 ? '🔴 High' : gap.priority <= 3 ? '🟡 Med' : '⚪ Low'}
-                                        </span>
-                                    </div>
-                                    {gap.suggestions.length > 0 ? (
-                                        <div className="space-y-2">
-                                            {gap.suggestions.map((d, i) => (
-                                                <div
-                                                    key={`${d.Model}-${i}`}
-                                                    onClick={() => {
-                                                        addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
-                                                        setSuggestionPool(null);
-                                                    }}
-                                                    className={`flex justify-between items-center p-3 rounded-xl border cursor-pointer transition ${d.source === 'community' ? 'bg-emerald-900/10 border-emerald-700/30 hover:border-emerald-500' : 'bg-slate-800/60 border-slate-700/40 hover:border-blue-500'}`}
-                                                >
-                                                    <div>
-                                                        <span className={`font-black uppercase text-sm ${d.source === 'community' ? 'text-emerald-400' : 'text-white'}`}>{d.Model}</span>
-                                                        <span className="text-slate-500 text-[10px] font-bold uppercase ml-2">{d.Manufacturer}</span>
-                                                        {d.source === 'community' && <span className="ml-2 text-[8px] font-black uppercase text-emerald-600 bg-emerald-900/30 px-1.5 py-0.5 rounded">Community</span>}
-                                                    </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-[10px] font-bold text-slate-400">{d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</span>
-                                                        <span className="text-blue-400 font-black text-lg">+</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    ) : (
-                                        <p className="text-slate-600 text-[10px] font-bold uppercase">No suggestions in database — add one via the + button</p>
-                                    )}
+                        ) : suggestionPool.map(gap => (
+                            <div key={gap.key} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                                <div className="flex items-center gap-3 mb-3">
+                                    <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                                    <span className="font-black uppercase text-sm text-white">{gap.label}</span>
+                                    <span className="ml-auto text-[9px] font-bold text-slate-600 uppercase">Priority {gap.priority===1?'🔴 High':gap.priority<=3?'🟡 Med':'⚪ Low'}</span>
                                 </div>
-                            ))
-                        )}
+                                {gap.suggestions?.length > 0 ? (
+                                    <div className="space-y-2">
+                                        {gap.suggestions.map((d,i) => (
+                                            <div key={`${d.Model}-${i}`}
+                                                onClick={() => { addDiscToDB({name:d.Model,brand:d.Manufacturer,speed:d.Speed,glide:d.Glide,turn:d.Turn,fade:d.Fade,wear:0,bag_id:activeBagId,status:'active',color:`hsl(${Math.random()*360},70%,60%)`,max_dist:0,aces:0,is_idea:true}); setSuggestionPool(null); }}
+                                                className={`flex justify-between items-center p-3 rounded-xl border cursor-pointer transition ${d.source==='community'?'bg-emerald-900/10 border-emerald-700/30 hover:border-emerald-500':'bg-slate-800/60 border-slate-700/40 hover:border-blue-500'}`}>
+                                                <div>
+                                                    <span className={`font-black uppercase text-sm ${d.source==='community'?'text-emerald-400':'text-white'}`}>{d.Model}</span>
+                                                    <span className="text-slate-500 text-[10px] font-bold uppercase ml-2">{d.Manufacturer}</span>
+                                                    {d.source==='community'&&<span className="ml-2 text-[8px] font-black uppercase text-emerald-600 bg-emerald-900/30 px-1.5 py-0.5 rounded">Community</span>}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-bold text-slate-400">{d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</span>
+                                                    <span className="text-blue-400 font-black text-lg">+</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : <p className="text-slate-600 text-[10px] font-bold uppercase">No suggestions in database — add via the + button</p>}
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -1163,32 +1092,6 @@ export default function App() {
                     ]);
                     const JSPDF = window.jspdf?.jsPDF || jsPDF;
 
-                    // Read live aspect ratio from DOM so charts match what user sees
-                    const getLiveAspect = (id) => {
-                        const el = document.getElementById(id);
-                        return el && el.offsetHeight > 0 ? el.offsetWidth / el.offsetHeight : 1.6;
-                    };
-                    const pathAspect = getLiveAspect('desktopPathChart') || getLiveAspect('mainChart') || 1.6;
-                    const stabAspect = getLiveAspect('desktopStabChart') || getLiveAspect('mainChart') || 1.3;
-
-                    // Off-screen chart render with export labels
-                    const renderChart = (mode, width, height) => new Promise(resolve => {
-                        const off = document.createElement('canvas');
-                        off.width = width; off.height = height;
-                        off.style.cssText = 'position:absolute;left:-9999px;top:0';
-                        document.body.appendChild(off);
-                        const cfg = buildChartConfig(exportDiscs, mode, true);
-                        cfg.options.animation = false;
-                        cfg.options.responsive = false;
-                        cfg.options.maintainAspectRatio = false;
-                        const ch = new Chart(off.getContext('2d'), cfg);
-                        requestAnimationFrame(() => requestAnimationFrame(() => {
-                            const url = off.toDataURL('image/png');
-                            ch.destroy(); document.body.removeChild(off);
-                            resolve(url);
-                        }));
-                    });
-
                     const loadLogoB64 = async () => {
                         try {
                             const res = await fetch('/baggedup.logo.png');
@@ -1196,11 +1099,6 @@ export default function App() {
                             return await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(blob); });
                         } catch { return null; }
                     };
-                    const loadLogoImg = () => new Promise(r => {
-                        const img = new Image(); img.crossOrigin = 'anonymous';
-                        img.onload = () => r(img); img.onerror = () => r(null);
-                        img.src = '/baggedup.logo.png?' + Date.now();
-                    });
 
                     if (format === 'pdf') {
                         const doc = new JSPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -1238,7 +1136,9 @@ export default function App() {
                             const cr=parseInt(hex.slice(1,3),16)||249, cg=parseInt(hex.slice(3,5),16)||115, cb=parseInt(hex.slice(5,7),16)||22;
                             doc.setFillColor(cr,cg,cb); doc.rect(13,y-5,2.5,10,'F');
                             doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-                            doc.text((d.name||'').slice(0,16), cols[0]+2, y);
+                            // Disc name + ace trophies
+                            const aceStr = d.aces > 0 ? ' ' + '★'.repeat(Math.min(d.aces,3)) + (d.aces > 3 ? `×${d.aces}` : '') : '';
+                            doc.text(((d.name||'').slice(0,14) + aceStr).slice(0,20), cols[0]+2, y);
                             doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
                             doc.text((d.brand||'').slice(0,12), cols[1], y);
                             doc.text((d.plastic||'—').slice(0,8), cols[2], y);
@@ -1253,39 +1153,72 @@ export default function App() {
                             y += 10;
                         });
                         doc.setTextColor(71,85,105); doc.setFontSize(7);
-                        doc.text('* Orange = beat-in wear effect', 13, H-12);
+                        doc.text('* Orange = beat-in wear effect   ★ = ace', 13, H-12);
                         doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
-                        // Page 2: Flight Paths — preserve live aspect ratio, fill page
-                        const pdfCW = W - 26;
-                        const pdfPathH = Math.min(240, pdfCW / pathAspect);
-                        const pdfPathW = pdfPathH * pathAspect;
-                        const pathImg = await renderChart('path', 1400, Math.round(1400 / pathAspect));
-                        doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
-                        doc.setTextColor(...orange); doc.setFontSize(16); doc.setFont('helvetica','bold');
-                        doc.text('Flight Paths', 13, 16);
-                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
-                        doc.text(activeBag?.name||'My Bag', 13, 23);
-                        doc.addImage(pathImg,'PNG', (W-pdfPathW)/2, 28, pdfPathW, pdfPathH);
-                        doc.setTextColor(71,85,105); doc.setFontSize(7);
-                        doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
+                        // Pages 2 & 3: Charts rendered off-screen at live aspect ratio
+                        const getLiveAspect = (id) => { const el=document.getElementById(id); return el&&el.offsetHeight>0?el.offsetWidth/el.offsetHeight:1.6; };
+                        const pathAspect=getLiveAspect('desktopPathChart')||getLiveAspect('mainChart')||1.6;
+                        const stabAspect=getLiveAspect('desktopStabChart')||getLiveAspect('mainChart')||1.3;
+                        const renderChart=(mode,width,height)=>new Promise(resolve=>{
+                            const off=document.createElement('canvas'); off.width=width; off.height=height;
+                            off.style.cssText='position:absolute;left:-9999px;top:0'; document.body.appendChild(off);
+                            const cfg=buildChartConfig(exportDiscs,mode,true); cfg.options.animation=false; cfg.options.responsive=false; cfg.options.maintainAspectRatio=false;
+                            const ch=new Chart(off.getContext('2d'),cfg);
+                            requestAnimationFrame(()=>requestAnimationFrame(()=>{ const url=off.toDataURL('image/png'); ch.destroy(); document.body.removeChild(off); resolve(url); }));
+                        });
 
-                        // Page 3: Stability Matrix
-                        const pdfStabH = Math.min(240, pdfCW / stabAspect);
-                        const pdfStabW = pdfStabH * stabAspect;
-                        const stabImg = await renderChart('matrix', 1400, Math.round(1400 / stabAspect));
+                        const pdfCW=W-26;
+                        const pdfPathH=Math.min(240,pdfCW/pathAspect); const pdfPathW=pdfPathH*pathAspect;
+                        const pathImg=await renderChart('path',1400,Math.round(1400/pathAspect));
                         doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
-                        doc.setTextColor(...orange); doc.setFontSize(16); doc.setFont('helvetica','bold');
-                        doc.text('Stability Matrix', 13, 16);
-                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
-                        doc.text('Speed vs Stability (Turn + Fade)', 13, 23);
-                        doc.addImage(stabImg,'PNG', (W-pdfStabW)/2, 28, pdfStabW, pdfStabH);
-                        doc.setTextColor(71,85,105); doc.setFontSize(7);
-                        doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
+                        doc.setTextColor(...orange); doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.text('Flight Paths',13,16);
+                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.text(activeBag?.name||'My Bag',13,23);
+                        doc.addImage(pathImg,'PNG',(W-pdfPathW)/2,28,pdfPathW,pdfPathH);
+                        doc.setTextColor(71,85,105); doc.setFontSize(7); doc.text('baggedup.vercel.app',W/2,H-6,{align:'center'});
+
+                        const pdfStabH=Math.min(240,pdfCW/stabAspect); const pdfStabW=pdfStabH*stabAspect;
+                        const stabImg=await renderChart('matrix',1400,Math.round(1400/stabAspect));
+                        doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
+                        doc.setTextColor(...orange); doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.text('Stability Matrix',13,16);
+                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.text('Speed vs Stability (Turn + Fade)',13,23);
+                        doc.addImage(stabImg,'PNG',(W-pdfStabW)/2,28,pdfStabW,pdfStabH);
+                        doc.setTextColor(71,85,105); doc.setFontSize(7); doc.text('baggedup.vercel.app',W/2,H-6,{align:'center'});
 
                         doc.save(`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}.pdf`);
 
                     } else if (format === 'png-story' || format === 'png-post') {
+                        // ── Off-screen chart renderer (uses live aspect ratio) ──
+                        const getLiveAspect = (id) => {
+                            const el = document.getElementById(id);
+                            return el && el.offsetHeight > 0 ? el.offsetWidth / el.offsetHeight : 1.6;
+                        };
+                        const pathAspect = getLiveAspect('desktopPathChart') || getLiveAspect('mainChart') || 1.6;
+                        const stabAspect = getLiveAspect('desktopStabChart') || getLiveAspect('mainChart') || 1.3;
+
+                        const renderChart = (mode, width, height) => new Promise(resolve => {
+                            const off = document.createElement('canvas');
+                            off.width = width; off.height = height;
+                            off.style.cssText = 'position:absolute;left:-9999px;top:0';
+                            document.body.appendChild(off);
+                            const cfg = buildChartConfig(exportDiscs, mode, true);
+                            cfg.options.animation = false;
+                            cfg.options.responsive = false;
+                            cfg.options.maintainAspectRatio = false;
+                            const ch = new Chart(off.getContext('2d'), cfg);
+                            requestAnimationFrame(() => requestAnimationFrame(() => {
+                                const url = off.toDataURL('image/png');
+                                ch.destroy(); document.body.removeChild(off);
+                                resolve(url);
+                            }));
+                        });
+
+                        const loadLogoImg = () => new Promise(r => {
+                            const img = new Image(); img.crossOrigin = 'anonymous';
+                            img.onload = () => r(img); img.onerror = () => r(null);
+                            img.src = '/baggedup.logo.png?' + Date.now();
+                        });
+
                         const isStory = format === 'png-story';
                         const CW = 1080; const CH = isStory ? 1920 : 1350;
                         const PAD = 52;
@@ -1305,7 +1238,7 @@ export default function App() {
                             if (logoImg) { ctx.drawImage(logoImg, PAD, PAD, logoSz, logoSz); }
                             else {
                                 ctx.fillStyle='#f97316'; rrPath(ctx,PAD,PAD,logoSz,logoSz,16); ctx.fill();
-                                ctx.fillStyle='#fff'; ctx.font='bold 16px system-ui,sans-serif'; ctx.textAlign='center';
+                                ctx.fillStyle='#fff'; ctx.font='bold 16px system-ui'; ctx.textAlign='center';
                                 ctx.fillText('BAGGED',PAD+logoSz/2,PAD+40); ctx.fillText('UP',PAD+logoSz/2,PAD+60);
                             }
                             ctx.textAlign='left';
@@ -1325,10 +1258,10 @@ export default function App() {
 
                         function mkC() { const c=document.createElement('canvas'); c.width=CW; c.height=CH; return c; }
 
-                        // Slide 1: Overview
+                        // ── Slide 1: Disc Overview with ace trophies ──
                         const s1=mkC(); const c1=s1.getContext('2d');
                         c1.fillStyle='#0b0f1a'; c1.fillRect(0,0,CW,CH);
-                        const top1 = drawHeader(c1, activeBag?.name||'My Bag', 'BaggedUp • Disc Golf');
+                        const top1=drawHeader(c1, activeBag?.name||'My Bag', 'BaggedUp • Disc Golf');
                         const footH=50, avail1=CH-top1-footH;
                         const rh=Math.min(90,Math.floor(avail1/Math.max(exportDiscs.length,1)));
                         let ry=top1+4;
@@ -1336,9 +1269,26 @@ export default function App() {
                             c1.fillStyle='#0f172a'; rrPath(c1,PAD,ry,CW-PAD*2,rh-8,14); c1.fill();
                             c1.fillStyle=d.color||'#f97316'; rrPath(c1,PAD,ry,10,rh-8,4); c1.fill();
                             const fs=Math.min(28,rh*0.34);
+                            // Disc name
                             c1.fillStyle='#fff'; c1.font=`bold ${fs}px system-ui,sans-serif`; c1.textAlign='left';
                             c1.fillText(d.name.toUpperCase(), PAD+22, ry+(rh-8)*0.44);
-                            c1.fillStyle='#64748b'; c1.font=`bold ${Math.min(17,rh*0.2)}px system-ui,sans-serif`;
+                            // Ace trophies — draw after name
+                            if (d.aces > 0) {
+                                const nameWidth = c1.measureText(d.name.toUpperCase()).width;
+                                const trophyX = PAD + 22 + nameWidth + 10;
+                                const trophyY = ry + (rh-8)*0.44;
+                                const trophyCount = Math.min(d.aces, 4);
+                                c1.font = `${Math.min(fs*0.8, 22)}px system-ui,sans-serif`;
+                                for (let i = 0; i < trophyCount; i++) {
+                                    c1.fillText('🏆', trophyX + i * (Math.min(fs*0.8, 22) + 2), trophyY);
+                                }
+                                if (d.aces > 4) {
+                                    c1.fillStyle='#fbbf24'; c1.font=`bold ${Math.min(14,rh*0.16)}px system-ui,sans-serif`;
+                                    c1.fillText(`×${d.aces}`, trophyX + 4 * (Math.min(fs*0.8, 22) + 2), trophyY);
+                                    c1.fillStyle='#fff';
+                                }
+                            }
+                            c1.fillStyle='#64748b'; c1.font=`bold ${Math.min(17,rh*0.2)}px system-ui,sans-serif`; c1.textAlign='left';
                             c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+22, ry+(rh-8)*0.72);
                             const bw=70,bh=rh-18,gx=8,sx=CW-PAD-(bw+gx)*4;
                             [d.speed,d.glide,d.turn,d.fade].forEach((v,i)=>{
@@ -1353,11 +1303,10 @@ export default function App() {
                         });
                         drawFooter(c1);
 
-                        // Slides 2 & 3: Charts at live aspect ratio
-                        const cpxW = CW - PAD*2;
-
-                        const pathPxH = Math.round(cpxW / pathAspect);
-                        const pathUrl = await renderChart('path', cpxW, pathPxH);
+                        // ── Slide 2: Flight Paths ──
+                        const cpxW=CW-PAD*2;
+                        const pathPxH=Math.round(cpxW/pathAspect);
+                        const pathUrl=await renderChart('path',cpxW,pathPxH);
                         const s2=mkC(); const c2=s2.getContext('2d');
                         c2.fillStyle='#0b0f1a'; c2.fillRect(0,0,CW,CH);
                         const top2=drawHeader(c2,'Flight Paths',activeBag?.name||'My Bag');
@@ -1367,8 +1316,9 @@ export default function App() {
                         c2.drawImage(pImg,(CW-scW2)/2,top2+(avail2-scH2)/2,scW2,scH2);
                         drawFooter(c2);
 
-                        const stabPxH = Math.round(cpxW / stabAspect);
-                        const stabUrl = await renderChart('matrix', cpxW, stabPxH);
+                        // ── Slide 3: Stability Matrix ──
+                        const stabPxH=Math.round(cpxW/stabAspect);
+                        const stabUrl=await renderChart('matrix',cpxW,stabPxH);
                         const s3=mkC(); const c3=s3.getContext('2d');
                         c3.fillStyle='#0b0f1a'; c3.fillRect(0,0,CW,CH);
                         const top3=drawHeader(c3,'Stability Matrix','Speed vs Turn+Fade');
@@ -1423,9 +1373,12 @@ export default function App() {
                                 </div>
                             </div>
                             <p className="text-[10px] text-slate-600 uppercase font-bold">Download and share via any app — email, WhatsApp, Messenger, etc.</p>
-                            <button onClick={() => runExport('pdf')} disabled={exportLoading}
-                                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition">
-                                {exportLoading ? '⏳ Generating…' : '⬇ Download PDF'}
+                            <button
+                                onClick={() => runExport('pdf')}
+                                disabled={exportLoading}
+                                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition"
+                            >
+                                {exportLoading ? 'Generating...' : '⬇ Download PDF'}
                             </button>
                         </div>
 
@@ -1451,7 +1404,7 @@ export default function App() {
                             </div>
                             <div className="flex items-start gap-2 bg-slate-800/50 rounded-2xl p-3">
                                 <span className="text-base shrink-0">💡</span>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">Instagram → + → Story/Post → select image. Facebook → Stories → Create → Photo.</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">Instagram → + → Story/Post → select image.</p>
                             </div>
                         </div>
 
@@ -1461,7 +1414,6 @@ export default function App() {
             );
         })()}
         {/* =====================================================
-            PLAY ROUND MODAL        {/* =====================================================
             PLAY ROUND MODAL
         ===================================================== */}
         {showPlayRound && (() => {
