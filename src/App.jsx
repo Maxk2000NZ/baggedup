@@ -100,6 +100,15 @@ export default function App() {
     const desktopPathRef = useRef(null);
     const desktopStabRef = useRef(null);
 
+    // Set favicon dynamically
+    useEffect(() => {
+        const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
+        link.type = 'image/png';
+        link.rel = 'icon';
+        link.href = '/BaggedUp.Favicon.png';
+        document.getElementsByTagName('head')[0].appendChild(link);
+    }, []);
+
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
@@ -272,7 +281,42 @@ export default function App() {
                     ticks: mode === 'path' ? {} : { stepSize: 1, callback: v => v }
                 }
             },
-            plugins: { legend: { display: false } }
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#0f172a',
+                    borderColor: '#1e293b',
+                    borderWidth: 1,
+                    padding: 12,
+                    callbacks: {
+                        title: (items) => {
+                            // Dataset label is the disc name
+                            return items[0]?.dataset?.label || '';
+                        },
+                        label: (item) => {
+                            // Find disc by name to get plastic + weight
+                            const name = item.dataset.label;
+                            const disc = filtered.find(d => d.name === name);
+                            if (!disc) return '';
+                            const plastic = disc.plastic || 'Premium';
+                            const weight = disc.weight ? disc.weight + 'g' : '';
+                            return `${plastic}${weight ? '  •  ' + weight : ''}`;
+                        },
+                        labelColor: (item) => ({
+                            borderColor: item.dataset.borderColor,
+                            backgroundColor: item.dataset.backgroundColor,
+                            borderRadius: 4,
+                        }),
+                    },
+                    titleFont: { family: 'system-ui', weight: 'bold', size: 13 },
+                    bodyFont: { family: 'system-ui', size: 11 },
+                    titleColor: '#f1f5f9',
+                    bodyColor: '#94a3b8',
+                    displayColors: true,
+                    boxWidth: 10,
+                    boxHeight: 10,
+                }
+            }
         }
     });
 
@@ -380,7 +424,24 @@ export default function App() {
                                 </div>
                             )}
                             {d.is_idea && (
-                                <button onClick={() => updateDiscInDB({ ...d, is_idea: false })} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>
+                                <div className="flex flex-col gap-1.5 ml-4 shrink-0">
+                                    <button
+                                        onClick={() => updateDiscInDB({ ...d, is_idea: false })}
+                                        className="bg-emerald-600 hover:bg-emerald-500 text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition whitespace-nowrap"
+                                    >
+                                        ✓ Bought
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            const country = settings.country || 'New Zealand';
+                                            const query = encodeURIComponent(`buy ${d.name} ${d.brand} disc golf ${country}`);
+                                            window.open(`https://www.google.com/search?q=${query}`, '_blank');
+                                        }}
+                                        className="bg-blue-600/20 hover:bg-blue-600/40 border border-blue-500/30 text-blue-400 text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition whitespace-nowrap"
+                                    >
+                                        🛒 Buy One
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
@@ -451,11 +512,23 @@ export default function App() {
                         <button onClick={() => setSidebarOpen(true)} className="text-2xl lg:hidden">☰</button>
                         <img src={LOGO_URL} alt="BaggedUp Logo" className="h-10 w-10 object-contain lg:hidden" />
                     </div>
-                    <div className="bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 flex items-center gap-2">
-                        <select value={activeBagId} onChange={(e) => setActiveBagId(e.target.value)} className="bg-transparent text-[10px] font-black uppercase outline-none text-orange-500">
-                            {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                        </select>
-                        <button onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }} className="text-slate-500 text-xs">✎</button>
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex items-center">
+                            <span className="absolute left-3 text-orange-500 text-xs pointer-events-none">🎒</span>
+                            <select
+                                value={activeBagId}
+                                onChange={(e) => setActiveBagId(e.target.value)}
+                                className="appearance-none bg-slate-800 border border-slate-700 text-orange-500 font-black text-[11px] uppercase pl-8 pr-8 py-2.5 rounded-2xl outline-none cursor-pointer hover:border-orange-500 transition focus:border-orange-500"
+                            >
+                                {bags.map(b => <option key={b.id} value={b.id} style={{background:'#1e293b'}}>{b.name}</option>)}
+                            </select>
+                            <span className="absolute right-3 text-slate-500 text-[10px] pointer-events-none">▾</span>
+                        </div>
+                        <button
+                            onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }}
+                            className="w-9 h-9 rounded-2xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition flex items-center justify-center text-sm"
+                            title="Rename bag"
+                        >✎</button>
                     </div>
                     <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
                 </header>
