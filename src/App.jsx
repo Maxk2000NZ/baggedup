@@ -1576,7 +1576,109 @@ export default function App() {
                             <select name="bag" defaultValue={editing.bag_id || ''} className="bg-slate-800 p-4 rounded-xl text-[16px] text-white">
                                 <option value="">Storage</option>
                                 {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                            </select>
+                            </sel                            onClick={() => handleCommunityDiscClick(disc)}                            const [showTutorial, setShowTutorial] = useState(false);
+                            const [tutorialStep, setTutorialStep] = useState(0);
+                            const [showReviewModal, setShowReviewModal] = useState(false);
+                            const [reviewDisc, setReviewDisc] = useState(null);                            const tutorialSteps = [
+                              { title: 'Welcome to BaggedUp!', text: 'Track your disc golf bag, get suggestions, and optimize your setup. Click next to learn more.' },
+                              { title: 'Add Discs', text: 'Start by adding discs to your bag. You can search, add from suggestions, or enter details manually.' },
+                              { title: 'Get Suggestions', text: 'BaggedUp analyzes your bag and suggests discs to fill any gaps. Click the suggestions banner to view options.' },
+                              { title: 'Track Rounds & Stats', text: 'Log rounds, track lost discs, and view flight charts to improve your game.' },
+                              { title: 'Ready to Play!', text: 'You are all set. Enjoy BaggedUp!' }
+                            ];
+                            
+                            const completeTutorial = async () => {
+                              setShowTutorial(false);
+                              await supabase.from('settings').update({ onboarded: true }).eq('user_id', session.user.id);
+                            };                            useEffect(() => {
+                              if (!session?.user) return;
+                              const loadData = async () => {
+                                let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
+                                if (set) {
+                                  setSettings({ unit: set.unit, maxPower: set.max_power, country: set.country });
+                                  if (!set.onboarded) setShowTutorial(true);
+                                } else {
+                                  await supabase.from('settings').insert({ user_id: session.user.id });
+                                  setShowTutorial(true);
+                                }
+                                // ...existing code...
+                              };
+                              loadData();
+                            }, [session]);                            const handleCommunityDiscClick = (disc) => {
+                              setReviewDisc(disc);
+                              setShowReviewModal(true);
+                            };
+                            
+                            const approveCommunityDisc = async () => {
+                              // Add disc to global directory (FACTORY_DB or your global table)
+                              await supabase.from('global_discs').insert({
+                                model: reviewDisc.model,
+                                brand: reviewDisc.brand,
+                                speed: reviewDisc.speed,
+                                glide: reviewDisc.glide,
+                                turn: reviewDisc.turn,
+                                fade: reviewDisc.fade,
+                                // Add other fields as needed
+                              });
+                              // Remove from community suggestions
+                              await supabase.from('communitySuggestions').delete().eq('id', reviewDisc.id);
+                              setShowReviewModal(false);
+                              setReviewDisc(null);
+                            };                            if (showTutorial) {
+                              return (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+                                  <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                                    <h2 className="text-2xl font-black mb-4 text-orange-600">{tutorialSteps[tutorialStep].title}</h2>
+                                    <p className="text-slate-700 mb-8 text-base font-medium">{tutorialSteps[tutorialStep].text}</p>
+                                    <div className="flex justify-between">
+                                      <button
+                                        className="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold"
+                                        onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+                                        disabled={tutorialStep === 0}
+                                      >Back</button>
+                                      {tutorialStep < tutorialSteps.length - 1 ? (
+                                        <button
+                                          className="bg-orange-600 text-white px-4 py-2 rounded font-bold"
+                                          onClick={() => setTutorialStep(tutorialStep + 1)}
+                                        >Next</button>
+                                      ) : (
+                                        <button
+                                          className="bg-emerald-600 text-white px-4 py-2 rounded font-bold"
+                                          onClick={completeTutorial}
+                                        >Finish</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            
+                            if (showReviewModal && reviewDisc) {
+                              return (
+                                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+                                  <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                                    <h2 className="text-2xl font-black mb-4 text-blue-600">Review Disc</h2>
+                                    <p className="mb-2 text-lg font-bold">{reviewDisc.model} <span className="text-slate-500">by {reviewDisc.brand}</span></p>
+                                    <p className="mb-4 text-base">Flight Numbers: <span className="font-mono">{reviewDisc.speed} / {reviewDisc.glide} / {reviewDisc.turn} / {reviewDisc.fade}</span></p>
+                                    <p className="mb-6 text-slate-600">If these details are correct, click Confirm to add this disc to the global directory for all users.</p>
+                                    <div className="flex justify-between">
+                                      <button
+                                        className="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold"
+                                        onClick={() => { setShowReviewModal(false); setReviewDisc(null); }}
+                                      >Cancel</button>
+                                      <button
+                                        className="bg-blue-600 text-white px-4 py-2 rounded font-bold"
+                                        onClick={approveCommunityDisc}
+                                      >Confirm</button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }                            {communitySuggestions.map(disc => (
+                              <div key={disc.id} onClick={() => handleCommunityDiscClick(disc)}>
+                                {/* Render disc info here */}
+                              </div>
+                            ))}ect>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <input name="b" defaultValue={editing.brand} placeholder="BRAND" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
