@@ -677,7 +677,7 @@ export default function App() {
         if (!session?.user) return;
         const loadData = async () => {
             let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
-            if (set) setSettings({ unit: set.unit, maxPower: set.max_power, country: set.country });
+            if (set) setSettings({ unit: set.unit, max_power: set.max_power, country: set.country });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
             const { data: b } = await supabase.from('bags').select('*');
@@ -760,10 +760,9 @@ export default function App() {
         const newDiscs = discs.filter(d => d.id !== id);
         setDiscs(newDiscs);
         await supabase.from('discs').delete().eq('id', id);
-        // If bag is no longer full, reset suggestionPool to show new gaps
-        // gapAnalysis will recalculate on next render, so use its result
+        // If bag is no longer full or is empty, reset suggestionPool to show new gaps
         setTimeout(() => {
-            if (typeof gapAnalysis !== 'undefined' && gapAnalysis && !gapAnalysis.allFilled) {
+            if (typeof gapAnalysis !== 'undefined' && gapAnalysis && (!gapAnalysis.allFilled || newDiscs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea).length === 0)) {
                 setSuggestionPool(gapAnalysis.gaps);
             }
         }, 0);
@@ -1395,7 +1394,7 @@ export default function App() {
             {/* COMMUNITY ADD */}
             {showCommunityAdd && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
-                    <form onSubmit={async e => {
+                    <form onSubmit={e => {
                         e.preventDefault();
                         await addDiscToDB({ ...communityFormData, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
                         alert(`✅ "${communityFormData.name}" added to your bag and the global directory!`);
@@ -1412,15 +1411,81 @@ export default function App() {
                             {['speed', 'glide', 'turn', 'fade'].map((l, i) => {
                                 const constraints = { speed: { min: 1, max: 13 }, glide: { min: 1, max: 7 }, turn: { min: -5, max: 3 }, fade: { min: 0, max: 4 } };
                                 const { min, max } = constraints[l];
-                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd', 'Gld', 'Trn', 'Fde'][i]}</span><input type="text" inputMode="decimal" value={communityFormData[l]} onChange={(e) => {
+                                     useEffect(() => {
+                                    if (!session?.user) return;
+                                    const loadData = async () => {
+                                        let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
+                                        if (set) {
+                                            setSettings({ unit: set.unit, maxPower: set.max_power, country: set.country });
+                                            // Show tutorial if not onboarded
+                                            if (!set.onboarded) setShowTutorial(true);
+                                        } else {
+                                            await supabase.from('settings').insert({ user_id: session.user.id });
+                                            setShowTutorial(true);
+                                        }
+                                        // ...existing code...
+                                    };
+                                    loadData();
+                                }, [session]);                                const tutorialSteps = [
+                                    { title: 'Welcome to BaggedUp!', text: 'Track your disc golf bag, get suggestions, and optimize your setup. Click next to learn more.' },
+                                    { title: 'Add Discs', text: 'Start by adding discs to your bag. You can search, add from suggestions, or enter details manually.' },
+                                    { title: 'Get Suggestions', text: 'BaggedUp analyzes your bag and suggests discs to fill any gaps. Click the suggestions banner to view options.' },
+                                    { title: 'Track Rounds & Stats', text: 'Log rounds, track lost discs, and view flight charts to improve your game.' },
+                                    { title: 'Ready to Play!', text: 'You are all set. Enjoy BaggedUp!' }
+                                ];
+                                
+                                const completeTutorial = async () => {
+                                    setShowTutorial(false);
+                                    await supabase.from('settings').update({ onboarded: true }).eq('user_id', session.user.id);
+                                };                                if (showTutorial) {
+                                    return (
+                                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+                                            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                                                <h2 className="text-2xl font-black mb-4 text-blue-600">{tutorialSteps[tutorialStep].title}</h2>
+                                                <p className="mb-2 text-lg font-bold">{tutorialSteps[tutorialStep].text}</p>
+                                                <div className="flex justify-between">
+                                                    <button
+                                                        className="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold"
+                                                        onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+                                                        disabled={tutorialStep === 0}
+                                                    >Back</button>
+                                                    {tutorialStep < tutorialSteps.length - 1 ? (
+                                                        <button
+                                                            className="bg-orange-600 text-white px-4 py-2 rounded font-bold"
+                                                            onClick={() => setTutorialStep(tutorialStep + 1)}
+                                                        >Next</button>
+                                                    ) : (
+                                                        <button
+                                                            className="bg-emerald-600 text-white px-4 py-2 rounded font-bold"
+                                                            onClick={completeTutorial}
+                                                        >Finish</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }                           return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd', 'Gld', 'Trn', 'Fde'][i]}</span><input name={l} type="text" inputMode="decimal" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} onBlur={(e) => {
                                     const val = parseFloat(e.target.value);
-                                    if (!isNaN(val)) setCommunityFormData({ ...communityFormData, [l]: Math.max(min, Math.min(max, val)) });
-                                    else if (e.target.value === '' || e.target.value === '-') setCommunityFormData({ ...communityFormData, [l]: e.target.value });
+                                    if (!isNaN(val)) e.target.value = Math.max(min, Math.min(max, val));
                                 }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]" /></div>);
                             })}
                         </div>
-                        <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl hover:bg-blue-700 transition">Add to Directory</button>
-                        <button type="button" onClick={() => setShowCommunityAdd(false)} className="w-full py-3 text-slate-400 font-black uppercase text-xs">Cancel</button>
+                        <div className="bg-slate-800 p-4 rounded-xl">
+                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1">
+                                <span>Power Calibration</span>
+                                <span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span>
+                            </div>
+                            <input name="d" type="range" min={settings.unit === 'm' ? 15 : 50} max={settings.unit === 'm' ? 198 : 650} step="1" defaultValue={settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)} className="w-full" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Aces</span><input name="a" type="number" defaultValue={editing.aces || 0} className="bg-transparent font-black text-orange-500 w-full text-[16px]" /></div>
+                            <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Path Color</span><input name="c" type="color" defaultValue={editing.color} className="w-full h-6 bg-transparent" /></div>
+                        </div>
+                        <div className="flex gap-2">
+                            <label className="flex-1 bg-slate-800 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-slate-500"><input name="fav" type="checkbox" defaultChecked={editing.favorite} className="accent-orange-500 h-5 w-5" />Collection</label>
+                            <label className="flex-1 bg-red-900/20 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-red-500"><input name="lost" type="checkbox" defaultChecked={editing.status === 'lost'} className="accent-red-500 h-5 w-5" />Lost Disc</label>
+                        </div>
+                        <button type="submit" className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Sync to Cloud</button>
                     </form>
                 </div>
             )}
@@ -1524,7 +1589,60 @@ export default function App() {
                             {['s', 'g', 't', 'f'].map((l, i) => {
                                 const constraints = { s: { min: 1, max: 13 }, g: { min: 1, max: 7 }, t: { min: -5, max: 3 }, f: { min: 0, max: 4 } };
                                 const { min, max } = constraints[l];
-                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd', 'Gld', 'Trn', 'Fde'][i]}</span><input name={l} type="text" inputMode="decimal" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} onBlur={(e) => {
+                                     useEffect(() => {
+                                    if (!session?.user) return;
+                                    const loadData = async () => {
+                                        let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
+                                        if (set) {
+                                            setSettings({ unit: set.unit, maxPower: set.max_power, country: set.country });
+                                            // Show tutorial if not onboarded
+                                            if (!set.onboarded) setShowTutorial(true);
+                                        } else {
+                                            await supabase.from('settings').insert({ user_id: session.user.id });
+                                            setShowTutorial(true);
+                                        }
+                                        // ...existing code...
+                                    };
+                                    loadData();
+                                }, [session]);                                const tutorialSteps = [
+                                    { title: 'Welcome to BaggedUp!', text: 'Track your disc golf bag, get suggestions, and optimize your setup. Click next to learn more.' },
+                                    { title: 'Add Discs', text: 'Start by adding discs to your bag. You can search, add from suggestions, or enter details manually.' },
+                                    { title: 'Get Suggestions', text: 'BaggedUp analyzes your bag and suggests discs to fill any gaps. Click the suggestions banner to view options.' },
+                                    { title: 'Track Rounds & Stats', text: 'Log rounds, track lost discs, and view flight charts to improve your game.' },
+                                    { title: 'Ready to Play!', text: 'You are all set. Enjoy BaggedUp!' }
+                                ];
+                                
+                                const completeTutorial = async () => {
+                                    setShowTutorial(false);
+                                    await supabase.from('settings').update({ onboarded: true }).eq('user_id', session.user.id);
+                                };                                if (showTutorial) {
+                                    return (
+                                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+                                            <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
+                                                <h2 className="text-2xl font-black mb-4 text-blue-600">{tutorialSteps[tutorialStep].title}</h2>
+                                                <p className="mb-2 text-lg font-bold">{tutorialSteps[tutorialStep].text}</p>
+                                                <div className="flex justify-between">
+                                                    <button
+                                                        className="bg-slate-200 text-slate-700 px-4 py-2 rounded font-bold"
+                                                        onClick={() => setTutorialStep(Math.max(0, tutorialStep - 1))}
+                                                        disabled={tutorialStep === 0}
+                                                    >Back</button>
+                                                    {tutorialStep < tutorialSteps.length - 1 ? (
+                                                        <button
+                                                            className="bg-orange-600 text-white px-4 py-2 rounded font-bold"
+                                                            onClick={() => setTutorialStep(tutorialStep + 1)}
+                                                        >Next</button>
+                                                    ) : (
+                                                        <button
+                                                            className="bg-emerald-600 text-white px-4 py-2 rounded font-bold"
+                                                            onClick={completeTutorial}
+                                                        >Finish</button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                }                           return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd', 'Gld', 'Trn', 'Fde'][i]}</span><input name={l} type="text" inputMode="decimal" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} onBlur={(e) => {
                                     const val = parseFloat(e.target.value);
                                     if (!isNaN(val)) e.target.value = Math.max(min, Math.min(max, val));
                                 }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]" /></div>);
