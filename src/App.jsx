@@ -591,6 +591,37 @@ const FACTORY_DB = [
     {Manufacturer:"Thought Space Athletics",Model:"Synapse",Speed:12,Glide:5,Turn:-1.5,Fade:3},
 ];
 
+// ── PLAYER PROFILE ICONS & COLOURS ──
+const PLAYER_ICONS = ['🥏','🎯','🦅','🌲','🔥','⚡','🏔','🌊','🦁','👾'];
+const PLAYER_COLOURS = [
+    { name: 'Orange', hex: '#f97316' },
+    { name: 'Cyan',   hex: '#22d3ee' },
+    { name: 'Emerald',hex: '#10b981' },
+    { name: 'Violet', hex: '#8b5cf6' },
+    { name: 'Rose',   hex: '#f43f5e' },
+    { name: 'Amber',  hex: '#f59e0b' },
+    { name: 'Sky',    hex: '#38bdf8' },
+    { name: 'Lime',   hex: '#84cc16' },
+    { name: 'Pink',   hex: '#ec4899' },
+    { name: 'Slate',  hex: '#94a3b8' },
+];
+
+// ── COMMUNITY DATA TRACKING ──
+// Tracks disc add events for trending/heatmap — written to DB, read later when we have volume
+const recordDiscEvent = async (supabase, discName, brand, speed, turn, fade, userId) => {
+    try {
+        await supabase.from('disc_events').insert({
+            disc_name: discName,
+            brand,
+            speed: parseFloat(speed),
+            turn: parseFloat(turn),
+            fade: parseFloat(fade),
+            user_id: userId,
+            event_type: 'add',
+        });
+    } catch (_) { /* non-critical */ }
+};
+
 export default function App() {
     const [session, setSession] = useState(null);
     const [authEmail, setAuthEmail] = useState('');
@@ -601,7 +632,11 @@ export default function App() {
     const [signupUserId, setSignupUserId] = useState(null); // temp userId after email signup
     const [authUsername, setAuthUsername] = useState('');
     const [authPdga, setAuthPdga] = useState('');
-    const [myProfile, setMyProfile] = useState(null); // { username, pdga_number }
+    const [authIcon, setAuthIcon] = useState('🥏');
+    const [authColour, setAuthColour] = useState('#f97316');
+    const [myProfile, setMyProfile] = useState(null); // { username, pdga_number, icon, colour }
+    const [showHeatmap, setShowHeatmap] = useState(false);
+    const [heatmapData, setHeatmapData] = useState(null);
     const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both' });
     // windConfig: { type: 'calm'|'headwind'|'tailwind'|'crosswind', speed: number (mph or km/h in display), direction: 'ltr'|'rtl' }
     const [windConfig, setWindConfig] = useState({ type: 'calm', speed: 0, direction: 'ltr' });
@@ -716,18 +751,18 @@ export default function App() {
         if (!authUsername.trim()) { alert('Please enter a username.'); return; }
         setAuthLoading(true);
         const userId = signupUserId || session?.user?.id;
-        // Check username is unique
         const { data: existing } = await supabase.from('profiles').select('id').eq('username', authUsername.trim().toLowerCase()).single();
         if (existing) { alert('That username is already taken — please choose another.'); setAuthLoading(false); return; }
-        // Save profile
         const { error } = await supabase.from('profiles').upsert({
             user_id: userId,
             username: authUsername.trim().toLowerCase(),
             pdga_number: authPdga.trim() || null,
             email: authEmail.trim().toLowerCase(),
+            icon: authIcon,
+            colour: authColour,
         });
         if (error) { alert('Error saving profile: ' + error.message); setAuthLoading(false); return; }
-        setMyProfile({ username: authUsername.trim().toLowerCase(), pdga_number: authPdga.trim() || null });
+        setMyProfile({ username: authUsername.trim().toLowerCase(), pdga_number: authPdga.trim() || null, icon: authIcon, colour: authColour });
         setAuthMessage('Profile created! Check your email to confirm your account.');
         setAuthMode('login');
         setAuthLoading(false);
@@ -769,6 +804,8 @@ export default function App() {
             const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).single();
             if (profile) {
                 setMyProfile(profile);
+                if (profile.icon) setAuthIcon(profile.icon);
+                if (profile.colour) setAuthColour(profile.colour);
             } else {
                 // Existing user with no profile — prompt setup
                 setAuthEmail(session.user.email || '');
@@ -802,17 +839,17 @@ export default function App() {
             // Search by username OR pdga_number OR email
             const { data: byUsername } = await supabase.from('profiles').select('*').eq('username', q).single();
             if (byUsername) {
-                setCardMateSearchResult({ found: true, userId: byUsername.user_id, email: byUsername.email, username: byUsername.username, pdga: byUsername.pdga_number, country: byUsername.country });
+                setCardMateSearchResult({ found: true, userId: byUsername.user_id, email: byUsername.email, username: byUsername.username, pdga: byUsername.pdga_number, country: byUsername.country, icon: byUsername.icon, colour: byUsername.colour });
                 setCardMateSearchLoading(false); return;
             }
             const { data: byPdga } = await supabase.from('profiles').select('*').eq('pdga_number', q).single();
             if (byPdga) {
-                setCardMateSearchResult({ found: true, userId: byPdga.user_id, email: byPdga.email, username: byPdga.username, pdga: byPdga.pdga_number, country: byPdga.country });
+                setCardMateSearchResult({ found: true, userId: byPdga.user_id, email: byPdga.email, username: byPdga.username, pdga: byPdga.pdga_number, country: byPdga.country, icon: byPdga.icon, colour: byPdga.colour });
                 setCardMateSearchLoading(false); return;
             }
             const { data: byEmail } = await supabase.from('profiles').select('*').eq('email', q).single();
             if (byEmail) {
-                setCardMateSearchResult({ found: true, userId: byEmail.user_id, email: byEmail.email, username: byEmail.username, pdga: byEmail.pdga_number, country: byEmail.country });
+                setCardMateSearchResult({ found: true, userId: byEmail.user_id, email: byEmail.email, username: byEmail.username, pdga: byEmail.pdga_number, country: byEmail.country, icon: byEmail.icon, colour: byEmail.colour });
                 setCardMateSearchLoading(false); return;
             }
             // Check not searching yourself
@@ -823,7 +860,7 @@ export default function App() {
         setCardMateSearchLoading(false);
     };
 
-    const addCardMate = async (mateUserId, mateEmail, mateUsername, matePdga) => {
+    const addCardMate = async (mateUserId, mateEmail, mateUsername, matePdga, mateIcon, mateColour) => {
         const alreadySaved = cardMates.some(cm => cm.mate_user_id === mateUserId);
         if (alreadySaved) return;
         const { data } = await supabase.from('card_mates').insert({
@@ -832,6 +869,8 @@ export default function App() {
             mate_email: mateEmail,
             mate_username: mateUsername || null,
             mate_pdga: matePdga || null,
+            mate_icon: mateIcon || '🥏',
+            mate_colour: mateColour || '#22d3ee',
         }).select().single();
         if (data) setCardMates(prev => [...prev, data]);
     };
@@ -910,7 +949,11 @@ export default function App() {
         delete payload.id;
         const { data, error } = await supabase.from('discs').insert(payload).select().single();
         if (error) console.error('Error saving disc:', error);
-        else if (data) setDiscs([...discs, data]);
+        else if (data) {
+            setDiscs([...discs, data]);
+            // Record community event (non-blocking)
+            recordDiscEvent(supabase, discObj.name, discObj.brand, discObj.speed, discObj.turn, discObj.fade, session.user.id);
+        }
     };
 
     const updateDiscInDB = async (u) => {
@@ -1504,7 +1547,36 @@ export default function App() {
                                     onChange={e => setAuthPdga(e.target.value.replace(/[^0-9]/g, ''))}
                                     className="w-full bg-slate-900 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-cyan-500 transition placeholder-slate-600"
                                 />
-                                <p className="text-[10px] text-slate-600 font-bold">Players can also find you by your PDGA number.</p>
+                            </div>
+
+                            {/* Player Icon */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Your Icon</label>
+                                <div className="grid grid-cols-5 gap-2">
+                                    {PLAYER_ICONS.map(icon => (
+                                        <button key={icon} type="button"
+                                            onClick={() => setAuthIcon(icon)}
+                                            className={`py-3 text-2xl rounded-2xl border-2 transition ${authIcon === icon ? 'border-orange-500 bg-orange-500/20' : 'border-slate-700 bg-slate-800 hover:border-slate-500'}`}>
+                                            {icon}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Player Colour */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest">Your Colour</label>
+                                <div className="grid grid-cols-5 gap-2">
+                                    {PLAYER_COLOURS.map(c => (
+                                        <button key={c.hex} type="button"
+                                            onClick={() => setAuthColour(c.hex)}
+                                            className={`py-3 rounded-2xl border-2 transition text-[9px] font-black uppercase ${authColour === c.hex ? 'border-white scale-105' : 'border-transparent hover:border-slate-500'}`}
+                                            style={{ backgroundColor: c.hex + '33', borderColor: authColour === c.hex ? c.hex : undefined }}>
+                                            <div className="w-5 h-5 rounded-full mx-auto mb-1" style={{ backgroundColor: c.hex }} />
+                                            {c.name}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             <button type="submit" disabled={authLoading}
@@ -1674,6 +1746,9 @@ export default function App() {
                     <span className="text-xl">🤝</span> Card Mates
                     {cardMates.length > 0 && <span className="ml-auto bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                 </button>
+                <button onClick={() => setShowHeatmap(true)} className="flex items-center gap-4 p-4 text-violet-400 font-black uppercase text-xs hover:bg-slate-800 rounded-2xl transition">
+                    <span className="text-xl">🔥</span> Mold Heatmap
+                </button>
                 <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
                 <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
             </div>
@@ -1702,6 +1777,7 @@ export default function App() {
                         <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🥏</span> Play Round
                         </button>
+                        <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-xl">🔥</span> Mold Heatmap</button>
                         <button onClick={() => { setShowCardMates(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🤝</span> Card Mates
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
@@ -2353,7 +2429,7 @@ export default function App() {
 
                                 {/* Profile card */}
                                 <div className="bg-slate-800/60 border border-slate-700 rounded-2xl p-5 flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-orange-600/20 border border-orange-500/30 flex items-center justify-center text-2xl shrink-0">🎯</div>
+                                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shrink-0 border-2" style={{ backgroundColor: (authColour || '#f97316') + '22', borderColor: authColour || '#f97316' }}>{authIcon || '🥏'}</div>
                                     <div className="min-w-0">
                                         <div className="font-black uppercase text-white text-base truncate">
                                             {myProfile?.username ? `@${myProfile.username}` : 'No username set'}
@@ -2423,6 +2499,8 @@ export default function App() {
                                                 username: accountEdit.username.trim().toLowerCase(),
                                                 pdga_number: accountEdit.pdga_number.trim() || null,
                                                 email: accountEdit.email.trim().toLowerCase(),
+                                                icon: authIcon,
+                                                colour: authColour,
                                             }).eq('user_id', session.user.id);
                                             if (profErr) throw profErr;
                                             // Update auth email if changed
@@ -2430,7 +2508,7 @@ export default function App() {
                                                 const { error: emailErr } = await supabase.auth.updateUser({ email: accountEdit.email.trim() });
                                                 if (emailErr) throw emailErr;
                                             }
-                                            setMyProfile(prev => ({ ...prev, username: accountEdit.username.trim().toLowerCase(), pdga_number: accountEdit.pdga_number.trim() || null }));
+                                            setMyProfile(prev => ({ ...prev, username: accountEdit.username.trim().toLowerCase(), pdga_number: accountEdit.pdga_number.trim() || null, icon: authIcon, colour: authColour }));
                                             setAccountMessage('✓ Profile updated successfully!');
                                         } catch (err) {
                                             setAccountMessage('Error: ' + (err.message || 'Could not save changes.'));
@@ -2441,6 +2519,36 @@ export default function App() {
                                 >
                                     {accountSaving ? 'Saving…' : 'Save Changes'}
                                 </button>
+
+                                {/* Player Icon */}
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Player Icon</label>
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {PLAYER_ICONS.map(icon => (
+                                            <button key={icon} type="button"
+                                                onClick={() => setAuthIcon(icon)}
+                                                className={`py-3 text-2xl rounded-2xl border-2 transition ${authIcon === icon ? 'border-orange-500 bg-orange-500/20' : 'border-slate-700 bg-slate-800 hover:border-slate-500'}`}>
+                                                {icon}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Player Colour */}
+                                <div className="space-y-2">
+                                    <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Player Colour</label>
+                                    <div className="grid grid-cols-5 gap-2">
+                                        {PLAYER_COLOURS.map(c => (
+                                            <button key={c.hex} type="button"
+                                                onClick={() => setAuthColour(c.hex)}
+                                                className={`py-3 rounded-2xl border-2 transition text-[9px] font-black uppercase`}
+                                                style={{ backgroundColor: c.hex + '22', borderColor: authColour === c.hex ? c.hex : '#334155' }}>
+                                                <div className="w-5 h-5 rounded-full mx-auto mb-1" style={{ backgroundColor: c.hex }} />
+                                                {c.name}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
 
                                 {/* Danger zone */}
                                 <div className="border-t border-slate-800 pt-4">
@@ -3227,7 +3335,7 @@ export default function App() {
                                             <span className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl font-black uppercase text-xs text-slate-500">That's you!</span>
                                         ) : !cardMates.some(cm => cm.mate_user_id === cardMateSearchResult.userId) ? (
                                             <button
-                                                onClick={() => addCardMate(cardMateSearchResult.userId, cardMateSearchResult.email, cardMateSearchResult.username, cardMateSearchResult.pdga)}
+                                                onClick={() => addCardMate(cardMateSearchResult.userId, cardMateSearchResult.email, cardMateSearchResult.username, cardMateSearchResult.pdga, cardMateSearchResult.icon, cardMateSearchResult.colour)}
                                                 className="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-xl font-black uppercase text-xs text-white transition"
                                             >+ Add Mate</button>
                                         ) : (
@@ -3331,7 +3439,7 @@ export default function App() {
                             <div className="space-y-2">
                                 {cardMates.map(cm => (
                                     <div key={cm.id} className="flex items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4">
-                                        <div className="w-10 h-10 rounded-2xl bg-cyan-900/40 border border-cyan-600/30 flex items-center justify-center text-lg shrink-0">🎯</div>
+                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 border" style={{ backgroundColor: (cm.mate_colour || "#22d3ee") + "22", borderColor: cm.mate_colour || "#22d3ee" }}>{cm.mate_icon || "🥏"}</div>
                                         <div className="flex-1 min-w-0">
                                             <div className="font-black uppercase text-white text-sm truncate">
                                                 {cm.mate_username ? `@${cm.mate_username}` : cm.mate_email}
@@ -3384,11 +3492,15 @@ export default function App() {
             const speedGaps = [];
             for (let i = 0; i < speeds.length - 1; i++) { if (speeds[i+1] - speeds[i] >= 4) speedGaps.push({ from: speeds[i], to: speeds[i+1] }); }
 
-            // Arm speed tip
+            // Arm speed — tiered recommendation (not cliff-edge)
             const bh = settings.bhPower || settings.maxPower;
             const bhFt = settings.unit === 'm' ? Math.round(bh * 0.3048) : bh;
-            const maxUsableSpeed = Math.round(bhFt / 30);
-            const tooFast = active.filter(d => parseFloat(d.speed) > maxUsableSpeed + 2);
+            // Comfortable max: ~1ft of distance per 30ft of arm = speed 10 at 300ft, speed 12 at 360ft, etc.
+            // Give 2 extra speeds of headroom before warning
+            const comfortSpeed = Math.round(bhFt / 28); // slightly generous
+            const hardMax = Math.round(bhFt / 24);       // still usable but pushing it
+            // Only flag discs > hardMax — not just "too fast by a bit"
+            const tooFast = active.filter(d => parseFloat(d.speed) > hardMax);
 
             const skillTips = {
                 beginner: 'Focus on discs speed 1-7. High-speed drivers are harder to control and will actually fly shorter for beginners.',
@@ -3470,13 +3582,29 @@ export default function App() {
                             <p className="text-sm font-bold text-orange-200">{skillTips[settings.skillLevel] || skillTips.intermediate}</p>
                         </div>
 
-                        {/* Arm speed warning */}
+                        {/* Arm speed advisory */}
                         {tooFast.length > 0 && (
                             <div className="bg-red-900/20 border border-red-500/30 rounded-2xl px-5 py-4">
-                                <p className="text-[10px] font-black uppercase text-red-400 mb-2">⚠️ Arm Speed Mismatch</p>
-                                <p className="text-sm font-bold text-red-300 mb-3">Based on your {settings.unit === 'm' ? Math.round(bh * 0.3048) : bh}{settings.unit} backhand, discs above speed {maxUsableSpeed + 2} may not fly as intended:</p>
-                                <div className="space-y-1">
-                                    {tooFast.map(d => <div key={d.id} className="flex items-center gap-2 text-[11px] font-bold text-red-300"><span style={{color: d.color}}>●</span>{d.name} (speed {d.speed})</div>)}
+                                <p className="text-[10px] font-black uppercase text-red-400 mb-2">⚠️ Arm Speed Advisory</p>
+                                <p className="text-sm font-bold text-red-300 mb-1">
+                                    Your backhand ({settings.unit === 'm' ? Math.round(bh * 0.3048) : bh}{settings.unit}) is most effective up to speed {comfortSpeed}.
+                                    The discs below (speed {hardMax}+) may not reach full potential:
+                                </p>
+                                <p className="text-[10px] font-bold text-red-400 mb-3">Tip: A worn-in version of a high-speed disc can fly better at lower arm speeds.</p>
+                                <div className="space-y-1.5">
+                                    {tooFast.map(d => {
+                                        const wear = parseFloat(d.wear) || 0;
+                                        const wearLabel = wear >= 0.7 ? 'Well Worn' : wear >= 0.4 ? 'Beat In' : wear >= 0.1 ? 'Slight Wear' : 'New';
+                                        return (
+                                            <div key={d.id} className="flex items-center gap-2 text-[11px] font-bold text-red-300">
+                                                <span style={{color: d.color}}>●</span>
+                                                <span>{d.name}</span>
+                                                <span className="text-red-500">Spd {d.speed}</span>
+                                                {d.plastic && <span className="text-slate-500 text-[9px] uppercase">{d.plastic}</span>}
+                                                <span className={`text-[9px] uppercase ml-auto ${wear >= 0.4 ? 'text-emerald-400' : 'text-slate-600'}`}>{wearLabel}</span>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -3484,16 +3612,34 @@ export default function App() {
                         {/* Overlapping discs */}
                         {overlaps.length > 0 && (
                             <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-2xl px-5 py-4">
-                                <p className="text-[10px] font-black uppercase text-yellow-400 mb-2">🔁 Overlapping Slots</p>
-                                <p className="text-sm font-bold text-yellow-300 mb-3">These disc slots have multiple discs covering the same role:</p>
-                                {overlaps.map(([slot, discsInSlot]) => (
-                                    <div key={slot} className="mb-2">
-                                        <div className="text-[9px] font-black uppercase text-yellow-500 mb-1">{SLOT_LABELS[slot]}</div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {discsInSlot.map(d => <span key={d.id} style={{borderColor: d.color}} className="border px-2 py-0.5 rounded-full text-[10px] font-bold text-white">{d.name}</span>)}
+                                <p className="text-[10px] font-black uppercase text-yellow-400 mb-2">🔁 Redundant Discs</p>
+                                <p className="text-sm font-bold text-yellow-300 mb-2">Multiple discs covering the same flight role. Consider which to keep based on wear and plastic:</p>
+                                {overlaps.map(([slot, discsInSlot]) => {
+                                    // Group by name — same mold in different plastics is fine, list differently
+                                    const byName = {};
+                                    discsInSlot.forEach(d => { if (!byName[d.name]) byName[d.name] = []; byName[d.name].push(d); });
+                                    const isExact = Object.keys(byName).length < discsInSlot.length;
+                                    return (
+                                        <div key={slot} className="mb-3">
+                                            <div className="text-[9px] font-black uppercase text-yellow-500 mb-2">{SLOT_LABELS[slot]}</div>
+                                            <div className="space-y-1.5">
+                                                {discsInSlot.map(d => {
+                                                    const wear = parseFloat(d.wear) || 0;
+                                                    const wearLabel = wear >= 0.7 ? '🟢 Well Worn' : wear >= 0.4 ? '🟡 Beat In' : wear >= 0.1 ? '🟠 Slight Wear' : '⚪ New';
+                                                    return (
+                                                        <div key={d.id} className="flex items-center gap-2 bg-slate-900/60 rounded-xl px-3 py-2">
+                                                            <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: d.color || '#f97316' }} />
+                                                            <span className="font-black uppercase text-white text-[11px] flex-1">{d.name}</span>
+                                                            {d.plastic && <span className="text-[9px] font-bold text-slate-400 uppercase">{d.plastic}</span>}
+                                                            <span className="text-[9px] font-bold">{wearLabel}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {isExact && <p className="text-[9px] font-bold text-yellow-600 mt-1.5">Same mould — different plastics/wear levels can be intentional. Consider keeping your most worn for utility throws.</p>}
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
 
@@ -3537,6 +3683,148 @@ export default function App() {
                         )}
 
                         <button onClick={() => setShowCoach(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
+                    </div>
+                </div>
+            );
+        })()}
+
+
+        {/* =====================================================
+            MOLD SLOT HEATMAP MODAL
+        ===================================================== */}
+        {showHeatmap && (() => {
+            const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+            const stabBucket = (t, f) => { const s = parseFloat(t) + parseFloat(f); return s >= 2 ? 'OS' : s <= -1 ? 'US' : 'ST'; };
+
+            // Build a 14×3 grid: speeds 1-14 on X, OS/ST/US on Y
+            const grid = {};
+            ['OS', 'ST', 'US'].forEach(stab => {
+                for (let sp = 1; sp <= 14; sp++) {
+                    grid[`${sp}_${stab}`] = [];
+                }
+            });
+
+            active.forEach(d => {
+                const sp = Math.round(parseFloat(d.speed));
+                const stab = stabBucket(d.turn, d.fade);
+                const key = `${sp}_${stab}`;
+                if (grid[key]) grid[key].push(d);
+            });
+
+            const maxCount = Math.max(1, ...Object.values(grid).map(v => v.length));
+
+            const SPEED_GROUPS = [
+                { label: 'Putters', range: [1,3], color: 'text-blue-400' },
+                { label: 'Mids', range: [4,6], color: 'text-emerald-400' },
+                { label: 'Fairways', range: [7,8], color: 'text-yellow-400' },
+                { label: 'Drivers', range: [9,14], color: 'text-red-400' },
+            ];
+
+            return (
+                <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl overflow-y-auto p-4 lg:p-6">
+                    <div className="w-full max-w-3xl mx-auto py-6 space-y-6">
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h2 className="text-3xl font-black italic uppercase text-violet-400">🔥 Mold Slot Heatmap</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">See which speed/stability combinations you're covering — and where the gaps are</p>
+                            </div>
+                            <button onClick={() => setShowHeatmap(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
+                        </div>
+
+                        {/* Heatmap grid */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 overflow-x-auto">
+                            {/* Y axis labels */}
+                            <div className="flex gap-1 mb-2 pl-12">
+                                {SPEED_GROUPS.map(g => (
+                                    <div key={g.label} className="flex gap-1" style={{ flex: g.range[1] - g.range[0] + 1 }}>
+                                        <div className={`flex-1 text-center text-[8px] font-black uppercase ${g.color} border-b border-slate-700 pb-1`}>{g.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                            {/* Speed numbers */}
+                            <div className="flex gap-1 mb-1 pl-12">
+                                {Array.from({ length: 14 }, (_, i) => i + 1).map(sp => (
+                                    <div key={sp} className="flex-1 text-center text-[8px] font-black text-slate-600">{sp}</div>
+                                ))}
+                            </div>
+                            {/* Rows */}
+                            {['OS', 'ST', 'US'].map(stab => (
+                                <div key={stab} className="flex gap-1 mb-1 items-center">
+                                    <div className="w-12 shrink-0 text-[9px] font-black uppercase text-slate-400 text-right pr-2">
+                                        {stab === 'OS' ? '🔵 OS' : stab === 'ST' ? '⚪ ST' : '🔴 US'}
+                                    </div>
+                                    {Array.from({ length: 14 }, (_, i) => i + 1).map(sp => {
+                                        const cell = grid[`${sp}_${stab}`] || [];
+                                        const intensity = cell.length / maxCount;
+                                        const bg = cell.length === 0
+                                            ? 'bg-slate-800 border-slate-700'
+                                            : intensity >= 1 ? 'bg-orange-500 border-orange-400'
+                                            : intensity >= 0.5 ? 'bg-orange-500/60 border-orange-500/40'
+                                            : 'bg-orange-500/30 border-orange-500/20';
+                                        return (
+                                            <div key={sp} title={cell.map(d => d.name).join(', ')}
+                                                className={`flex-1 aspect-square rounded-lg border ${bg} flex items-center justify-center transition`}>
+                                                {cell.length > 0 && (
+                                                    <span className="text-[9px] font-black text-white">{cell.length}</span>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-slate-800 border border-slate-700" /><span className="text-[10px] font-bold text-slate-500 uppercase">Empty slot</span></div>
+                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-orange-500/30 border border-orange-500/20" /><span className="text-[10px] font-bold text-slate-500 uppercase">1 disc</span></div>
+                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-orange-500" /><span className="text-[10px] font-bold text-slate-500 uppercase">Multiple discs</span></div>
+                        </div>
+
+                        {/* Per-cell disc list */}
+                        {active.length > 0 && (
+                            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 space-y-3">
+                                <p className="text-[10px] font-black uppercase text-slate-500">Your Bag — by Slot</p>
+                                {['OS','ST','US'].map(stab => (
+                                    <div key={stab}>
+                                        <div className="text-[9px] font-black uppercase text-slate-600 mb-2">
+                                            {stab === 'OS' ? '🔵 Overstable' : stab === 'ST' ? '⚪ Straight' : '🔴 Understable'}
+                                        </div>
+                                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                                            {SPEED_GROUPS.map(g => {
+                                                const discsInGroup = active.filter(d => {
+                                                    const sp = Math.round(parseFloat(d.speed));
+                                                    return sp >= g.range[0] && sp <= g.range[1] && stabBucket(d.turn, d.fade) === stab;
+                                                });
+                                                return (
+                                                    <div key={g.label} className={`rounded-2xl p-3 ${discsInGroup.length > 1 ? 'bg-yellow-900/20 border border-yellow-500/20' : discsInGroup.length === 1 ? 'bg-slate-800' : 'bg-slate-900 border border-slate-800 opacity-40'}`}>
+                                                        <div className={`text-[8px] font-black uppercase mb-1.5 ${g.color}`}>{g.label} {stab}</div>
+                                                        {discsInGroup.length === 0
+                                                            ? <div className="text-[9px] font-bold text-slate-600">Empty</div>
+                                                            : discsInGroup.map(d => (
+                                                                <div key={d.id} className="flex items-center gap-1.5 mb-0.5">
+                                                                    <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: d.color || '#f97316' }} />
+                                                                    <span className="text-[10px] font-bold text-white truncate">{d.name}</span>
+                                                                    {d.plastic && <span className="text-[8px] text-slate-500 uppercase shrink-0">{d.plastic}</span>}
+                                                                </div>
+                                                            ))}
+                                                        {discsInGroup.length > 1 && <div className="text-[8px] text-yellow-400 font-bold mt-1">⚠ Overlap</div>}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Community data note */}
+                        <div className="bg-violet-900/20 border border-violet-500/20 rounded-2xl px-5 py-4">
+                            <p className="text-[10px] font-black uppercase text-violet-400 mb-1">📊 Community Insights — Coming Soon</p>
+                            <p className="text-sm font-bold text-violet-300">As more players use BaggedUp, this heatmap will show community data — which speed/stability combinations are most popular, what discs players like you are bagging, and trending moulds this month.</p>
+                        </div>
+
+                        <button onClick={() => setShowHeatmap(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
                     </div>
                 </div>
             );
