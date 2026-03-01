@@ -757,8 +757,16 @@ export default function App() {
     };
 
     const deleteDiscInDB = async (id) => {
-        setDiscs(discs.filter(d => d.id !== id));
+        const newDiscs = discs.filter(d => d.id !== id);
+        setDiscs(newDiscs);
         await supabase.from('discs').delete().eq('id', id);
+        // If bag is no longer full, reset suggestionPool to show new gaps
+        // gapAnalysis will recalculate on next render, so use its result
+        setTimeout(() => {
+            if (typeof gapAnalysis !== 'undefined' && gapAnalysis && !gapAnalysis.allFilled) {
+                setSuggestionPool(gapAnalysis.gaps);
+            }
+        }, 0);
     };
 
     // --- WEAR / BEAT-IN PHYSICS ---
