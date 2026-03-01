@@ -92,6 +92,8 @@ export default function App() {
     const [suggestionPool, setSuggestionPool] = useState(null);
     const [communitySuggestions, setCommunitySuggestions] = useState([]);
     const [showCommunityAdd, setShowCommunityAdd] = useState(false);
+    const [showExport, setShowExport] = useState(false);
+    const [exportLoading, setExportLoading] = useState(false);
     const [showPlayRound, setShowPlayRound] = useState(false);
     const [roundChecked, setRoundChecked] = useState({});
     const [lostComment, setLostComment] = useState({});
@@ -108,13 +110,27 @@ export default function App() {
     const desktopPathRef = useRef(null);
     const desktopStabRef = useRef(null);
 
-    // Set favicon dynamically
+    // Set favicon + load export libraries
     useEffect(() => {
-        const link = document.querySelector("link[rel~='icon']") || document.createElement('link');
-        link.type = 'image/png';
-        link.rel = 'icon';
-        link.href = '/BaggedUp.Favicon.png';
-        document.getElementsByTagName('head')[0].appendChild(link);
+        // Cache-bust favicon
+        document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
+        const link = document.createElement('link');
+        link.type = 'image/png'; link.rel = 'icon';
+        link.href = '/BaggedUp.Favicon.png?v=' + Date.now();
+        document.head.appendChild(link);
+
+        // Preload jsPDF
+        if (!window.jspdf) {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            document.head.appendChild(s);
+        }
+        // Preload html2canvas
+        if (!window.html2canvas) {
+            const s2 = document.createElement('script');
+            s2.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+            document.head.appendChild(s2);
+        }
     }, []);
 
     useEffect(() => {
@@ -363,7 +379,9 @@ export default function App() {
     if (!session) return (
         <div className="h-[100dvh] w-full flex items-center justify-center bg-[#0b0f1a] p-6">
             <div className="w-full max-w-md text-center">
-                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-48 w-48 mx-auto mb-8 object-contain" />
+                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-48 w-48 mx-auto mb-4 object-contain" />
+                <h1 className="text-3xl font-black italic uppercase text-white mb-2 tracking-tight">Welcome to <span className="text-orange-500">BaggedUp</span></h1>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-8">Your disc golf bag, tracked.</p>
                 {authMessage && <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">{authMessage}</div>}
                 <form onSubmit={(e) => handleLogin(e, 'login')} className="space-y-4">
                     <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
@@ -503,6 +521,9 @@ export default function App() {
                         <span className="text-xl">{item.icon}</span> {item.label}
                     </button>
                 ))}
+                <button onClick={() => setShowExport(true)} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition">
+                    <span className="text-xl">📤</span> Export Bag
+                </button>
                 <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
                     <span className="text-xl">🥏</span> Play Round
                 </button>
@@ -528,6 +549,9 @@ export default function App() {
                                 <span className="text-xl">{item.icon}</span> {item.label}
                             </button>
                         ))}
+                        <button onClick={() => { setShowExport(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition">
+                            <span className="text-xl">📤</span> Export Bag
+                        </button>
                         <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🥏</span> Play Round
                         </button>
@@ -803,7 +827,7 @@ export default function App() {
             {showSettings && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center">
                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-md space-y-6">
-                        <h2 className="text-2xl font-black italic uppercase text-orange-500">Pilot Settings</h2>
+                        <h2 className="text-2xl font-black italic uppercase text-orange-500">Bag Settings</h2>
                         <div className="flex flex-col gap-2 bg-slate-800 p-4 rounded-xl border border-slate-700">
                             <span className="text-[10px] font-black uppercase text-slate-500">Home Territory</span>
                             <input value={settings.country || ''} onChange={(e) => setSettings({ ...settings, country: e.target.value })} className="bg-transparent font-black text-white uppercase outline-none" />
@@ -866,6 +890,257 @@ export default function App() {
                 </div>
             )}
 
+
+        {/* =====================================================
+            EXPORT BAG MODAL
+        ===================================================== */}
+        {showExport && (() => {
+            const exportDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+            const activeBag = bags.find(b => b.id === activeBagId);
+
+            const runExport = async (format) => {
+                setExportLoading(true);
+                try {
+                    // Dynamically load jsPDF + html2canvas
+                    const [{ jsPDF }, h2c] = await Promise.all([
+                        import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').catch(() => window),
+                        import('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').catch(() => window),
+                    ]);
+
+                    const JSPDF = window.jspdf?.jsPDF || jsPDF;
+
+                    if (format === 'pdf') {
+                        const doc = new JSPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                        const W = 210; const H = 297;
+                        const dark = [11, 15, 26]; const orange = [249, 115, 22]; const slate = [30, 41, 59];
+
+                        // ── PAGE 1: Summary ──
+                        doc.setFillColor(...dark); doc.rect(0, 0, W, H, 'F');
+
+                        // Logo placeholder + title
+                        doc.setFillColor(...orange); doc.roundedRect(15, 15, 40, 40, 6, 6, 'F');
+                        doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+                        doc.text('BAGGED', 35, 33, {align:'center'}); doc.text('UP', 35, 41, {align:'center'});
+
+                        doc.setTextColor(...orange); doc.setFontSize(28); doc.setFont('helvetica','bold');
+                        doc.text(activeBag?.name || 'My Bag', 62, 32);
+                        doc.setTextColor(148,163,184); doc.setFontSize(9); doc.setFont('helvetica','normal');
+                        doc.text('BaggedUp — Disc Golf Bag Export', 62, 40);
+                        doc.text(new Date().toLocaleDateString('en-NZ', {day:'numeric',month:'long',year:'numeric'}), 62, 47);
+
+                        // Divider
+                        doc.setDrawColor(...orange); doc.setLineWidth(0.5); doc.line(15, 62, W-15, 62);
+
+                        // Column headers
+                        const cols = [15, 65, 100, 122, 137, 152, 167, 182];
+                        const headers = ['Disc','Brand','Plastic','Wt','Spd','Gld','Trn','Fde'];
+                        doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...orange);
+                        headers.forEach((h, i) => doc.text(h, cols[i], 70));
+                        doc.setDrawColor(...slate); doc.setLineWidth(0.3); doc.line(15, 73, W-15, 73);
+
+                        // Disc rows
+                        let y = 80;
+                        exportDiscs.forEach((d, idx) => {
+                            if (y > H - 20) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F'); y = 20; }
+                            const s = getStats(d);
+                            const rowBg = idx % 2 === 0;
+                            if (rowBg) { doc.setFillColor(15,23,42); doc.rect(13, y-5, W-26, 10, 'F'); }
+
+                            // Colour bar
+                            const hex = d.color || '#f97316';
+                            const r = parseInt(hex.slice(1,3),16)||249;
+                            const g = parseInt(hex.slice(3,5),16)||115;
+                            const b = parseInt(hex.slice(5,7),16)||22;
+                            doc.setFillColor(r,g,b); doc.rect(13, y-5, 2, 10, 'F');
+
+                            doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+                            doc.text((d.name||'').slice(0,14), cols[0], y);
+                            doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
+                            doc.text((d.brand||'').slice(0,12), cols[1], y);
+                            doc.text((d.plastic||'—').slice(0,8), cols[2], y);
+                            doc.text(d.weight ? d.weight+'g' : '—', cols[3], y);
+                            doc.setTextColor(255,255,255);
+                            doc.text(String(d.speed||''), cols[4], y);
+                            doc.text(String(d.glide||''), cols[5], y);
+                            doc.setTextColor(s.turn < (parseFloat(d.turn)||0)-0.1 ? [251,146,60] : [255,255,255]);
+                            doc.text(s.turn.toFixed(1), cols[6], y);
+                            doc.setTextColor(s.fade < (parseFloat(d.fade)||0)-0.1 ? [251,146,60] : [255,255,255]);
+                            doc.text(s.fade.toFixed(1), cols[7], y);
+                            y += 10;
+                        });
+
+                        doc.setTextColor(71,85,105); doc.setFontSize(7);
+                        doc.text('* Orange values indicate beat-in wear effect', 15, H-8);
+
+                        // ── PAGE 2: Flight Paths chart ──
+                        doc.addPage();
+                        doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
+                        doc.setTextColor(...orange); doc.setFontSize(18); doc.setFont('helvetica','bold');
+                        doc.text('Flight Paths', 15, 20);
+                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
+                        doc.text(activeBag?.name || 'My Bag', 15, 28);
+
+                        const pathCanvas = document.getElementById('desktopPathChart') || document.getElementById('mainChart');
+                        if (pathCanvas) {
+                            const imgData = pathCanvas.toDataURL('image/png');
+                            doc.addImage(imgData, 'PNG', 15, 35, W-30, 130);
+                        }
+
+                        // Legend — no overlap, laid out in grid
+                        doc.setFontSize(7); let lx = 15; let ly = 175;
+                        exportDiscs.forEach((d, i) => {
+                            if (lx > W - 50) { lx = 15; ly += 8; }
+                            const hex = d.color || '#f97316';
+                            const r = parseInt(hex.slice(1,3),16)||249;
+                            const g = parseInt(hex.slice(3,5),16)||115;
+                            const b = parseInt(hex.slice(5,7),16)||22;
+                            doc.setFillColor(r,g,b); doc.rect(lx, ly-3.5, 4, 4, 'F');
+                            doc.setTextColor(255,255,255); doc.setFont('helvetica','normal');
+                            doc.text(d.name, lx+6, ly);
+                            lx += 45;
+                        });
+
+                        // ── PAGE 3: Stability Matrix chart ──
+                        doc.addPage();
+                        doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
+                        doc.setTextColor(...orange); doc.setFontSize(18); doc.setFont('helvetica','bold');
+                        doc.text('Stability Matrix', 15, 20);
+                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
+                        doc.text('Speed vs Stability (Turn + Fade) — higher = more overstable', 15, 28);
+
+                        const stabCanvas = document.getElementById('desktopStabChart') || document.getElementById('mainChart');
+                        if (stabCanvas) {
+                            const imgData = stabCanvas.toDataURL('image/png');
+                            doc.addImage(imgData, 'PNG', 15, 35, W-30, 140);
+                        }
+
+                        // Non-overlapping disc labels alongside the chart
+                        // Sort by stability so labels flow nicely
+                        const sorted = [...exportDiscs].sort((a,b) => getStats(b).stability - getStats(a).stability);
+                        doc.setFontSize(6.5); let labY = 185;
+                        sorted.forEach((d) => {
+                            const s = getStats(d);
+                            const hex = d.color || '#f97316';
+                            const r = parseInt(hex.slice(1,3),16)||249;
+                            const g = parseInt(hex.slice(3,5),16)||115;
+                            const b = parseInt(hex.slice(5,7),16)||22;
+                            doc.setFillColor(r,g,b); doc.rect(15, labY-3.5, 4, 4, 'F');
+                            doc.setTextColor(255,255,255);
+                            doc.text(`${d.name}  •  S${d.speed}  ${s.stability.toFixed(1)} stability`, 21, labY);
+                            labY += 7;
+                            if (labY > H-10) labY = H-10;
+                        });
+
+                        doc.save(`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}.pdf`);
+
+                    } else if (format === 'png-story') {
+                        // Export as 1080x1920 story PNG
+                        const storyEl = document.getElementById('export-story-preview');
+                        if (storyEl && window.html2canvas) {
+                            const canvas = await window.html2canvas(storyEl, { scale: 2, backgroundColor: '#0b0f1a', useCORS: true });
+                            const link = document.createElement('a');
+                            link.download = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}-story.png`;
+                            link.href = canvas.toDataURL('image/png');
+                            link.click();
+                        } else {
+                            alert('Story export requires html2canvas. Try the PDF export instead.');
+                        }
+                    }
+                } catch(err) {
+                    console.error('Export error:', err);
+                    alert('Export failed: ' + err.message);
+                }
+                setExportLoading(false);
+            };
+
+            return (
+                <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 overflow-y-auto">
+                    <div className="w-full max-w-md flex flex-col gap-6">
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-black italic text-purple-400 uppercase">📤 Export Bag</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">{activeBag?.name} — {exportDiscs.length} discs</p>
+                            </div>
+                            <button onClick={() => setShowExport(false)} className="text-2xl text-slate-500 hover:text-white">✕</button>
+                        </div>
+
+                        {/* PDF Export */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 space-y-3">
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="text-2xl">📄</span>
+                                <div>
+                                    <div className="font-black uppercase text-sm text-white">PDF Report</div>
+                                    <div className="text-[10px] text-slate-500 uppercase font-bold">3 pages — summary, flight paths, stability</div>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-slate-600 uppercase font-bold">Download and share via any app — email, WhatsApp, Messenger, etc.</p>
+                            <button
+                                onClick={() => runExport('pdf')}
+                                disabled={exportLoading}
+                                className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition"
+                            >
+                                {exportLoading ? 'Generating...' : '⬇ Download PDF'}
+                            </button>
+                        </div>
+
+                        {/* Story PNG Export */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 space-y-3">
+                            <div className="flex items-center gap-3 mb-2">
+                                <span className="text-2xl">📸</span>
+                                <div>
+                                    <div className="font-black uppercase text-sm text-white">Story / Social PNG</div>
+                                    <div className="text-[10px] text-slate-500 uppercase font-bold">1080×1920 — Instagram, Facebook Stories</div>
+                                </div>
+                            </div>
+                            <p className="text-[10px] text-slate-600 uppercase font-bold">Save the image then share directly to your story.</p>
+                            <button
+                                onClick={() => runExport('png-story')}
+                                disabled={exportLoading}
+                                className="w-full bg-pink-600 hover:bg-pink-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-sm text-white transition"
+                            >
+                                {exportLoading ? 'Generating...' : '📸 Download Story PNG'}
+                            </button>
+                        </div>
+
+                        {/* Hidden story template for html2canvas */}
+                        <div id="export-story-preview" style={{
+                            position:'absolute', left:'-9999px', top:0,
+                            width:'540px', height:'960px',
+                            background:'#0b0f1a', padding:'40px', fontFamily:'system-ui, sans-serif',
+                            display:'flex', flexDirection:'column', gap:'16px'
+                        }}>
+                            <div style={{display:'flex',alignItems:'center',gap:'16px',marginBottom:'8px'}}>
+                                <div style={{width:'56px',height:'56px',background:'#f97316',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:'900',color:'white',fontSize:'10px',textAlign:'center',lineHeight:'1.2'}}>BAGGED<br/>UP</div>
+                                <div>
+                                    <div style={{color:'#f97316',fontWeight:'900',fontSize:'22px',textTransform:'uppercase',letterSpacing:'-0.5px'}}>{activeBag?.name}</div>
+                                    <div style={{color:'#475569',fontWeight:'700',fontSize:'10px',textTransform:'uppercase',letterSpacing:'2px'}}>BaggedUp • Disc Golf</div>
+                                </div>
+                            </div>
+                            <div style={{width:'100%',height:'2px',background:'#1e293b'}} />
+                            {exportDiscs.map(d => (
+                                <div key={d.id} style={{display:'flex',alignItems:'center',gap:'12px',background:'#0f172a',borderRadius:'16px',padding:'12px 16px',borderLeft:`4px solid ${d.color||'#f97316'}`}}>
+                                    <div style={{flex:1}}>
+                                        <div style={{color:'white',fontWeight:'900',fontSize:'13px',textTransform:'uppercase'}}>{d.name}</div>
+                                        <div style={{color:'#64748b',fontWeight:'700',fontSize:'9px',textTransform:'uppercase'}}>{d.brand} • {d.plastic||'Premium'}</div>
+                                    </div>
+                                    <div style={{display:'flex',gap:'6px'}}>
+                                        {[d.speed,d.glide,d.turn,d.fade].map((v,i) => (
+                                            <div key={i} style={{background:'#1e293b',borderRadius:'8px',padding:'4px 6px',textAlign:'center'}}>
+                                                <div style={{color:'#475569',fontWeight:'900',fontSize:'7px',textTransform:'uppercase'}}>{['S','G','T','F'][i]}</div>
+                                                <div style={{color:'white',fontWeight:'900',fontSize:'11px'}}>{v}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
+                            <div style={{marginTop:'auto',color:'#1e293b',fontWeight:'700',fontSize:'9px',textTransform:'uppercase',textAlign:'center'}}>bagged-up.app</div>
+                        </div>
+
+                        <button onClick={() => setShowExport(false)} className="w-full py-4 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Close</button>
+                    </div>
+                </div>
+            );
+        })()}
         {/* =====================================================
             PLAY ROUND MODAL
         ===================================================== */}
