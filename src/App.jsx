@@ -597,6 +597,11 @@ export default function App() {
     const [authPassword, setAuthPassword] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
     const [authMessage, setAuthMessage] = useState('');
+    const [authMode, setAuthMode] = useState('login'); // 'login' | 'signup' | 'profile_setup'
+    const [signupUserId, setSignupUserId] = useState(null); // temp userId after email signup
+    const [authUsername, setAuthUsername] = useState('');
+    const [authPdga, setAuthPdga] = useState('');
+    const [myProfile, setMyProfile] = useState(null); // { username, pdga_number }
     const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, country: 'New Zealand' });
     const [activeBagId, setActiveBagId] = useState('');
     const [bags, setBags] = useState([]);
@@ -678,17 +683,42 @@ export default function App() {
         return () => subscription.unsubscribe();
     }, []);
 
-    const handleLogin = async (e, type) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setAuthLoading(true);
-        if (type === 'signup') {
-            const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
-            if (error) alert(error.message);
-            else setAuthMessage('Check your email inbox!');
-        } else {
+        if (authMode === 'login') {
             const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
             if (error) alert(error.message);
+        } else if (authMode === 'signup') {
+            // Step 1: create the auth account
+            const { data, error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+            if (error) { alert(error.message); setAuthLoading(false); return; }
+            // Move to profile setup step — store userId for profile creation
+            setSignupUserId(data?.user?.id || null);
+            setAuthMode('profile_setup');
         }
+        setAuthLoading(false);
+    };
+
+    const handleProfileSetup = async (e) => {
+        e.preventDefault();
+        if (!authUsername.trim()) { alert('Please enter a username.'); return; }
+        setAuthLoading(true);
+        const userId = signupUserId || session?.user?.id;
+        // Check username is unique
+        const { data: existing } = await supabase.from('profiles').select('id').eq('username', authUsername.trim().toLowerCase()).single();
+        if (existing) { alert('That username is already taken — please choose another.'); setAuthLoading(false); return; }
+        // Save profile
+        const { error } = await supabase.from('profiles').upsert({
+            user_id: userId,
+            username: authUsername.trim().toLowerCase(),
+            pdga_number: authPdga.trim() || null,
+            email: authEmail.trim().toLowerCase(),
+        });
+        if (error) { alert('Error saving profile: ' + error.message); setAuthLoading(false); return; }
+        setMyProfile({ username: authUsername.trim().toLowerCase(), pdga_number: authPdga.trim() || null });
+        setAuthMessage('Profile created! Check your email to confirm your account.');
+        setAuthMode('login');
         setAuthLoading(false);
     };
 
@@ -723,6 +753,17 @@ export default function App() {
             // Load saved card mates
             const { data: cm } = await supabase.from('card_mates').select('*').eq('user_id', session.user.id);
             if (cm) setCardMates(cm);
+
+            // Load own profile
+            const { data: profile } = await supabase.from('profiles').select('*').eq('user_id', session.user.id).single();
+            if (profile) {
+                setMyProfile(profile);
+            } else {
+                // Existing user with no profile — prompt setup
+                setAuthEmail(session.user.email || '');
+                setAuthMode('profile_setup');
+                setSignupUserId(session.user.id);
+            }
         };
         loadData();
     }, [session]);
@@ -733,33 +774,45 @@ export default function App() {
     };
 
     // --- CARD MATES ---
-    const searchCardMate = async (email) => {
+    const searchCardMate = async (query) => {
         setCardMateSearchLoading(true);
         setCardMateSearchResult(null);
+        const q = query.trim().toLowerCase();
         try {
-            // Look up user by email in the profiles/settings table
-            const { data: found } = await supabase.from('settings').select('user_id, country').eq('email', email.trim().toLowerCase()).single();
-            if (found) {
-                setCardMateSearchResult({ found: true, userId: found.user_id, email: email.trim().toLowerCase(), country: found.country });
-            } else {
-                // Try auth lookup via a public profiles approach — fall back to discs table user match
-                const { data: discMatch } = await supabase.from('bags').select('user_id').eq('user_id', email).limit(1);
-                if (discMatch?.length) {
-                    setCardMateSearchResult({ found: true, userId: discMatch[0].user_id, email: email.trim().toLowerCase() });
-                } else {
-                    setCardMateSearchResult({ found: false });
-                }
+            // Search by username OR pdga_number OR email
+            const { data: byUsername } = await supabase.from('profiles').select('*').eq('username', q).single();
+            if (byUsername) {
+                setCardMateSearchResult({ found: true, userId: byUsername.user_id, email: byUsername.email, username: byUsername.username, pdga: byUsername.pdga_number, country: byUsername.country });
+                setCardMateSearchLoading(false); return;
             }
+            const { data: byPdga } = await supabase.from('profiles').select('*').eq('pdga_number', q).single();
+            if (byPdga) {
+                setCardMateSearchResult({ found: true, userId: byPdga.user_id, email: byPdga.email, username: byPdga.username, pdga: byPdga.pdga_number, country: byPdga.country });
+                setCardMateSearchLoading(false); return;
+            }
+            const { data: byEmail } = await supabase.from('profiles').select('*').eq('email', q).single();
+            if (byEmail) {
+                setCardMateSearchResult({ found: true, userId: byEmail.user_id, email: byEmail.email, username: byEmail.username, pdga: byEmail.pdga_number, country: byEmail.country });
+                setCardMateSearchLoading(false); return;
+            }
+            // Check not searching yourself
+            setCardMateSearchResult({ found: false });
         } catch {
             setCardMateSearchResult({ found: false });
         }
         setCardMateSearchLoading(false);
     };
 
-    const addCardMate = async (mateUserId, mateEmail) => {
+    const addCardMate = async (mateUserId, mateEmail, mateUsername, matePdga) => {
         const alreadySaved = cardMates.some(cm => cm.mate_user_id === mateUserId);
         if (alreadySaved) return;
-        const { data } = await supabase.from('card_mates').insert({ user_id: session.user.id, mate_user_id: mateUserId, mate_email: mateEmail }).select().single();
+        const { data } = await supabase.from('card_mates').insert({
+            user_id: session.user.id,
+            mate_user_id: mateUserId,
+            mate_email: mateEmail,
+            mate_username: mateUsername || null,
+            mate_pdga: matePdga || null,
+        }).select().single();
         if (data) setCardMates(prev => [...prev, data]);
     };
 
@@ -1111,28 +1164,104 @@ export default function App() {
     }, [discs, activeBagId, view, session, settings, chartMode, favSubView]);
 
     // --- AUTH RENDER ---
-    if (!session) return (
+    if (!session || authMode === 'profile_setup') return (
         <div className="h-[100dvh] w-full flex items-center justify-center bg-[#0b0f1a] p-6">
             <div className="w-full max-w-md text-center">
-                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-48 w-48 mx-auto mb-4 object-contain" />
-                <h1 className="text-3xl font-black italic uppercase text-white mb-2 tracking-tight">Welcome to <span className="text-orange-500">BaggedUp</span></h1>
-                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-8">Your disc golf bag, tracked.</p>
+                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-40 w-40 mx-auto mb-4 object-contain" />
+                <h1 className="text-3xl font-black italic uppercase text-white mb-2 tracking-tight">
+                    {authMode === 'profile_setup' ? 'Set Up Your Profile' : <>Welcome to <span className="text-orange-500">BaggedUp</span></>}
+                </h1>
+                <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mb-8">
+                    {authMode === 'login' && 'Your disc golf bag, tracked.'}
+                    {authMode === 'signup' && 'Step 1 of 2 — Create your account'}
+                    {authMode === 'profile_setup' && 'Step 2 of 2 — Your player identity'}
+                </p>
+
                 {authMessage && <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">{authMessage}</div>}
-                <form onSubmit={(e) => handleLogin(e, 'login')} className="space-y-4">
-                    <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                    <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                    <button type="submit" className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Log In</button>
-                    <div className="flex justify-between items-center pt-1">
-                        <button type="button" onClick={async (e) => {
-                            e.preventDefault();
-                            if (!authEmail) { alert('Enter your email address above first.'); return; }
-                            const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin });
-                            if (error) alert(error.message);
-                            else setAuthMessage('Password reset email sent! Check your inbox.');
-                        }} className="text-slate-500 hover:text-orange-400 font-bold uppercase text-xs transition">Forgot Password?</button>
-                        <button type="button" onClick={(e) => handleLogin(e, 'signup')} className="text-orange-500 font-bold uppercase text-xs">Register New Account</button>
-                    </div>
-                </form>
+
+                {/* LOGIN */}
+                {authMode === 'login' && (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
+                        <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
+                        <button type="submit" disabled={authLoading} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50">
+                            {authLoading ? 'Logging in...' : 'Log In'}
+                        </button>
+                        <div className="flex justify-between items-center pt-1">
+                            <button type="button" onClick={async () => {
+                                if (!authEmail) { alert('Enter your email address above first.'); return; }
+                                const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin });
+                                if (error) alert(error.message);
+                                else setAuthMessage('Password reset email sent! Check your inbox.');
+                            }} className="text-slate-500 hover:text-orange-400 font-bold uppercase text-xs transition">Forgot Password?</button>
+                            <button type="button" onClick={() => { setAuthMode('signup'); setAuthMessage(''); }} className="text-orange-500 font-bold uppercase text-xs hover:text-orange-400 transition">Register →</button>
+                        </div>
+                    </form>
+                )}
+
+                {/* SIGNUP STEP 1 — email + password */}
+                {authMode === 'signup' && (
+                    <form onSubmit={handleLogin} className="space-y-4">
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-left space-y-1">
+                            <div className="flex gap-2 items-center">
+                                <div className="w-6 h-6 rounded-full bg-orange-600 text-white text-[10px] font-black flex items-center justify-center">1</div>
+                                <span className="text-[10px] font-black uppercase text-orange-400">Account Details</span>
+                            </div>
+                            <div className="flex gap-2 items-center opacity-40">
+                                <div className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 text-[10px] font-black flex items-center justify-center">2</div>
+                                <span className="text-[10px] font-black uppercase text-slate-500">Player Profile</span>
+                            </div>
+                        </div>
+                        <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} required className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
+                        <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} required className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
+                        <button type="submit" disabled={authLoading} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50">
+                            {authLoading ? 'Creating Account...' : 'Next — Set Up Profile →'}
+                        </button>
+                        <button type="button" onClick={() => { setAuthMode('login'); setAuthMessage(''); }} className="w-full text-slate-500 font-bold uppercase text-xs py-2">← Back to Login</button>
+                    </form>
+                )}
+
+                {/* SIGNUP STEP 2 — username + PDGA */}
+                {authMode === 'profile_setup' && (
+                    <form onSubmit={handleProfileSetup} className="space-y-4">
+                        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 text-left space-y-1">
+                            <div className="flex gap-2 items-center opacity-40">
+                                <div className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[10px] font-black flex items-center justify-center">✓</div>
+                                <span className="text-[10px] font-black uppercase text-slate-500">Account Created</span>
+                            </div>
+                            <div className="flex gap-2 items-center">
+                                <div className="w-6 h-6 rounded-full bg-orange-600 text-white text-[10px] font-black flex items-center justify-center">2</div>
+                                <span className="text-[10px] font-black uppercase text-orange-400">Player Profile</span>
+                            </div>
+                        </div>
+                        <div className="text-left space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-500 pl-1">Username <span className="text-orange-500">*</span></label>
+                            <input
+                                type="text"
+                                placeholder="e.g. discgolfking"
+                                value={authUsername}
+                                onChange={e => setAuthUsername(e.target.value.replace(/\s/g, '').toLowerCase())}
+                                required
+                                className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500"
+                            />
+                            <p className="text-[10px] text-slate-600 font-bold pl-1">Lowercase, no spaces. Other players can find you by this.</p>
+                        </div>
+                        <div className="text-left space-y-1">
+                            <label className="text-[10px] font-black uppercase text-slate-500 pl-1">PDGA Number <span className="text-slate-600">(optional)</span></label>
+                            <input
+                                type="text"
+                                placeholder="e.g. 12345"
+                                value={authPdga}
+                                onChange={e => setAuthPdga(e.target.value.replace(/[^0-9]/g, ''))}
+                                className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-cyan-500"
+                            />
+                            <p className="text-[10px] text-slate-600 font-bold pl-1">Players can also find you by your PDGA number.</p>
+                        </div>
+                        <button type="submit" disabled={authLoading} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl disabled:opacity-50">
+                            {authLoading ? 'Saving...' : '🚀 Create Profile & Get Started'}
+                        </button>
+                    </form>
+                )}
             </div>
         </div>
     );
@@ -2485,8 +2614,8 @@ export default function App() {
                     {/* Search bar */}
                     <div className="flex gap-3">
                         <input
-                            type="email"
-                            placeholder="Search by player email..."
+                            type="text"
+                            placeholder="Search by username, PDGA number or email..."
                             value={cardMateSearch}
                             onChange={e => { setCardMateSearch(e.target.value); setCardMateSearchResult(null); }}
                             onKeyDown={e => e.key === 'Enter' && cardMateSearch && searchCardMate(cardMateSearch)}
@@ -2505,22 +2634,31 @@ export default function App() {
                     {cardMateSearchResult && (
                         <div className={`rounded-2xl border p-5 ${cardMateSearchResult.found ? 'bg-cyan-900/20 border-cyan-600/40' : 'bg-red-900/20 border-red-600/30'}`}>
                             {cardMateSearchResult.found ? (
-                                <div className="flex items-center justify-between gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className="text-2xl">🎯</span>
-                                            <span className="font-black uppercase text-white text-sm">{cardMateSearchResult.email}</span>
+                                <div className="flex items-center justify-between gap-4 flex-wrap">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-2xl bg-cyan-900/50 border border-cyan-600/40 flex items-center justify-center text-2xl shrink-0">🎯</div>
+                                        <div>
+                                            <div className="font-black uppercase text-white text-base">
+                                                {cardMateSearchResult.username ? `@${cardMateSearchResult.username}` : cardMateSearchResult.email}
+                                            </div>
+                                            {cardMateSearchResult.pdga && (
+                                                <div className="text-[10px] font-bold text-cyan-400 uppercase">PDGA #{cardMateSearchResult.pdga}</div>
+                                            )}
+                                            {cardMateSearchResult.country && (
+                                                <div className="text-[10px] font-bold text-slate-500 uppercase">📍 {cardMateSearchResult.country}</div>
+                                            )}
                                         </div>
-                                        {cardMateSearchResult.country && <p className="text-[10px] font-bold text-slate-500 uppercase">📍 {cardMateSearchResult.country}</p>}
                                     </div>
                                     <div className="flex gap-2 shrink-0">
                                         <button
-                                            onClick={() => loadMateBag(cardMateSearchResult.userId, cardMateSearchResult.email, null)}
+                                            onClick={() => loadMateBag(cardMateSearchResult.userId, cardMateSearchResult.username || cardMateSearchResult.email, null)}
                                             className="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-4 py-2 rounded-xl font-black uppercase text-xs text-white transition"
                                         >👀 View Bag</button>
-                                        {!cardMates.some(cm => cm.mate_user_id === cardMateSearchResult.userId) ? (
+                                        {cardMateSearchResult.userId === session?.user?.id ? (
+                                            <span className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl font-black uppercase text-xs text-slate-500">That's you!</span>
+                                        ) : !cardMates.some(cm => cm.mate_user_id === cardMateSearchResult.userId) ? (
                                             <button
-                                                onClick={() => addCardMate(cardMateSearchResult.userId, cardMateSearchResult.email)}
+                                                onClick={() => addCardMate(cardMateSearchResult.userId, cardMateSearchResult.email, cardMateSearchResult.username, cardMateSearchResult.pdga)}
                                                 className="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-xl font-black uppercase text-xs text-white transition"
                                             >+ Add Mate</button>
                                         ) : (
@@ -2529,7 +2667,7 @@ export default function App() {
                                     </div>
                                 </div>
                             ) : (
-                                <p className="text-red-400 font-black uppercase text-xs text-center">No player found with that email address</p>
+                                <p className="text-red-400 font-black uppercase text-xs text-center">No player found — try their username, PDGA number or email</p>
                             )}
                         </div>
                     )}
@@ -2599,12 +2737,17 @@ export default function App() {
                                     <div key={cm.id} className="flex items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4">
                                         <div className="w-10 h-10 rounded-2xl bg-cyan-900/40 border border-cyan-600/30 flex items-center justify-center text-lg shrink-0">🎯</div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="font-black uppercase text-white text-sm truncate">{cm.mate_email}</div>
-                                            <div className="text-[10px] font-bold text-slate-600 uppercase">Card Mate</div>
+                                            <div className="font-black uppercase text-white text-sm truncate">
+                                                {cm.mate_username ? `@${cm.mate_username}` : cm.mate_email}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                {cm.mate_pdga && <span className="text-[9px] font-black uppercase text-cyan-400 bg-cyan-900/30 px-1.5 py-0.5 rounded-full">PDGA #{cm.mate_pdga}</span>}
+                                                {cm.mate_username && <span className="text-[9px] font-bold text-slate-600 uppercase truncate">{cm.mate_email}</span>}
+                                            </div>
                                         </div>
                                         <div className="flex gap-2 shrink-0">
                                             <button
-                                                onClick={() => loadMateBag(cm.mate_user_id, cm.mate_email, cm.id)}
+                                                onClick={() => loadMateBag(cm.mate_user_id, cm.mate_username || cm.mate_email, cm.id)}
                                                 className="bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 text-cyan-400 px-3 py-2 rounded-xl font-black uppercase text-[10px] transition"
                                             >👀 View</button>
                                             <button
