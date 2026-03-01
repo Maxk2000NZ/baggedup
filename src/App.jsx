@@ -468,7 +468,11 @@ export default function App() {
                             <input type="text" value={communityFormData.brand} onChange={(e) => setCommunityFormData({...communityFormData, brand: e.target.value})} placeholder="MANUFACTURER" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none"/>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
-                            {['speed', 'glide', 'turn', 'fade'].map((l, i) => (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input type="number" step="0.5" value={communityFormData[l]} onChange={(e) => setCommunityFormData({...communityFormData, [l]: parseFloat(e.target.value)})} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>))}
+                            {['speed', 'glide', 'turn', 'fade'].map((l, i) => {
+                                const constraints = {speed: {min: 1, max: 13}, glide: {min: 1, max: 7}, turn: {min: -5, max: 3}, fade: {min: 0, max: 4}};
+                                const {min, max} = constraints[l];
+                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input type="number" min={min} max={max} step="0.5" value={communityFormData[l]} onChange={(e) => setCommunityFormData({...communityFormData, [l]: parseFloat(e.target.value)})} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
+                            })}
                         </div>
                         <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl hover:bg-blue-700 transition">Add to Directory</button>
                         <button type="button" onClick={() => setShowCommunityAdd(false)} className="w-full py-3 text-slate-400 font-black uppercase text-xs hover:text-slate-300 transition">Cancel</button>
@@ -499,10 +503,12 @@ export default function App() {
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
                     <form onSubmit={e => {
                         e.preventDefault(); const fd = new FormData(e.target);
+                        const distValue = parseFloat(fd.get('d'));
+                        const savedDist = settings.unit === 'm' ? distValue / 0.3048 : distValue; // Convert meters back to feet for storage
                         updateDiscInDB({
                             ...editing, name: fd.get('n'), brand: fd.get('b'), plastic: fd.get('pl'), weight: fd.get('wt'), bag_id: fd.get('bag') || null, status: fd.get('lost') === 'on' ? 'lost' : 'active', 
                             speed: parseFloat(fd.get('s')), glide: parseFloat(fd.get('g')), turn: parseFloat(fd.get('t')), fade: parseFloat(fd.get('f')), color: fd.get('c'), 
-                            max_dist: parseFloat(fd.get('d')), aces: parseInt(fd.get('a')), favorite: fd.get('fav') === 'on', is_idea: false
+                            max_dist: savedDist, aces: parseInt(fd.get('a')), favorite: fd.get('fav') === 'on', is_idea: false
                         });
                         setEditing(null);
                     }} className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-lg space-y-4 my-auto">
@@ -519,11 +525,15 @@ export default function App() {
                             <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white"/>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
-                            {['s','g','t','f'].map((l, i) => (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input name={l} defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>))}
+                            {['s','g','t','f'].map((l, i) => {
+                                const constraints = {'s': {min: 1, max: 13}, 'g': {min: 1, max: 7}, 't': {min: -5, max: 3}, 'f': {min: 0, max: 4}};
+                                const {min, max} = constraints[l];
+                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input name={l} type="number" min={min} max={max} step="0.5" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
+                            })}
                         </div>
                         <div className="bg-slate-800 p-4 rounded-xl">
-                             <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1"><span>Power Callibration</span><span className="text-orange-500">{(editing.max_dist || getStats(editing).dist).toFixed(0)}{settings.unit}</span></div>
-                             <input name="d" type="range" min="50" max="650" defaultValue={editing.max_dist || getStats(editing).dist} className="w-full" />
+                             <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1"><span>Power Callibration</span><span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span></div>
+                             <input name="d" type="range" min={settings.unit === 'm' ? 15 : 50} max={settings.unit === 'm' ? 198 : 650} step="1" defaultValue={settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)} className="w-full" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Aces</span><input name="a" type="number" defaultValue={editing.aces || 0} className="bg-transparent font-black text-orange-500 w-full text-[16px]"/></div>
