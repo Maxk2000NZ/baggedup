@@ -5,6 +5,7 @@ import Chart from 'chart.js/auto';
 const LOGO_URL = '/baggedup.logo.png';
 
 const FACTORY_DB = [
+    // ── Original entries ──
     {Manufacturer:"Innova",Model:"Destroyer",Speed:12,Glide:5,Turn:-1,Fade:3},
     {Manufacturer:"Innova",Model:"Wraith",Speed:11,Glide:5,Turn:-1,Fade:3},
     {Manufacturer:"Discraft",Model:"Zeus",Speed:12,Glide:5,Turn:-1,Fade:3},
@@ -69,7 +70,525 @@ const FACTORY_DB = [
     {Manufacturer:"Latitude 64",Model:"Pure",Speed:3,Glide:3,Turn:-0.5,Fade:0.5},
     {Manufacturer:"MVP",Model:"Watt",Speed:2,Glide:5,Turn:-0.5,Fade:0.5},
     {Manufacturer:"Prodigy",Model:"Pa-3",Speed:3,Glide:4,Turn:0,Fade:1},
-    {Manufacturer:"Westside",Model:"Harp",Speed:4,Glide:3,Turn:0,Fade:3}
+    {Manufacturer:"Westside",Model:"Harp",Speed:4,Glide:3,Turn:0,Fade:3},
+    // ── Innova additions ──
+    {Manufacturer:"Innova",Model:"Ape",Speed:13,Glide:5,Turn:0,Fade:4},
+    {Manufacturer:"Innova",Model:"Archon",Speed:11,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Innova",Model:"Beast",Speed:10,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Innova",Model:"Charger",Speed:12,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Innova",Model:"Colossus",Speed:14,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Innova",Model:"Corvette",Speed:14,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Innova",Model:"Daedalus",Speed:13,Glide:6,Turn:-3,Fade:2},
+    {Manufacturer:"Innova",Model:"Dominator",Speed:13,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Innova",Model:"Gorgon",Speed:10,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Innova",Model:"Grove",Speed:13,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Innova",Model:"Juggernaut",Speed:12,Glide:4,Turn:1,Fade:4},
+    {Manufacturer:"Innova",Model:"Katana",Speed:13,Glide:5,Turn:-3,Fade:3},
+    {Manufacturer:"Innova",Model:"Krait",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Innova",Model:"Max",Speed:11,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Monster",Speed:10,Glide:3,Turn:0,Fade:5},
+    {Manufacturer:"Innova",Model:"Mystere",Speed:11,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Innova",Model:"Orc",Speed:11,Glide:4,Turn:-1,Fade:3},
+    {Manufacturer:"Innova",Model:"Sidewinder",Speed:9,Glide:5,Turn:-3,Fade:1},
+    {Manufacturer:"Innova",Model:"Starfire",Speed:10,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Teedevil",Speed:12,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Innova",Model:"TeeRex",Speed:11,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Innova",Model:"Viking",Speed:9,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"Innova",Model:"Vulcan",Speed:13,Glide:5,Turn:-4,Fade:2},
+    {Manufacturer:"Innova",Model:"Wahoo",Speed:12,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Innova",Model:"XCaliber",Speed:12,Glide:5,Turn:0,Fade:4},
+    {Manufacturer:"Innova",Model:"Archangel",Speed:8,Glide:6,Turn:-4,Fade:1},
+    {Manufacturer:"Innova",Model:"Teebird3",Speed:8,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"TL",Speed:7,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Innova",Model:"TL3",Speed:8,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"Innova",Model:"Banshee",Speed:7,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Leopard",Speed:6,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Innova",Model:"Cheetah",Speed:6,Glide:4,Turn:-2,Fade:2},
+    {Manufacturer:"Innova",Model:"IT",Speed:7,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Innova",Model:"Hawkeye",Speed:7,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Innova",Model:"Gazelle",Speed:6,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Viper",Speed:6,Glide:4,Turn:1,Fade:5},
+    {Manufacturer:"Innova",Model:"Atlas",Speed:5,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Innova",Model:"Avatar",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Mako",Speed:4,Glide:5,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Roc",Speed:4,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Gremlin",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Gator",Speed:5,Glide:2,Turn:0,Fade:4},
+    {Manufacturer:"Innova",Model:"Gator3",Speed:5,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Shark",Speed:4,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Shark3",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Caiman",Speed:5.5,Glide:2,Turn:0,Fade:4},
+    {Manufacturer:"Innova",Model:"Panther",Speed:5,Glide:4,Turn:-2,Fade:1},
+    {Manufacturer:"Innova",Model:"Aviar Driver",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Aero",Speed:3,Glide:6,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Animal",Speed:2,Glide:1,Turn:0,Fade:1},
+    {Manufacturer:"Innova",Model:"Birdie",Speed:1,Glide:2,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Bullfrog",Speed:3,Glide:1,Turn:0,Fade:1},
+    {Manufacturer:"Innova",Model:"Classic Aviar",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Colt",Speed:3,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"Innova",Model:"NS Firefly",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Innova",Model:"Hydra",Speed:3,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Invader",Speed:3,Glide:2,Turn:0,Fade:1},
+    {Manufacturer:"Innova",Model:"KC Aviar",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Mirage",Speed:3,Glide:4,Turn:-3,Fade:0},
+    {Manufacturer:"Innova",Model:"Nova",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Polecat",Speed:1,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Rat",Speed:4,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Rhyno",Speed:2,Glide:1,Turn:0,Fade:3},
+    {Manufacturer:"Innova",Model:"Stud",Speed:3,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Innova",Model:"Toro",Speed:4,Glide:2,Turn:0,Fade:4},
+    {Manufacturer:"Innova",Model:"Wedge",Speed:3.5,Glide:3,Turn:-3,Fade:1},
+    {Manufacturer:"Innova",Model:"Whale",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Innova",Model:"XD",Speed:3,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"Innova",Model:"Xero",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Innova",Model:"Yeti Pro Aviar",Speed:2,Glide:3,Turn:0,Fade:1},
+    // ── Discraft additions ──
+    {Manufacturer:"Discraft",Model:"Venom",Speed:13,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Crank",Speed:13,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Discraft",Model:"Flash",Speed:10,Glide:5,Turn:-2,Fade:3},
+    {Manufacturer:"Discraft",Model:"Force",Speed:12,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Punisher",Speed:12,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Surge",Speed:11,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Discraft",Model:"Surge SS",Speed:11,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Discraft",Model:"Drive",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discraft",Model:"Pulse",Speed:11,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Discraft",Model:"Heat",Speed:9,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Discraft",Model:"XL",Speed:7,Glide:4,Turn:-2,Fade:1},
+    {Manufacturer:"Discraft",Model:"XS",Speed:8,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Cicada",Speed:7,Glide:6,Turn:-1,Fade:1},
+    {Manufacturer:"Discraft",Model:"Cyclone",Speed:7,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"Discraft",Model:"Impact",Speed:6,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Discraft",Model:"Mantis",Speed:8,Glide:4,Turn:-2,Fade:2},
+    {Manufacturer:"Discraft",Model:"Passion",Speed:8,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Discraft",Model:"Predator",Speed:9,Glide:4,Turn:1,Fade:4},
+    {Manufacturer:"Discraft",Model:"Raptor",Speed:9,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Reaper",Speed:8,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Discraft",Model:"Stalker",Speed:7,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discraft",Model:"Sting",Speed:7,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Discraft",Model:"Tracker",Speed:8,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Discraft",Model:"Vulture",Speed:10,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discraft",Model:"Xpress",Speed:8,Glide:5,Turn:-3,Fade:1},
+    {Manufacturer:"Discraft",Model:"Zombee",Speed:6,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"Discraft",Model:"Buzzz OS",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Buzzz SS",Speed:5,Glide:4,Turn:-2,Fade:1},
+    {Manufacturer:"Discraft",Model:"Comet",Speed:4,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Discraft",Model:"Drone",Speed:5,Glide:3,Turn:1,Fade:4},
+    {Manufacturer:"Discraft",Model:"Hawk",Speed:4,Glide:3,Turn:-2,Fade:2},
+    {Manufacturer:"Discraft",Model:"Hornet",Speed:5,Glide:5,Turn:0,Fade:4},
+    {Manufacturer:"Discraft",Model:"Malta",Speed:5,Glide:4,Turn:1,Fade:3},
+    {Manufacturer:"Discraft",Model:"Sol",Speed:4,Glide:5,Turn:-3,Fade:0},
+    {Manufacturer:"Discraft",Model:"Stratus",Speed:5,Glide:4,Turn:-4,Fade:1},
+    {Manufacturer:"Discraft",Model:"Swarm",Speed:5,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Discraft",Model:"Wasp",Speed:5,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Discraft",Model:"APX",Speed:2,Glide:2,Turn:-1,Fade:1},
+    {Manufacturer:"Discraft",Model:"Banger-GT",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discraft",Model:"Challenger",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Discraft",Model:"Fierce",Speed:3,Glide:4,Turn:-2,Fade:0},
+    {Manufacturer:"Discraft",Model:"Focus",Speed:2,Glide:2,Turn:-1,Fade:2},
+    {Manufacturer:"Discraft",Model:"Kratos",Speed:3,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Discraft",Model:"Magnet",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Discraft",Model:"Putt'r",Speed:2,Glide:2,Turn:-1,Fade:1},
+    {Manufacturer:"Discraft",Model:"Rattler",Speed:2,Glide:2,Turn:-2,Fade:1},
+    {Manufacturer:"Discraft",Model:"Ringer",Speed:4,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Discraft",Model:"Roach",Speed:2,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Discraft",Model:"Zone OS",Speed:4,Glide:2,Turn:1,Fade:5},
+    // ── Axiom additions ──
+    {Manufacturer:"Axiom",Model:"Tantrum",Speed:14.5,Glide:5,Turn:-1.5,Fade:3},
+    {Manufacturer:"Axiom",Model:"Panic",Speed:13,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Axiom",Model:"Mayhem",Speed:13,Glide:5,Turn:-1.5,Fade:2},
+    {Manufacturer:"Axiom",Model:"Tenacity",Speed:13,Glide:5,Turn:-2.5,Fade:2},
+    {Manufacturer:"Axiom",Model:"Defy",Speed:11,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Axiom",Model:"Orbital",Speed:11,Glide:5,Turn:-4,Fade:1},
+    {Manufacturer:"Axiom",Model:"Fireball",Speed:9,Glide:3.5,Turn:0,Fade:3.5},
+    {Manufacturer:"Axiom",Model:"Wrath",Speed:9,Glide:4.5,Turn:-0.5,Fade:2},
+    {Manufacturer:"Axiom",Model:"Virus",Speed:9,Glide:5,Turn:-3.5,Fade:1},
+    {Manufacturer:"Axiom",Model:"Rhythm",Speed:7,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Axiom",Model:"Clash",Speed:6,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"Axiom",Model:"Inspire",Speed:6,Glide:5,Turn:-2,Fade:1.5},
+    {Manufacturer:"Axiom",Model:"Alias",Speed:4,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"Axiom",Model:"Theory",Speed:4,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"Axiom",Model:"Atom",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Axiom",Model:"Anode",Speed:2.5,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Axiom",Model:"Ion",Speed:2.5,Glide:3,Turn:0,Fade:1.5},
+    {Manufacturer:"Axiom",Model:"Spin",Speed:2.5,Glide:4,Turn:-2,Fade:0},
+    {Manufacturer:"Axiom",Model:"Tempo",Speed:4,Glide:4,Turn:0,Fade:2.5},
+    // ── MVP additions ──
+    {Manufacturer:"MVP",Model:"Nitro",Speed:13,Glide:4,Turn:-0.5,Fade:3},
+    {Manufacturer:"MVP",Model:"Energy",Speed:13,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"MVP",Model:"Catalyst",Speed:13,Glide:5.5,Turn:-2,Fade:2},
+    {Manufacturer:"MVP",Model:"Octane",Speed:13,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"MVP",Model:"Dimension",Speed:14.5,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"MVP",Model:"Zenith",Speed:11,Glide:5,Turn:-0.5,Fade:2},
+    {Manufacturer:"MVP",Model:"Tesla",Speed:9,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"MVP",Model:"Inertia",Speed:9,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"MVP",Model:"Impulse",Speed:9,Glide:5,Turn:-3,Fade:1},
+    {Manufacturer:"MVP",Model:"Resistor",Speed:6.5,Glide:4,Turn:0,Fade:3.5},
+    {Manufacturer:"MVP",Model:"Servo",Speed:6.5,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"MVP",Model:"Matrix",Speed:5,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"MVP",Model:"Axis",Speed:5,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"MVP",Model:"Vector",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"MVP",Model:"Nomad",Speed:2,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"MVP",Model:"Ohm",Speed:2,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"MVP",Model:"Entropy",Speed:4,Glide:3,Turn:0,Fade:3},
+    // ── Streamline ──
+    {Manufacturer:"Streamline",Model:"Trace",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Streamline",Model:"Flare",Speed:9,Glide:4,Turn:0,Fade:3.5},
+    {Manufacturer:"Streamline",Model:"Lift",Speed:9,Glide:5,Turn:-2,Fade:1.5},
+    {Manufacturer:"Streamline",Model:"Drift",Speed:7,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Streamline",Model:"Ascend",Speed:6,Glide:5,Turn:-3,Fade:0.5},
+    {Manufacturer:"Streamline",Model:"Runway",Speed:5,Glide:4,Turn:0,Fade:3.5},
+    {Manufacturer:"Streamline",Model:"Echo",Speed:5,Glide:5,Turn:-1.5,Fade:1},
+    {Manufacturer:"Streamline",Model:"Stabilizer",Speed:5,Glide:3.5,Turn:0,Fade:3},
+    {Manufacturer:"Streamline",Model:"Pilot",Speed:2,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Streamline",Model:"Range",Speed:2,Glide:1,Turn:-0.5,Fade:0.5},
+    // ── Discmania additions ──
+    {Manufacturer:"Discmania",Model:"Astronaut",Speed:12,Glide:6,Turn:-4,Fade:1},
+    {Manufacturer:"Discmania",Model:"CD1",Speed:9,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Discmania",Model:"CD2",Speed:9,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"CD3",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"Cloud Breaker",Speed:12,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Discmania",Model:"DD2",Speed:13,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Discmania",Model:"DDX",Speed:12,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"Enigma",Speed:12,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"FD1",Speed:7,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"FD2",Speed:7,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"FD3",Speed:9,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"Instinct",Speed:7,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"Neo Instinct",Speed:7,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"Neo Essence",Speed:8,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Discmania",Model:"Neo Enigma",Speed:12,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"Neo Splice",Speed:9,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"Splice",Speed:9,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"Tilt",Speed:9,Glide:1,Turn:1,Fade:6},
+    {Manufacturer:"Discmania",Model:"Vanguard",Speed:9,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"MD1",Speed:5,Glide:6,Turn:0,Fade:0},
+    {Manufacturer:"Discmania",Model:"MD2",Speed:4,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"MD3",Speed:5,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"MD3x",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"MD4",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"MD5",Speed:5,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"Maestro",Speed:4,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"Method",Speed:5,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"Mutant",Speed:5,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"CD Craze",Speed:10,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"DD2 Frenzy",Speed:13,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Discmania",Model:"PD1",Speed:10,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"PD2",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"PD3",Speed:11,Glide:3,Turn:0,Fade:5},
+    {Manufacturer:"Discmania",Model:"PD2 Chaos",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"TD Rush",Speed:10,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Discmania",Model:"GM Gremlin",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"MD2 Fiend",Speed:4,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"P1",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Discmania",Model:"P1 Maniac",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Discmania",Model:"P2X",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"P3X",Speed:3,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"P4",Speed:4,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"Link",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"Logic",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"Drop",Speed:4,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"Tactic",Speed:4,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"Razor Claw",Speed:4,Glide:2,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"Sensei",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"Spore",Speed:1,Glide:7,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"Notion",Speed:2,Glide:3,Turn:-1,Fade:0},
+    {Manufacturer:"Discmania",Model:"Rainmaker",Speed:2,Glide:3,Turn:0.5,Fade:0.5},
+    {Manufacturer:"Discmania",Model:"CD Hysteria",Speed:11,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"PD Freak",Speed:10,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"DD Hysteria",Speed:11,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"P2 Psycho",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"EXO Hard Tactic",Speed:4,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"EXO Soft Link",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"Neo Method",Speed:5,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"MD6",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"Neo DD",Speed:12,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Discmania",Model:"PD4",Speed:10,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"TD2",Speed:11,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Discmania",Model:"FD4",Speed:7,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"CD4",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"DD4",Speed:12,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Discmania",Model:"MD7",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Discmania",Model:"Neo MD3",Speed:5,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Discmania",Model:"Neo PD2",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Discmania",Model:"Neo PD3",Speed:11,Glide:3,Turn:0,Fade:5},
+    {Manufacturer:"Discmania",Model:"PD5",Speed:10,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Discmania",Model:"TD3",Speed:10,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Discmania",Model:"DD5",Speed:12,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"CD5",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Discmania",Model:"FD5",Speed:7,Glide:5,Turn:0,Fade:2},
+    // ── Kastaplast additions ──
+    {Manufacturer:"Kastaplast",Model:"Alva",Speed:11,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Vass",Speed:12,Glide:5,Turn:-1.5,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Krut",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Kastaplast",Model:"Rask",Speed:14,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Kastaplast",Model:"Falk",Speed:9,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Kastaplast",Model:"Lots",Speed:9,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Stal",Speed:9,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Kastaplast",Model:"Malm",Speed:10,Glide:4,Turn:0,Fade:2.5},
+    {Manufacturer:"Kastaplast",Model:"Idog",Speed:7,Glide:5,Turn:-0.5,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Stig",Speed:6,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Kastaplast",Model:"Göte",Speed:4,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Kastaplast",Model:"Kaxe",Speed:6,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Kaxe Z",Speed:6,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Järn",Speed:4.5,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Kastaplast",Model:"Reko",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Kastaplast",Model:"Reko X",Speed:3,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Berg X",Speed:1,Glide:1,Turn:1,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Tuff",Speed:3,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Kastaplast",Model:"Sten",Speed:1,Glide:3,Turn:0,Fade:1},
+    // ── Westside additions ──
+    {Manufacturer:"Westside",Model:"Adder",Speed:13,Glide:5,Turn:0,Fade:4},
+    {Manufacturer:"Westside",Model:"Catapult",Speed:14,Glide:4,Turn:-0.5,Fade:3},
+    {Manufacturer:"Westside",Model:"Destiny",Speed:14,Glide:6,Turn:-2,Fade:3},
+    {Manufacturer:"Westside",Model:"Giant",Speed:13,Glide:4,Turn:0,Fade:3.5},
+    {Manufacturer:"Westside",Model:"King",Speed:14,Glide:5,Turn:-1,Fade:4},
+    {Manufacturer:"Westside",Model:"Prince",Speed:13,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Westside",Model:"Queen",Speed:14,Glide:5,Turn:-3,Fade:2},
+    {Manufacturer:"Westside",Model:"Tide",Speed:12,Glide:6,Turn:-0.5,Fade:3},
+    {Manufacturer:"Westside",Model:"War Horse",Speed:13,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Westside",Model:"World",Speed:14,Glide:4,Turn:-0.5,Fade:3},
+    {Manufacturer:"Westside",Model:"Ahti",Speed:9,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Westside",Model:"Fortress",Speed:10,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Westside",Model:"Hatchet",Speed:9,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Westside",Model:"Longbowman",Speed:9,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Westside",Model:"Sampo",Speed:10,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"Westside",Model:"Seer",Speed:7,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Westside",Model:"Stag",Speed:8,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Westside",Model:"Underworld",Speed:7,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Westside",Model:"Anvil",Speed:4,Glide:2,Turn:0,Fade:4},
+    {Manufacturer:"Westside",Model:"Bard",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Westside",Model:"Pine",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Westside",Model:"Warship",Speed:5,Glide:6,Turn:0,Fade:1},
+    {Manufacturer:"Westside",Model:"Crown",Speed:3,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Westside",Model:"Maiden",Speed:3,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Westside",Model:"Shield",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Westside",Model:"Swan",Speed:3,Glide:3,Turn:-1,Fade:0},
+    {Manufacturer:"Westside",Model:"Swan 1 Reborn",Speed:3,Glide:3,Turn:-2.5,Fade:0},
+    // ── RPM Discs (NZ!) ──
+    {Manufacturer:"RPM",Model:"Kahu",Speed:13,Glide:5,Turn:-1.3,Fade:2.5},
+    {Manufacturer:"RPM",Model:"Kiwi",Speed:9.8,Glide:3.1,Turn:-0.4,Fade:3.1},
+    {Manufacturer:"RPM",Model:"Tara Iti",Speed:10,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"RPM",Model:"Huia",Speed:7,Glide:4.7,Turn:-0.1,Fade:2.2},
+    {Manufacturer:"RPM",Model:"Pekapeka",Speed:9,Glide:5.1,Turn:-2.7,Fade:1.2},
+    {Manufacturer:"RPM",Model:"Ruru",Speed:2.7,Glide:3.2,Turn:-0.1,Fade:1},
+    {Manufacturer:"RPM",Model:"Takapu",Speed:2.1,Glide:3.2,Turn:-0.1,Fade:1.9},
+    {Manufacturer:"RPM",Model:"Tui",Speed:3.1,Glide:4.2,Turn:-1.1,Fade:0.2},
+    // ── Prodigy Discs ──
+    {Manufacturer:"Prodigy",Model:"D Model OS",Speed:13,Glide:5,Turn:0,Fade:4},
+    {Manufacturer:"Prodigy",Model:"D Model S",Speed:13,Glide:6,Turn:0,Fade:2},
+    {Manufacturer:"Prodigy",Model:"D1",Speed:12,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Prodigy",Model:"D2",Speed:12,Glide:6,Turn:-1,Fade:3},
+    {Manufacturer:"Prodigy",Model:"D3",Speed:13,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Prodigy",Model:"D4",Speed:12,Glide:6,Turn:-3,Fade:2},
+    {Manufacturer:"Prodigy",Model:"Falcor",Speed:13,Glide:6,Turn:-1,Fade:2.5},
+    {Manufacturer:"Prodigy",Model:"Reverb",Speed:13,Glide:5,Turn:0,Fade:3.5},
+    {Manufacturer:"Prodigy",Model:"X1",Speed:13,Glide:3,Turn:0,Fade:5},
+    {Manufacturer:"Prodigy",Model:"X2",Speed:12,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Prodigy",Model:"X3",Speed:12,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Prodigy",Model:"X4",Speed:12,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Prodigy",Model:"F1",Speed:8,Glide:4,Turn:-1,Fade:3},
+    {Manufacturer:"Prodigy",Model:"F2",Speed:7,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Prodigy",Model:"F3",Speed:8,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Prodigy",Model:"F5",Speed:7,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Prodigy",Model:"F7",Speed:7,Glide:5,Turn:-3,Fade:1},
+    {Manufacturer:"Prodigy",Model:"F9",Speed:8,Glide:6,Turn:-4,Fade:0.5},
+    {Manufacturer:"Prodigy",Model:"FX-2",Speed:9,Glide:4,Turn:-0.5,Fade:3},
+    {Manufacturer:"Prodigy",Model:"FX-3",Speed:9,Glide:4,Turn:-1.5,Fade:2},
+    {Manufacturer:"Prodigy",Model:"FX-4",Speed:9,Glide:4,Turn:-2,Fade:2},
+    {Manufacturer:"Prodigy",Model:"H3",Speed:11,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Prodigy",Model:"M1",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Prodigy",Model:"M2",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Prodigy",Model:"M3",Speed:5,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Prodigy",Model:"M4",Speed:5,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Prodigy",Model:"MX-3",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Prodigy",Model:"A1",Speed:3,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Prodigy",Model:"A2",Speed:3,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Prodigy",Model:"A3",Speed:4,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Prodigy",Model:"A4",Speed:4,Glide:4,Turn:-1,Fade:2},
+    {Manufacturer:"Prodigy",Model:"Distortion",Speed:4,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Prodigy",Model:"PX-3",Speed:3,Glide:4,Turn:0,Fade:2.5},
+    // ── Latitude 64 additions ──
+    {Manufacturer:"Latitude 64",Model:"Ballista Pro",Speed:14,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Ballista",Speed:14,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Cutlass",Speed:13,Glide:5,Turn:0,Fade:3.5},
+    {Manufacturer:"Latitude 64",Model:"Blitz",Speed:11,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Latitude 64",Model:"Bolt",Speed:13,Glide:6,Turn:-2,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Flow",Speed:11,Glide:6,Turn:-0.5,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Gladiator",Speed:13,Glide:5,Turn:0,Fade:3.5},
+    {Manufacturer:"Latitude 64",Model:"Halo",Speed:13,Glide:5,Turn:-0.5,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Havoc",Speed:13,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Knight",Speed:14,Glide:4,Turn:-1.5,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Fury",Speed:9,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Honor",Speed:9,Glide:5,Turn:0,Fade:2.5},
+    {Manufacturer:"Latitude 64",Model:"Brave",Speed:7,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Bryce",Speed:9,Glide:6,Turn:-2,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Culverin",Speed:9,Glide:5,Turn:-0.5,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Diamond",Speed:8,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Explorer",Speed:7,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Falchion",Speed:8,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Glory",Speed:7,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Anchor",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Latitude 64",Model:"Claymore",Speed:5,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Compass",Speed:5,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Core",Speed:6,Glide:5,Turn:-0.5,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Fuji",Speed:4,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Gobi",Speed:6,Glide:5,Turn:-0.5,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Mace",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Medius",Speed:5,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Latitude 64",Model:"Beetle",Speed:1,Glide:7,Turn:-1,Fade:0},
+    {Manufacturer:"Latitude 64",Model:"Caltrop",Speed:2,Glide:2,Turn:0,Fade:0},
+    {Manufacturer:"Latitude 64",Model:"Dagger",Speed:2,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Faith",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Gauntlet",Speed:2,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Hope",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Keystone",Speed:2,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Mercy",Speed:2,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Peak",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Latitude 64",Model:"Spike",Speed:4,Glide:3,Turn:-1,Fade:1},
+    // ── Clash Discs ──
+    {Manufacturer:"Clash Discs",Model:"Cinnamon",Speed:9,Glide:5,Turn:-1.5,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Pepper",Speed:11,Glide:5,Turn:0,Fade:4},
+    {Manufacturer:"Clash Discs",Model:"Sage",Speed:12,Glide:6,Turn:-1,Fade:3},
+    {Manufacturer:"Clash Discs",Model:"Salt",Speed:12,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Clash Discs",Model:"Spice",Speed:10,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Clash Discs",Model:"Vanilla",Speed:11,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Wild Honey",Speed:12,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Cookie",Speed:7,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Ginger",Speed:9,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Lotus",Speed:8,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Millet",Speed:7,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Soda",Speed:7,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Berry",Speed:5,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Cherry",Speed:5,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Guava",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Mango",Speed:5,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Clash Discs",Model:"Peach",Speed:4,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Butter",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Candy",Speed:3,Glide:3,Turn:-1,Fade:1},
+    {Manufacturer:"Clash Discs",Model:"Fudge",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Clash Discs",Model:"Mint",Speed:4,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Clash Discs",Model:"Peppermint",Speed:4,Glide:2,Turn:0,Fade:4},
+    {Manufacturer:"Clash Discs",Model:"Popcorn",Speed:3,Glide:3,Turn:0,Fade:1},
+    // ── Mint Discs ──
+    {Manufacturer:"Mint Discs",Model:"Profit",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"UFO",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Mint Discs",Model:"Bullet",Speed:2,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Mint Discs",Model:"Pickle",Speed:2,Glide:3.5,Turn:0,Fade:1.5},
+    {Manufacturer:"Mint Discs",Model:"Lasso",Speed:3,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"Bobcat",Speed:5,Glide:4,Turn:0,Fade:2.5},
+    {Manufacturer:"Mint Discs",Model:"Taco",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"Mustang",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"Lobster",Speed:5,Glide:5,Turn:-3,Fade:1},
+    {Manufacturer:"Mint Discs",Model:"Salamander",Speed:6,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Mint Discs",Model:"Grackle",Speed:7,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"Alpha",Speed:8,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"Jackalope",Speed:8,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Mint Discs",Model:"Phoenix",Speed:9,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"Mint Discs",Model:"Diamondback",Speed:9,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Mint Discs",Model:"Freetail",Speed:10,Glide:5,Turn:-4,Fade:1},
+    {Manufacturer:"Mint Discs",Model:"Longhorn",Speed:11,Glide:4,Turn:-1,Fade:2.5},
+    {Manufacturer:"Mint Discs",Model:"Goat",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Mint Discs",Model:"Idol",Speed:13,Glide:5,Turn:-1,Fade:2.5},
+    // ── Dynamic Discs additions ──
+    {Manufacturer:"Dynamic Discs",Model:"Captain",Speed:13,Glide:5,Turn:-2,Fade:2},
+    {Manufacturer:"Dynamic Discs",Model:"Enforcer",Speed:12,Glide:4,Turn:0.5,Fade:4},
+    {Manufacturer:"Dynamic Discs",Model:"Sergeant",Speed:11,Glide:4,Turn:0,Fade:2.5},
+    {Manufacturer:"Dynamic Discs",Model:"Sheriff",Speed:13,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Dynamic Discs",Model:"Trespass",Speed:12,Glide:5,Turn:-0.5,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Sockibomb General",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Dynamic Discs",Model:"General",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Dynamic Discs",Model:"Freedom",Speed:14,Glide:5,Turn:-3,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Convict",Speed:9,Glide:4,Turn:-0.5,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Escape",Speed:9,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Dynamic Discs",Model:"Getaway",Speed:9,Glide:5,Turn:-0.5,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Maverick",Speed:7,Glide:4,Turn:-1.5,Fade:2},
+    {Manufacturer:"Dynamic Discs",Model:"Truth",Speed:5,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Dynamic Discs",Model:"Justice",Speed:5,Glide:3,Turn:0.5,Fade:4},
+    {Manufacturer:"Dynamic Discs",Model:"Suspect",Speed:4,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Verdict",Speed:5,Glide:4,Turn:0,Fade:3.5},
+    {Manufacturer:"Dynamic Discs",Model:"Evidence",Speed:5,Glide:5,Turn:-1,Fade:0},
+    {Manufacturer:"Dynamic Discs",Model:"Patrol",Speed:5,Glide:5,Turn:-3,Fade:1},
+    {Manufacturer:"Dynamic Discs",Model:"Agent",Speed:2,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Dynamic Discs",Model:"Culprit",Speed:4,Glide:2,Turn:0,Fade:3.5},
+    {Manufacturer:"Dynamic Discs",Model:"Deputy",Speed:3,Glide:4,Turn:-1.5,Fade:0},
+    {Manufacturer:"Dynamic Discs",Model:"Guard",Speed:2,Glide:5,Turn:0,Fade:0.5},
+    {Manufacturer:"Dynamic Discs",Model:"Judge",Speed:2,Glide:4,Turn:0,Fade:1},
+    {Manufacturer:"Dynamic Discs",Model:"Slammer",Speed:3,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Warden",Speed:3,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"Dynamic Discs",Model:"Evader",Speed:7,Glide:4,Turn:0,Fade:2.5},
+    // ── Trash Panda ──
+    {Manufacturer:"Trash Panda",Model:"Inner Core",Speed:2,Glide:4,Turn:-0.5,Fade:0},
+    {Manufacturer:"Trash Panda",Model:"Canyon",Speed:4,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Trash Panda",Model:"Dune",Speed:5,Glide:5,Turn:-1,Fade:0},
+    {Manufacturer:"Trash Panda",Model:"Ozone",Speed:8,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Trash Panda",Model:"Procyon",Speed:11.5,Glide:5,Turn:-1,Fade:2},
+    // ── Gateway additions ──
+    {Manufacturer:"Gateway",Model:"Realm",Speed:12,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Gateway",Model:"Ether",Speed:12,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Gateway",Model:"Aura",Speed:12,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Gateway",Model:"Assassin",Speed:9,Glide:6,Turn:-1.5,Fade:1},
+    {Manufacturer:"Gateway",Model:"Blade",Speed:9,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Gateway",Model:"Spear",Speed:9,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Gateway",Model:"Journey",Speed:12,Glide:6,Turn:-2,Fade:1},
+    {Manufacturer:"Gateway",Model:"Spirit",Speed:12,Glide:4,Turn:0,Fade:4},
+    {Manufacturer:"Gateway",Model:"Element",Speed:5,Glide:5,Turn:-1,Fade:1},
+    {Manufacturer:"Gateway",Model:"Prophecy",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Gateway",Model:"Mystic",Speed:5,Glide:5,Turn:-3,Fade:0},
+    {Manufacturer:"Gateway",Model:"Warrior",Speed:5,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Gateway",Model:"Chief",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Gateway",Model:"Chief OS",Speed:3,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"Gateway",Model:"Ghoul",Speed:3,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Gateway",Model:"Houdini",Speed:3,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"Gateway",Model:"Magic",Speed:2,Glide:3,Turn:-1,Fade:0},
+    {Manufacturer:"Gateway",Model:"Voodoo",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Gateway",Model:"Devilhawk",Speed:5,Glide:5,Turn:-1,Fade:1},
+    // ── DGA ──
+    {Manufacturer:"DGA",Model:"Torrent",Speed:14,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"DGA",Model:"Tempest",Speed:13,Glide:5,Turn:-3,Fade:2},
+    {Manufacturer:"DGA",Model:"Hurricane",Speed:12,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"DGA",Model:"Rogue",Speed:11,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"DGA",Model:"Sail",Speed:11,Glide:5,Turn:-5,Fade:1},
+    {Manufacturer:"DGA",Model:"Hellfire",Speed:10,Glide:3,Turn:0,Fade:5},
+    {Manufacturer:"DGA",Model:"Pipeline",Speed:8,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"DGA",Model:"Tsunami",Speed:10,Glide:3,Turn:0,Fade:4},
+    {Manufacturer:"DGA",Model:"Undertow",Speed:10,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"DGA",Model:"Aftershock",Speed:4,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"DGA",Model:"Quake",Speed:5,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"DGA",Model:"Shockwave",Speed:4,Glide:2,Turn:0,Fade:3},
+    {Manufacturer:"DGA",Model:"Squall",Speed:6,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"DGA",Model:"Blowfly II",Speed:2,Glide:3,Turn:-1,Fade:1},
+    {Manufacturer:"DGA",Model:"Bowfly",Speed:2,Glide:2,Turn:0,Fade:2},
+    {Manufacturer:"DGA",Model:"Breaker",Speed:3,Glide:3,Turn:0,Fade:3},
+    {Manufacturer:"DGA",Model:"Gumbputt",Speed:2,Glide:2,Turn:0,Fade:2},
+    {Manufacturer:"DGA",Model:"Reef",Speed:2,Glide:2,Turn:-1,Fade:1},
+    {Manufacturer:"DGA",Model:"Steady",Speed:2,Glide:3,Turn:0,Fade:2},
+    {Manufacturer:"DGA",Model:"Surf",Speed:3,Glide:3,Turn:-1,Fade:1},
+    {Manufacturer:"DGA",Model:"Titanic",Speed:2,Glide:2,Turn:0,Fade:2},
+    // ── Millennium ──
+    {Manufacturer:"Millennium",Model:"Scorpius",Speed:12,Glide:5,Turn:-1,Fade:3},
+    {Manufacturer:"Millennium",Model:"Orion LF",Speed:9,Glide:5,Turn:-1,Fade:2},
+    {Manufacturer:"Millennium",Model:"Aurora MS",Speed:4,Glide:5,Turn:0,Fade:0},
+    // ── Doomsday ──
+    {Manufacturer:"Doomsday",Model:"Apocalypse",Speed:13,Glide:1,Turn:1,Fade:6},
+    {Manufacturer:"Doomsday",Model:"Oblivion",Speed:12,Glide:4,Turn:-1,Fade:3},
+    {Manufacturer:"Doomsday",Model:"Desolation",Speed:5,Glide:5,Turn:0,Fade:2},
+    {Manufacturer:"Doomsday",Model:"Gloom",Speed:2,Glide:3,Turn:-1,Fade:1},
+    {Manufacturer:"Doomsday",Model:"Despair",Speed:5,Glide:4,Turn:-1,Fade:1},
+    {Manufacturer:"Doomsday",Model:"Ice Age",Speed:7,Glide:4,Turn:0,Fade:3},
+    {Manufacturer:"Doomsday",Model:"Flat Earth",Speed:3,Glide:3,Turn:0,Fade:1},
+    {Manufacturer:"Doomsday",Model:"Scope",Speed:4,Glide:4,Turn:0,Fade:2},
+    // ── Climo Disc Golf ──
+    {Manufacturer:"Climo Disc Golf",Model:"Streak",Speed:7,Glide:5,Turn:0,Fade:1},
+    {Manufacturer:"Climo Disc Golf",Model:"Champ",Speed:2,Glide:3,Turn:0,Fade:0},
+    {Manufacturer:"Climo Disc Golf",Model:"Osprey",Speed:10,Glide:6,Turn:-3,Fade:1},
+    {Manufacturer:"Climo Disc Golf",Model:"Belleair",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Climo Disc Golf",Model:"Skyway",Speed:11,Glide:4,Turn:-1,Fade:3},
+    // ── Thought Space Athletics ──
+    {Manufacturer:"Thought Space Athletics",Model:"Crux",Speed:5,Glide:4,Turn:0,Fade:2},
+    {Manufacturer:"Thought Space Athletics",Model:"Nuance",Speed:7,Glide:5,Turn:-2,Fade:1},
+    {Manufacturer:"Thought Space Athletics",Model:"Construct",Speed:10,Glide:6,Turn:-1,Fade:2},
+    {Manufacturer:"Thought Space Athletics",Model:"Coalesce",Speed:9,Glide:5,Turn:0,Fade:3},
+    {Manufacturer:"Thought Space Athletics",Model:"Synapse",Speed:12,Glide:5,Turn:-1.5,Fade:3},
 ];
 
 export default function App() {
@@ -492,7 +1011,16 @@ export default function App() {
                     <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
                     <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
                     <button type="submit" className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Log In</button>
-                    <button type="button" onClick={(e) => handleLogin(e, 'signup')} className="w-full text-orange-500 font-bold uppercase text-xs pt-2">Register New Account</button>
+                    <div className="flex justify-between items-center pt-1">
+                        <button type="button" onClick={async (e) => {
+                            e.preventDefault();
+                            if (!authEmail) { alert('Enter your email address above first.'); return; }
+                            const { error } = await supabase.auth.resetPasswordForEmail(authEmail, { redirectTo: window.location.origin });
+                            if (error) alert(error.message);
+                            else setAuthMessage('Password reset email sent! Check your inbox.');
+                        }} className="text-slate-500 hover:text-orange-400 font-bold uppercase text-xs transition">Forgot Password?</button>
+                        <button type="button" onClick={(e) => handleLogin(e, 'signup')} className="text-orange-500 font-bold uppercase text-xs">Register New Account</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -1088,7 +1616,7 @@ export default function App() {
             EXPORT BAG MODAL
         ===================================================== */}
         {showExport && (() => {
-            const exportDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+            const exportDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active');
             const activeBag = bags.find(b => b.id === activeBagId);
 
             const runExport = async (format) => {
@@ -1139,22 +1667,21 @@ export default function App() {
                             if (y > H-22) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F'); y=20; }
                             const s = getStats(d);
                             if (idx%2===0) { doc.setFillColor(15,23,42); doc.rect(13,y-5,W-26,10,'F'); }
-                            // Parse color robustly - convert hsl to rgb if needed
+                            // Parse colour robustly — handle both #hex and hsl()
                             let cr=249, cg=115, cb=22;
                             try {
                                 const hex=d.color||'#f97316';
                                 if (hex.startsWith('#') && hex.length >= 7) {
                                     cr=parseInt(hex.slice(1,3),16)||249; cg=parseInt(hex.slice(3,5),16)||115; cb=parseInt(hex.slice(5,7),16)||22;
-                                } else if (hex.startsWith('hsl')) {
-                                    // Convert hsl to rgb via off-screen canvas
-                                    const tmpC=document.createElement('canvas'); tmpC.width=1; tmpC.height=1;
-                                    const tmpCtx=tmpC.getContext('2d'); tmpCtx.fillStyle=hex; tmpCtx.fillRect(0,0,1,1);
-                                    const px=tmpCtx.getImageData(0,0,1,1).data; cr=px[0]; cg=px[1]; cb=px[2];
+                                } else {
+                                    const tmp=document.createElement('canvas'); tmp.width=1; tmp.height=1;
+                                    const tctx=tmp.getContext('2d'); tctx.fillStyle=hex; tctx.fillRect(0,0,1,1);
+                                    const px=tctx.getImageData(0,0,1,1).data; cr=px[0]; cg=px[1]; cb=px[2];
                                 }
                             } catch(e) {}
                             doc.setFillColor(cr,cg,cb); doc.rect(13,y-5,3,10,'F');
                             doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-                            // Disc name — aces shown as trophy emoji text (PDF-safe)
+                            // Disc name + ace indicator (PDF-safe text)
                             const aceStr = d.aces > 0 ? (' [ACE' + (d.aces > 1 ? ' x'+d.aces : '') + ']') : '';
                             doc.text(((d.name||'').slice(0,14) + aceStr).slice(0,24), cols[0]+2, y);
                             doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
@@ -1251,65 +1778,72 @@ export default function App() {
                             ctx.closePath();
                         }
 
+                        // New centred header: logo → bag name → tagline
+                        const HEADER_H = isStory ? 320 : 260;
+                        const FOOTER_H = isStory ? 80 : 70;
+
                         function drawHeader(ctx, title, subtitle) {
-                            const logoSz = 80;
-                            if (logoImg) { ctx.drawImage(logoImg, PAD, PAD, logoSz, logoSz); }
-                            else {
-                                ctx.fillStyle='#f97316'; rrPath(ctx,PAD,PAD,logoSz,logoSz,16); ctx.fill();
-                                ctx.fillStyle='#fff'; ctx.font='bold 16px system-ui'; ctx.textAlign='center';
-                                ctx.fillText('BAGGED',PAD+logoSz/2,PAD+40); ctx.fillText('UP',PAD+logoSz/2,PAD+60);
+                            const logoSz = isStory ? 160 : 130;
+                            const logoY = isStory ? 40 : 30;
+                            // Logo centred
+                            if (logoImg) {
+                                ctx.drawImage(logoImg, (CW-logoSz)/2, logoY, logoSz, logoSz);
+                            } else {
+                                ctx.fillStyle='#f97316'; rrPath(ctx,(CW-logoSz)/2,logoY,logoSz,logoSz,20); ctx.fill();
+                                ctx.fillStyle='#fff'; ctx.font=`bold ${isStory?28:22}px system-ui`; ctx.textAlign='center';
+                                ctx.fillText('BAGGED',CW/2,logoY+logoSz*0.45); ctx.fillText('UP',CW/2,logoY+logoSz*0.72);
                             }
-                            ctx.textAlign='left';
-                            ctx.fillStyle='#f97316'; ctx.font='bold 50px system-ui,sans-serif';
-                            ctx.fillText(title, PAD+logoSz+20, PAD+48);
-                            ctx.fillStyle='#475569'; ctx.font='bold 20px system-ui,sans-serif';
-                            ctx.fillText(subtitle, PAD+logoSz+20, PAD+76);
+                            // Bag name / title
+                            const titleY = logoY + logoSz + (isStory ? 36 : 28);
+                            ctx.fillStyle='#f97316'; ctx.font=`900 ${isStory?64:52}px system-ui,sans-serif`; ctx.textAlign='center';
+                            ctx.fillText(title.toUpperCase(), CW/2, titleY);
+                            // Subtitle
+                            const subY = titleY + (isStory ? 44 : 36);
+                            ctx.fillStyle='#64748b'; ctx.font=`bold ${isStory?26:22}px system-ui,sans-serif`; ctx.textAlign='center';
+                            ctx.fillText('YOUR DISC GOLF BAG, TRACKED.', CW/2, subY);
+                            // Byline
+                            const byY = subY + (isStory ? 32 : 26);
+                            ctx.fillStyle='#f97316'; ctx.font=`bold ${isStory?22:18}px system-ui,sans-serif`; ctx.textAlign='center';
+                            ctx.fillText('by BaggedUp', CW/2, byY);
+                            // Separator line
+                            const lineY = byY + (isStory ? 28 : 22);
                             ctx.strokeStyle='#1e293b'; ctx.lineWidth=2;
-                            ctx.beginPath(); ctx.moveTo(PAD,PAD+logoSz+14); ctx.lineTo(CW-PAD,PAD+logoSz+14); ctx.stroke();
-                            return PAD + logoSz + 24;
+                            ctx.beginPath(); ctx.moveTo(PAD,lineY); ctx.lineTo(CW-PAD,lineY); ctx.stroke();
+                            return lineY + 16;
                         }
 
                         function drawFooter(ctx) {
-                            ctx.fillStyle='#334155'; ctx.font='bold 20px system-ui,sans-serif';
-                            ctx.textAlign='center'; ctx.fillText('baggedup.vercel.app', CW/2, CH-28);
+                            // Bigger, brighter URL
+                            ctx.fillStyle='#64748b'; ctx.font=`bold ${isStory?32:28}px system-ui,sans-serif`;
+                            ctx.textAlign='center'; ctx.fillText('baggedup.vercel.app', CW/2, CH - (isStory?32:24));
                         }
 
                         function mkC() { const c=document.createElement('canvas'); c.width=CW; c.height=CH; return c; }
 
-                        // ── Slide 1: Disc Overview with ace trophies ──
+                        // ── Slide 1: Disc Overview ──
                         const s1=mkC(); const c1=s1.getContext('2d');
                         c1.fillStyle='#0b0f1a'; c1.fillRect(0,0,CW,CH);
-                        const top1=drawHeader(c1, activeBag?.name||'My Bag', 'BaggedUp • Disc Golf');
-                        const footH=50, avail1=CH-top1-footH;
+                        const top1=drawHeader(c1, activeBag?.name||'My Bag', '');
+                        const avail1=CH-top1-FOOTER_H;
                         const rh=Math.min(90,Math.floor(avail1/Math.max(exportDiscs.length,1)));
                         let ry=top1+4;
                         exportDiscs.forEach(d => {
                             c1.fillStyle='#0f172a'; rrPath(c1,PAD,ry,CW-PAD*2,rh-8,14); c1.fill();
-                            // Color bar — use disc color directly (canvas handles hsl natively)
+                            // Colour bar - use disc colour directly (canvas handles hsl natively)
                             c1.fillStyle=d.color||'#f97316'; rrPath(c1,PAD,ry,12,rh-8,4); c1.fill();
                             const fs=Math.min(28,rh*0.34);
-                            // Disc name
                             c1.fillStyle='#fff'; c1.font=`bold ${fs}px system-ui,sans-serif`; c1.textAlign='left';
                             c1.fillText(d.name.toUpperCase(), PAD+26, ry+(rh-8)*0.44);
-                            // Ace trophies — draw after name
                             if (d.aces > 0) {
                                 const nameWidth = c1.measureText(d.name.toUpperCase()).width;
-                                const trophyX = PAD + 26 + nameWidth + 10;
-                                const trophyY = ry + (rh-8)*0.44;
-                                const trophyCount = Math.min(d.aces, 4);
-                                const trophySize = Math.min(fs*0.85, 24);
-                                c1.font = `${trophySize}px serif`;
-                                for (let i = 0; i < trophyCount; i++) {
-                                    c1.fillText('🏆', trophyX + i * (trophySize + 3), trophyY);
-                                }
-                                if (d.aces > 4) {
-                                    c1.fillStyle='#fbbf24'; c1.font=`bold ${Math.min(14,rh*0.16)}px system-ui,sans-serif`;
-                                    c1.fillText(`×${d.aces}`, trophyX + 4 * (trophySize + 3), trophyY);
-                                    c1.fillStyle='#fff';
-                                }
+                                const tX = PAD+26+nameWidth+10, tY = ry+(rh-8)*0.44;
+                                const tSz = Math.min(fs*0.85, 24);
+                                c1.font = `${tSz}px serif`;
+                                for (let i=0; i<Math.min(d.aces,4); i++) c1.fillText('🏆', tX+i*(tSz+3), tY);
+                                if (d.aces>4) { c1.fillStyle='#fbbf24'; c1.font=`bold ${Math.min(14,rh*0.16)}px system-ui`; c1.fillText(`×${d.aces}`, tX+4*(tSz+3), tY); c1.fillStyle='#fff'; }
                             }
                             c1.fillStyle='#64748b'; c1.font=`bold ${Math.min(17,rh*0.2)}px system-ui,sans-serif`; c1.textAlign='left';
-                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+22, ry+(rh-8)*0.72);
+                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+26, ry+(rh-8)*0.72);
                             const bw=70,bh=rh-18,gx=8,sx=CW-PAD-(bw+gx)*4;
                             [d.speed,d.glide,d.turn,d.fade].forEach((v,i)=>{
                                 const bx=sx+i*(bw+gx);
@@ -1325,27 +1859,26 @@ export default function App() {
 
                         // ── Slide 2: Flight Paths ──
                         const cpxW=CW-PAD*2;
-                        const pathPxH=Math.round(cpxW/pathAspect);
-                        const pathUrl=await renderChart('path',cpxW,pathPxH);
                         const s2=mkC(); const c2=s2.getContext('2d');
                         c2.fillStyle='#0b0f1a'; c2.fillRect(0,0,CW,CH);
-                        const top2=drawHeader(c2,'Flight Paths',activeBag?.name||'My Bag');
-                        const avail2=CH-top2-footH;
-                        const scH2=Math.min(pathPxH,avail2); const scW2=scH2*pathAspect;
+                        const top2=drawHeader(c2,'Flight Paths','');
+                        const avail2=CH-top2-FOOTER_H;
+                        // Render chart to fill the available space at correct aspect ratio
+                        const chartW2=cpxW, chartH2=Math.round(avail2*0.96);
+                        const pathUrl=await renderChart('path',chartW2,chartH2);
                         const pImg=new Image(); pImg.src=pathUrl; await new Promise(r=>{pImg.onload=r;});
-                        c2.drawImage(pImg,(CW-scW2)/2,top2+(avail2-scH2)/2,scW2,scH2);
+                        c2.drawImage(pImg, PAD, top2, chartW2, chartH2);
                         drawFooter(c2);
 
                         // ── Slide 3: Stability Matrix ──
-                        const stabPxH=Math.round(cpxW/stabAspect);
-                        const stabUrl=await renderChart('matrix',cpxW,stabPxH);
                         const s3=mkC(); const c3=s3.getContext('2d');
                         c3.fillStyle='#0b0f1a'; c3.fillRect(0,0,CW,CH);
-                        const top3=drawHeader(c3,'Stability Matrix','Speed vs Turn+Fade');
-                        const avail3=CH-top3-footH;
-                        const scH3=Math.min(stabPxH,avail3); const scW3=scH3*stabAspect;
+                        const top3=drawHeader(c3,'Stability Matrix','');
+                        const avail3=CH-top3-FOOTER_H;
+                        const chartH3=Math.round(avail3*0.96);
+                        const stabUrl=await renderChart('matrix',cpxW,chartH3);
                         const sImg=new Image(); sImg.src=stabUrl; await new Promise(r=>{sImg.onload=r;});
-                        c3.drawImage(sImg,(CW-scW3)/2,top3+(avail3-scH3)/2,scW3,scH3);
+                        c3.drawImage(sImg, PAD, top3, cpxW, chartH3);
                         drawFooter(c3);
 
                         const base=`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}`;
