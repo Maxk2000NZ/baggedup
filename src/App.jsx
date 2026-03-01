@@ -75,6 +75,7 @@ export default function App() {
     const [authEmail, setAuthEmail] = useState('');
     const [authPassword, setAuthPassword] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
+    const [authMessage, setAuthMessage] = useState('');
 
     const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, country: 'New Zealand' });
     const [activeBagId, setActiveBagId] = useState('');
@@ -103,10 +104,21 @@ export default function App() {
     const handleLogin = async (e, type) => {
         e.preventDefault();
         setAuthLoading(true);
-        const { error } = type === 'signup' 
-            ? await supabase.auth.signUp({ email: authEmail, password: authPassword })
-            : await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
-        if (error) alert(error.message);
+        setAuthMessage('');
+
+        if (type === 'signup') {
+            const { error } = await supabase.auth.signUp({ email: authEmail, password: authPassword });
+            if (error) {
+                alert(error.message);
+            } else {
+                setAuthMessage('Registration successful! Please check your email inbox to confirm your account before logging in.');
+                setAuthEmail('');
+                setAuthPassword('');
+            }
+        } else {
+            const { error } = await supabase.auth.signInWithPassword({ email: authEmail, password: authPassword });
+            if (error) alert(error.message);
+        }
         setAuthLoading(false);
     };
 
@@ -120,12 +132,10 @@ export default function App() {
     useEffect(() => {
         if (!session?.user) return;
         const loadData = async () => {
-            // Load Settings
             let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
             if (set) setSettings({ unit: set.unit, maxPower: set.max_power, country: set.country });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
-            // Load Bags
             const { data: b } = await supabase.from('bags').select('*');
             if (b && b.length > 0) { setBags(b); setActiveBagId(b[0].id); }
             else { 
@@ -133,7 +143,6 @@ export default function App() {
                 setBags([newBag]); setActiveBagId(newBag.id);
             }
 
-            // Load Discs
             const { data: d } = await supabase.from('discs').select('*');
             if (d) setDiscs(d);
         };
@@ -242,7 +251,14 @@ export default function App() {
             <div className="bg-slate-900 p-16 lg:p-20 rounded-[4rem] border border-slate-800 w-full max-w-xl text-center shadow-2xl">
                 <div className="text-8xl mb-6 italic select-none font-black" style={{background: 'linear-gradient(135deg, #ff6600, #ff9800)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'}}>B</div>
                 <h1 className="text-5xl font-black italic text-white mb-2 uppercase tracking-tighter">BaggedUp</h1>
-                <p className="text-slate-500 font-bold uppercase text-[10px] mb-10 tracking-widest leading-none">Cloud Authentication</p>
+                <p className="text-slate-500 font-bold uppercase text-[10px] mb-8 tracking-widest leading-none">Cloud Authentication</p>
+                
+                {authMessage && (
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 p-4 rounded-2xl text-[10px] font-black uppercase mb-6 leading-relaxed">
+                        {authMessage}
+                    </div>
+                )}
+
                 <form onSubmit={(e) => handleLogin(e, 'login')} className="space-y-4 mb-6">
                     <input type="email" placeholder="EMAIL" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} required className="w-full bg-slate-800 p-6 rounded-[2rem] text-center font-black text-sm uppercase outline-none focus:border-[#ff6600] border-2 border-transparent transition-all text-white"/>
                     <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} required className="w-full bg-slate-800 p-6 rounded-[2rem] text-center font-black text-sm uppercase outline-none focus:border-[#ff6600] border-2 border-transparent transition-all text-white"/>
