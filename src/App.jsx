@@ -2377,6 +2377,20 @@ export default function App() {
                                     </div>
                                 </div>
 
+                                {/* Throw Style */}
+                                <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
+                                    <div className="text-[9px] font-black uppercase text-slate-500">Throw Style</div>
+                                    <div className="grid grid-cols-4 gap-1">
+                                        {[['both','↕ Both'],['backhand','↩ BH'],['forehand','↪ FH'],['roller','🌀 Roll']].map(([s,l]) => (
+                                            <button key={s} onClick={() => setSettings({...settings, throwStyle: s})}
+                                                className={`py-2 rounded-xl text-[8px] font-black uppercase transition ${settings.throwStyle === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                {l}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[8px] text-slate-600 font-bold">Used by Smart Bag Coach for disc suggestions</p>
+                                </div>
+
                                 {/* BH and FH arm speed sliders */}
                                 {[
                                     { key: 'bhPower', label: '↩ Backhand Max', color: 'text-orange-500' },
@@ -3194,7 +3208,7 @@ export default function App() {
                     title: 'Settings & Profile',
                     color: 'text-purple-400',
                     tag: '⚙️ Settings — Sidebar',
-                    body: 'Set your unit (ft/m), backhand and forehand max distance, throwing hand (flips the chart) and skill level (personalises coaching). In My Account, choose your player icon and colour — visible to Card Mates.',
+                    body: 'Set your unit (ft/m), backhand and forehand max distance, throwing hand (flips the flight chart left/right), skill level and throw style (BH/FH/Roller — personalises bag coaching). In My Account, choose your player icon and colour — visible to Card Mates.',
                     tip: 'Bags can be set Public or Private — public bags are visible to your Card Mates.',
                 },
                 {
