@@ -281,68 +281,105 @@ export default function App() {
     }, [discs, activeBagId]);
 
     // --- SHARED CHART CONFIG BUILDER ---
-    const buildChartConfig = (filtered, mode) => ({
-        type: 'scatter',
-        data: {
-            datasets: filtered.map(d => ({
-                label: d.name,
-                data: mode === 'path' ? calculatePath(d) : [{ x: getStats(d).stability, y: parseFloat(d.speed) }],
-                borderColor: d.color, backgroundColor: d.color,
-                showLine: mode === 'path',
-                pointRadius: mode === 'path' ? 0 : 8,
-                borderDash: d.is_idea ? [5, 5] : [],
-                borderWidth: 3
-            }))
-        },
-        options: {
-            responsive: true, maintainAspectRatio: false,
-            scales: {
-                x: { min: mode === 'path' ? -100 : -6, max: mode === 'path' ? 100 : 6, reverse: mode !== 'path', grid: { color: '#1e293b' } },
-                y: {
-                    min: 0,
-                    max: mode === 'path' ? (settings.unit === 'm' ? 180 : 550) : 14,
-                    grid: { color: '#1e293b' },
-                    ticks: mode === 'path' ? {} : { stepSize: 1, callback: v => v }
+    const buildChartConfig = (filtered, mode) => {
+        // Custom plugin: draw disc name labels directly on the chart
+        const inlineLabelPlugin = {
+            id: 'inlineLabels',
+            afterDatasetsDraw(chart) {
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach((ds, i) => {
+                    if (!ds.data || ds.data.length === 0) return;
+                    const meta = chart.getDatasetMeta(i);
+                    if (meta.hidden) return;
+                    ctx.save();
+                    ctx.font = 'bold 11px system-ui, sans-serif';
+                    ctx.fillStyle = ds.borderColor || '#fff';
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 4;
+                    if (mode === 'path') {
+                        // Label at the tip (last point = furthest distance)
+                        const lastPt = meta.data[meta.data.length - 1];
+                        if (lastPt) {
+                            ctx.textAlign = 'center';
+                            ctx.fillText(ds.label, lastPt.x, lastPt.y - 6);
+                        }
+                    } else {
+                        // Label next to each dot on stability matrix
+                        const pt = meta.data[0];
+                        if (pt) {
+                            ctx.textAlign = 'left';
+                            ctx.fillText(ds.label, pt.x + 10, pt.y + 4);
+                        }
+                    }
+                    ctx.restore();
+                });
+            }
+        };
+
+        return {
+            type: 'scatter',
+            data: {
+                datasets: filtered.map(d => ({
+                    label: d.name,
+                    data: mode === 'path' ? calculatePath(d) : [{ x: getStats(d).stability, y: parseFloat(d.speed) }],
+                    borderColor: d.color,
+                    backgroundColor: d.color,
+                    showLine: mode === 'path',
+                    pointRadius: mode === 'path' ? 0 : 10,
+                    pointStyle: 'circle',
+                    borderDash: d.is_idea ? [5, 5] : [],
+                    borderWidth: mode === 'path' ? 1.5 : 2,
+                    tension: 0.4,
+                    cubicInterpolationMode: 'monotone',
+                }))
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                scales: {
+                    x: { min: mode === 'path' ? -100 : -6, max: mode === 'path' ? 100 : 6, reverse: mode !== 'path', grid: { color: '#1e293b' } },
+                    y: {
+                        min: 0,
+                        max: mode === 'path' ? (settings.unit === 'm' ? 180 : 550) : 14,
+                        grid: { color: '#1e293b' },
+                        ticks: mode === 'path' ? {} : { stepSize: 1, callback: v => v }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: '#0f172a',
+                        borderColor: '#1e293b',
+                        borderWidth: 1,
+                        padding: 12,
+                        callbacks: {
+                            title: (items) => items[0]?.dataset?.label || '',
+                            label: (item) => {
+                                const name = item.dataset.label;
+                                const disc = filtered.find(d => d.name === name);
+                                if (!disc) return '';
+                                const plastic = disc.plastic || 'Premium';
+                                const weight = disc.weight ? disc.weight + 'g' : '';
+                                return `${plastic}${weight ? '  •  ' + weight : ''}`;
+                            },
+                            labelColor: (item) => ({
+                                borderColor: item.dataset.borderColor,
+                                backgroundColor: item.dataset.backgroundColor,
+                                borderRadius: 4,
+                            }),
+                        },
+                        titleFont: { family: 'system-ui', weight: 'bold', size: 13 },
+                        bodyFont: { family: 'system-ui', size: 11 },
+                        titleColor: '#f1f5f9',
+                        bodyColor: '#94a3b8',
+                        displayColors: true,
+                        boxWidth: 10,
+                        boxHeight: 10,
+                    }
                 }
             },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: '#0f172a',
-                    borderColor: '#1e293b',
-                    borderWidth: 1,
-                    padding: 12,
-                    callbacks: {
-                        title: (items) => {
-                            // Dataset label is the disc name
-                            return items[0]?.dataset?.label || '';
-                        },
-                        label: (item) => {
-                            // Find disc by name to get plastic + weight
-                            const name = item.dataset.label;
-                            const disc = filtered.find(d => d.name === name);
-                            if (!disc) return '';
-                            const plastic = disc.plastic || 'Premium';
-                            const weight = disc.weight ? disc.weight + 'g' : '';
-                            return `${plastic}${weight ? '  •  ' + weight : ''}`;
-                        },
-                        labelColor: (item) => ({
-                            borderColor: item.dataset.borderColor,
-                            backgroundColor: item.dataset.backgroundColor,
-                            borderRadius: 4,
-                        }),
-                    },
-                    titleFont: { family: 'system-ui', weight: 'bold', size: 13 },
-                    bodyFont: { family: 'system-ui', size: 11 },
-                    titleColor: '#f1f5f9',
-                    bodyColor: '#94a3b8',
-                    displayColors: true,
-                    boxWidth: 10,
-                    boxHeight: 10,
-                }
-            }
-        }
-    });
+            plugins: [inlineLabelPlugin]
+        };
+    };
 
     // --- CHART RENDERING ---
     useEffect(() => {
@@ -914,15 +951,15 @@ export default function App() {
                         const W = 210; const H = 297;
                         const dark = [11, 15, 26]; const orange = [249, 115, 22]; const slate = [30, 41, 59];
 
-                        // Load logo as base64 for PDF embedding
+                        // Load logo as base64 for PDF
                         let logoBase64 = null;
                         try {
                             const logoRes = await fetch('/baggedup.logo.png');
                             const logoBlob = await logoRes.blob();
                             logoBase64 = await new Promise(res => {
-                                const r = new FileReader();
-                                r.onload = () => res(r.result);
-                                r.readAsDataURL(logoBlob);
+                                const fr = new FileReader();
+                                fr.onload = () => res(fr.result);
+                                fr.readAsDataURL(logoBlob);
                             });
                         } catch(e) { /* logo optional */ }
 
@@ -1053,26 +1090,26 @@ export default function App() {
                         const isStory = format === 'png-story';
                         const CW = 1080;
                         const CH = isStory ? 1920 : 1080;
+                        const PAD = 60;
 
-                        // Helper: rounded rect path
-                        function roundRectPath(ctx, x, y, w, h, r) {
+                        // ── Helpers ──
+                        function rrPath(ctx, x, y, w, h, r) {
                             ctx.beginPath();
-                            ctx.moveTo(x + r, y);
-                            ctx.lineTo(x + w - r, y);
-                            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-                            ctx.lineTo(x + w, y + h - r);
-                            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                            ctx.lineTo(x + r, y + h);
-                            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-                            ctx.lineTo(x, y + r);
-                            ctx.quadraticCurveTo(x, y, x + r, y);
+                            ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+                            ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+                            ctx.lineTo(x+w,y+h-r);
+                            ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+                            ctx.lineTo(x+r,y+h);
+                            ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+                            ctx.lineTo(x,y+r);
+                            ctx.quadraticCurveTo(x,y,x+r,y);
                             ctx.closePath();
                         }
 
                         // Load logo
                         let logoImg = null;
                         try {
-                            logoImg = await new Promise((res, rej) => {
+                            logoImg = await new Promise(res => {
                                 const img = new Image();
                                 img.crossOrigin = 'anonymous';
                                 img.onload = () => res(img);
@@ -1081,198 +1118,157 @@ export default function App() {
                             });
                         } catch(e) {}
 
-                        // Draw a standard header onto a canvas context
+                        function makeCanvas() {
+                            const c = document.createElement('canvas');
+                            c.width = CW; c.height = CH;
+                            return c;
+                        }
+
                         function drawHeader(ctx, title, subtitle) {
-                            const pad = 60;
                             // Logo
                             if (logoImg) {
-                                ctx.drawImage(logoImg, pad, pad, 90, 90);
+                                ctx.drawImage(logoImg, PAD, PAD, 100, 100);
                             } else {
                                 ctx.fillStyle = '#f97316';
-                                roundRectPath(ctx, pad, pad, 90, 90, 18);
-                                ctx.fill();
+                                rrPath(ctx, PAD, PAD, 100, 100, 20); ctx.fill();
                                 ctx.fillStyle = '#fff';
-                                ctx.font = 'bold 18px system-ui,sans-serif';
+                                ctx.font = 'bold 20px system-ui,sans-serif';
                                 ctx.textAlign = 'center';
-                                ctx.fillText('BAGGED', pad + 45, pad + 46);
-                                ctx.fillText('UP', pad + 45, pad + 68);
+                                ctx.fillText('BAGGED', PAD+50, PAD+50);
+                                ctx.fillText('UP', PAD+50, PAD+74);
                             }
-                            // Bag name
                             ctx.textAlign = 'left';
                             ctx.fillStyle = '#f97316';
-                            ctx.font = 'bold 54px system-ui,sans-serif';
-                            ctx.fillText(title, pad + 110, pad + 52);
+                            ctx.font = 'bold 58px system-ui,sans-serif';
+                            ctx.fillText(title, PAD+120, PAD+62);
                             ctx.fillStyle = '#475569';
-                            ctx.font = 'bold 22px system-ui,sans-serif';
-                            ctx.fillText(subtitle, pad + 110, pad + 84);
-                            // Divider
-                            ctx.strokeStyle = '#1e293b';
-                            ctx.lineWidth = 3;
+                            ctx.font = 'bold 24px system-ui,sans-serif';
+                            ctx.fillText(subtitle, PAD+120, PAD+96);
+                            // divider
+                            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3;
                             ctx.beginPath();
-                            ctx.moveTo(pad, pad + 108);
-                            ctx.lineTo(CW - pad, pad + 108);
+                            ctx.moveTo(PAD, PAD+118); ctx.lineTo(CW-PAD, PAD+118);
                             ctx.stroke();
                         }
 
                         function drawFooter(ctx) {
-                            ctx.fillStyle = '#1e293b';
-                            ctx.font = 'bold 22px system-ui,sans-serif';
+                            ctx.fillStyle = '#334155';
+                            ctx.font = 'bold 24px system-ui,sans-serif';
                             ctx.textAlign = 'center';
-                            ctx.fillText('bagged-up.app', CW / 2, CH - 40);
+                            ctx.fillText('bagged-up.app', CW/2, CH-36);
                         }
 
                         // ── SLIDE 1: Disc Overview ──
-                        const slide1 = document.createElement('canvas');
-                        slide1.width = CW; slide1.height = CH;
-                        const c1 = slide1.getContext('2d');
-                        c1.fillStyle = '#0b0f1a'; c1.fillRect(0, 0, CW, CH);
+                        const s1 = makeCanvas();
+                        const c1 = s1.getContext('2d');
+                        c1.fillStyle = '#0b0f1a'; c1.fillRect(0,0,CW,CH);
                         drawHeader(c1, activeBag?.name || 'My Bag', 'BaggedUp • Disc Golf');
 
-                        const pad = 60;
-                        const rowH = isStory ? 90 : 80;
-                        let rowY = pad + 130;
+                        const rowH = isStory ? 92 : 82;
+                        let rowY = PAD + 138;
                         const maxDiscs = isStory ? 17 : 10;
                         exportDiscs.slice(0, maxDiscs).forEach(d => {
                             c1.fillStyle = '#0f172a';
-                            roundRectPath(c1, pad, rowY, CW - pad * 2, rowH - 10, 18);
-                            c1.fill();
-                            // Color bar
+                            rrPath(c1, PAD, rowY, CW-PAD*2, rowH-8, 18); c1.fill();
                             c1.fillStyle = d.color || '#f97316';
-                            roundRectPath(c1, pad, rowY, 10, rowH - 10, 5);
-                            c1.fill();
-                            // Name
-                            c1.fillStyle = '#ffffff';
-                            c1.font = 'bold 30px system-ui,sans-serif';
+                            rrPath(c1, PAD, rowY, 10, rowH-8, 5); c1.fill();
+                            c1.fillStyle = '#fff';
+                            c1.font = 'bold 32px system-ui,sans-serif';
                             c1.textAlign = 'left';
-                            c1.fillText(d.name.toUpperCase(), pad + 32, rowY + 36);
-                            // Brand
+                            c1.fillText(d.name.toUpperCase(), PAD+28, rowY+38);
                             c1.fillStyle = '#64748b';
-                            c1.font = 'bold 19px system-ui,sans-serif';
-                            c1.fillText(`${d.brand} • ${d.plastic || 'Premium'}`, pad + 32, rowY + 62);
-                            // Flight numbers
-                            const nums = [d.speed, d.glide, d.turn, d.fade];
-                            const labels = ['S','G','T','F'];
-                            const boxW = 76; const boxH = rowH - 20; const gapX = 10;
-                            const startX = CW - pad - (boxW + gapX) * 4;
-                            nums.forEach((v, i) => {
-                                const bx = startX + i * (boxW + gapX);
-                                c1.fillStyle = '#1e293b';
-                                roundRectPath(c1, bx, rowY + 5, boxW, boxH, 10);
-                                c1.fill();
-                                c1.fillStyle = '#475569';
-                                c1.font = 'bold 15px system-ui,sans-serif';
-                                c1.textAlign = 'center';
-                                c1.fillText(labels[i], bx + boxW / 2, rowY + 24);
-                                c1.fillStyle = '#fff';
-                                c1.font = 'bold 24px system-ui,sans-serif';
-                                c1.fillText(String(v), bx + boxW / 2, rowY + 52);
+                            c1.font = 'bold 20px system-ui,sans-serif';
+                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+28, rowY+64);
+                            const nums = [d.speed,d.glide,d.turn,d.fade];
+                            const lbls = ['S','G','T','F'];
+                            const bw=76, bh=rowH-18, gx=10;
+                            const sx = CW-PAD-(bw+gx)*4;
+                            nums.forEach((v,i) => {
+                                const bx = sx+i*(bw+gx);
+                                c1.fillStyle='#1e293b';
+                                rrPath(c1,bx,rowY+5,bw,bh,10); c1.fill();
+                                c1.fillStyle='#475569';
+                                c1.font='bold 15px system-ui,sans-serif';
+                                c1.textAlign='center';
+                                c1.fillText(lbls[i], bx+bw/2, rowY+26);
+                                c1.fillStyle='#fff';
+                                c1.font='bold 26px system-ui,sans-serif';
+                                c1.fillText(String(v), bx+bw/2, rowY+56);
                             });
                             rowY += rowH;
                         });
                         drawFooter(c1);
 
-                        // ── SLIDE 2: Flight Path Chart ──
-                        const slide2 = document.createElement('canvas');
-                        slide2.width = CW; slide2.height = CH;
-                        const c2 = slide2.getContext('2d');
-                        c2.fillStyle = '#0b0f1a'; c2.fillRect(0, 0, CW, CH);
+                        // ── SLIDE 2: Flight Paths ──
+                        const s2 = makeCanvas();
+                        const c2 = s2.getContext('2d');
+                        c2.fillStyle = '#0b0f1a'; c2.fillRect(0,0,CW,CH);
                         drawHeader(c2, 'Flight Paths', activeBag?.name || 'My Bag');
 
-                        // Draw chart from canvas element
                         const pathChartEl = document.getElementById('desktopPathChart') || document.getElementById('mainChart');
+                        const chartTop2 = PAD + 138;
+                        // Use almost full remaining height for the chart
+                        const chartH2 = CH - chartTop2 - 80;
                         if (pathChartEl) {
-                            const chartY = pad + 130;
-                            const chartH = isStory ? 700 : 500;
-                            c2.drawImage(pathChartEl, pad, chartY, CW - pad * 2, chartH);
-
-                            // Legend
-                            let lx = pad; let ly = chartY + chartH + 40;
-                            exportDiscs.forEach(d => {
-                                if (lx + 220 > CW - pad) { lx = pad; ly += 44; }
-                                c2.fillStyle = d.color || '#f97316';
-                                c2.beginPath(); c2.arc(lx + 10, ly - 8, 10, 0, Math.PI * 2); c2.fill();
-                                c2.fillStyle = '#fff';
-                                c2.font = 'bold 22px system-ui,sans-serif';
-                                c2.textAlign = 'left';
-                                c2.fillText(d.name, lx + 28, ly);
-                                lx += 220;
-                            });
+                            c2.drawImage(pathChartEl, PAD, chartTop2, CW-PAD*2, chartH2);
                         } else {
                             c2.fillStyle = '#475569';
-                            c2.font = 'bold 28px system-ui,sans-serif';
+                            c2.font = 'bold 30px system-ui,sans-serif';
                             c2.textAlign = 'center';
-                            c2.fillText('Open the app on desktop to capture charts', CW / 2, CH / 2);
+                            c2.fillText('View on desktop to capture flight paths', CW/2, CH/2);
                         }
                         drawFooter(c2);
 
                         // ── SLIDE 3: Stability Matrix ──
-                        const slide3 = document.createElement('canvas');
-                        slide3.width = CW; slide3.height = CH;
-                        const c3 = slide3.getContext('2d');
-                        c3.fillStyle = '#0b0f1a'; c3.fillRect(0, 0, CW, CH);
+                        const s3 = makeCanvas();
+                        const c3 = s3.getContext('2d');
+                        c3.fillStyle = '#0b0f1a'; c3.fillRect(0,0,CW,CH);
                         drawHeader(c3, 'Stability Matrix', 'Speed vs Turn+Fade');
 
                         const stabChartEl = document.getElementById('desktopStabChart') || document.getElementById('mainChart');
+                        const chartTop3 = PAD + 138;
+                        const chartH3 = CH - chartTop3 - 80;
                         if (stabChartEl) {
-                            const chartY2 = pad + 130;
-                            const chartH2 = isStory ? 700 : 500;
-                            c3.drawImage(stabChartEl, pad, chartY2, CW - pad * 2, chartH2);
-
-                            // Legend sorted by stability
-                            const sorted = [...exportDiscs].sort((a, b) => getStats(b).stability - getStats(a).stability);
-                            let lx2 = pad; let ly2 = chartY2 + chartH2 + 40;
-                            sorted.forEach(d => {
-                                if (lx2 + 250 > CW - pad) { lx2 = pad; ly2 += 44; }
-                                const st = getStats(d).stability;
-                                c3.fillStyle = d.color || '#f97316';
-                                c3.beginPath(); c3.arc(lx2 + 10, ly2 - 8, 10, 0, Math.PI * 2); c3.fill();
-                                c3.fillStyle = '#fff';
-                                c3.font = 'bold 20px system-ui,sans-serif';
-                                c3.textAlign = 'left';
-                                c3.fillText(`${d.name} (${st.toFixed(1)})`, lx2 + 28, ly2);
-                                lx2 += 250;
-                            });
+                            c3.drawImage(stabChartEl, PAD, chartTop3, CW-PAD*2, chartH3);
                         } else {
                             c3.fillStyle = '#475569';
-                            c3.font = 'bold 28px system-ui,sans-serif';
+                            c3.font = 'bold 30px system-ui,sans-serif';
                             c3.textAlign = 'center';
-                            c3.fillText('Open the app on desktop to capture charts', CW / 2, CH / 2);
+                            c3.fillText('View on desktop to capture stability matrix', CW/2, CH/2);
                         }
                         drawFooter(c3);
 
-                        // Download all 3 slides
-                        const slides = [
-                            { canvas: slide1, name: 'overview' },
-                            { canvas: slide2, name: 'flight-paths' },
-                            { canvas: slide3, name: 'stability' },
-                        ];
+                        // ── Download / Share all 3 slides ──
                         const baseName = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}`;
+                        const slides = [
+                            { canvas: s1, suffix: 'overview' },
+                            { canvas: s2, suffix: 'flight-paths' },
+                            { canvas: s3, suffix: 'stability' },
+                        ];
 
-                        // Try Web Share with all 3 files on mobile
+                        // Mobile: try Web Share API with all 3 files
                         if (isStory && navigator.share && navigator.canShare) {
-                            const files = await Promise.all(slides.map(s => new Promise(res =>
-                                s.canvas.toBlob(blob => res(new File([blob], `${baseName}-${s.name}.png`, { type: 'image/png' })))
+                            const files = await Promise.all(slides.map(sl => new Promise(res =>
+                                sl.canvas.toBlob(blob => res(new File([blob], `${baseName}-${sl.suffix}.png`, { type: 'image/png' })))
                             )));
                             if (navigator.canShare({ files })) {
                                 try {
                                     await navigator.share({ files, title: `My ${activeBag?.name} — BaggedUp` });
                                     setExportLoading(false);
                                     return;
-                                } catch(e) { /* fall through to download */ }
+                                } catch(e) { /* fall through */ }
                             }
                         }
 
-                        // Desktop / fallback: download each slide with a small delay
-                        for (const s of slides) {
-                            await new Promise(res => {
-                                s.canvas.toBlob(blob => {
-                                    const link = document.createElement('a');
-                                    link.download = `${baseName}-${s.name}.png`;
-                                    link.href = URL.createObjectURL(blob);
-                                    link.click();
-                                    setTimeout(res, 400);
-                                });
-                            });
+                        // Desktop/fallback: download all 3 with small delay between
+                        for (const sl of slides) {
+                            await new Promise(res => sl.canvas.toBlob(blob => {
+                                const a = document.createElement('a');
+                                a.download = `${baseName}-${sl.suffix}.png`;
+                                a.href = URL.createObjectURL(blob);
+                                a.click();
+                                setTimeout(res, 500);
+                            }));
                         }
                     }
                 } catch(err) {
@@ -1321,7 +1317,7 @@ export default function App() {
                                     <div className="text-[10px] text-slate-500 uppercase font-bold">Overview · Flight Paths · Stability Matrix</div>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-600 uppercase font-bold">On mobile, tapping Story opens the share sheet to post directly to Instagram / Facebook. On desktop, 3 PNGs are downloaded.</p>
+                            <p className="text-[10px] text-slate-600 uppercase font-bold">On mobile, tapping Story opens the share sheet to post directly to Instagram / Facebook. On desktop, 3 PNGs download automatically.</p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => runExport('png-story')}
