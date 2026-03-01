@@ -163,22 +163,26 @@ export default function App() {
     const addDiscToDB = async (discObj) => {
         const isNotInFactory = !FACTORY_DB.some(d => d.Model.toLowerCase() === discObj.name.toLowerCase());
         
-        // Save to community_suggestions if not in factory database and not already there
+        // Save to community_suggestions if not in factory database
         if (isNotInFactory) {
-            const alreadyInCommunity = communitySuggestions.some(cs => cs.name.toLowerCase() === discObj.name.toLowerCase() && cs.brand.toLowerCase() === discObj.brand.toLowerCase());
+            const alreadyInCommunity = communitySuggestions.some(cs => cs.name.toLowerCase() === discObj.name.toLowerCase() && cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase());
             
             if (!alreadyInCommunity) {
                 const communityPayload = {
                     name: discObj.name,
-                    brand: discObj.brand,
-                    speed: discObj.speed,
-                    glide: discObj.glide,
-                    turn: discObj.turn,
-                    fade: discObj.fade
+                    brand: discObj.brand || '',
+                    speed: parseFloat(discObj.speed),
+                    glide: parseFloat(discObj.glide),
+                    turn: parseFloat(discObj.turn),
+                    fade: parseFloat(discObj.fade)
                 };
-                const { data: csData } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
-                if (csData) {
-                    setCommunitySuggestions([...communitySuggestions, csData]);
+                try {
+                    const { data: csData } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
+                    if (csData) {
+                        setCommunitySuggestions([...communitySuggestions, csData]);
+                    }
+                } catch (err) {
+                    console.log('Community suggestion already exists or error:', err);
                 }
             }
         }
@@ -431,11 +435,6 @@ export default function App() {
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
                     <form onSubmit={async e => {
                         e.preventDefault();
-                        const payload = { ...communityFormData };
-                        const { data: csData } = await supabase.from('community_suggestions').insert(payload).select().single();
-                        if (csData && !communitySuggestions.some(cs => cs.name.toLowerCase() === csData.name.toLowerCase())) {
-                            setCommunitySuggestions([...communitySuggestions, csData]);
-                        }
                         addDiscToDB({...communityFormData, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true});
                         setShowCommunityAdd(false);
                         setShowSearch(false);
@@ -454,6 +453,24 @@ export default function App() {
                         <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl hover:bg-blue-700 transition">Add to Directory</button>
                         <button type="button" onClick={() => setShowCommunityAdd(false)} className="w-full py-3 text-slate-400 font-black uppercase text-xs hover:text-slate-300 transition">Cancel</button>
                     </form>
+                </div>
+            )}
+
+            {/* --- GAP ANALYSIS SUGGESTIONS MODAL --- */}
+            {suggestionPool && (
+                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col pt-safe">
+                    <div className="flex justify-between items-center mb-6">
+                        <h2 className="text-3xl font-black italic text-blue-500 uppercase">Suggested Discs</h2>
+                        <button onClick={() => setSuggestionPool(null)} className="text-2xl">✕</button>
+                    </div>
+                    <div className="flex-grow overflow-y-auto space-y-3 pb-10">
+                        {suggestionPool.map(d => (
+                            <div key={d.Model} onClick={() => { addDiscToDB({name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setSuggestionPool(null); }} className="p-6 bg-blue-900/20 rounded-2xl border border-blue-600/30 flex justify-between items-center cursor-pointer hover:border-blue-500 transition">
+                                <div><div className="font-black uppercase italic text-lg text-blue-400">{d.Model}</div><div className="text-[10px] font-bold text-blue-600 uppercase">{d.Manufacturer} • {d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</div></div>
+                                <div className="text-blue-500 font-black text-xl">+</div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
