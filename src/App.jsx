@@ -914,13 +914,29 @@ export default function App() {
                         const W = 210; const H = 297;
                         const dark = [11, 15, 26]; const orange = [249, 115, 22]; const slate = [30, 41, 59];
 
+                        // Load logo as base64 for PDF embedding
+                        let logoBase64 = null;
+                        try {
+                            const logoRes = await fetch('/baggedup.logo.png');
+                            const logoBlob = await logoRes.blob();
+                            logoBase64 = await new Promise(res => {
+                                const r = new FileReader();
+                                r.onload = () => res(r.result);
+                                r.readAsDataURL(logoBlob);
+                            });
+                        } catch(e) { /* logo optional */ }
+
                         // ── PAGE 1: Summary ──
                         doc.setFillColor(...dark); doc.rect(0, 0, W, H, 'F');
 
-                        // Logo placeholder + title
-                        doc.setFillColor(...orange); doc.roundedRect(15, 15, 40, 40, 6, 6, 'F');
-                        doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-                        doc.text('BAGGED', 35, 33, {align:'center'}); doc.text('UP', 35, 41, {align:'center'});
+                        // Logo + title
+                        if (logoBase64) {
+                            doc.addImage(logoBase64, 'PNG', 15, 12, 42, 42);
+                        } else {
+                            doc.setFillColor(...orange); doc.roundedRect(15, 12, 42, 42, 6, 6, 'F');
+                            doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+                            doc.text('BAGGED', 36, 30, {align:'center'}); doc.text('UP', 36, 40, {align:'center'});
+                        }
 
                         doc.setTextColor(...orange); doc.setFontSize(28); doc.setFont('helvetica','bold');
                         doc.text(activeBag?.name || 'My Bag', 62, 32);
@@ -962,9 +978,9 @@ export default function App() {
                             doc.setTextColor(255,255,255);
                             doc.text(String(d.speed||''), cols[4], y);
                             doc.text(String(d.glide||''), cols[5], y);
-                            if (s.turn < (parseFloat(d.turn)||0)-0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
+                            if (s.turn < (parseFloat(d.turn)||0) - 0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
                             doc.text(s.turn.toFixed(1), cols[6], y);
-                            if (s.fade < (parseFloat(d.fade)||0)-0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
+                            if (s.fade < (parseFloat(d.fade)||0) - 0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
                             doc.text(s.fade.toFixed(1), cols[7], y);
                             y += 10;
                         });
@@ -1034,137 +1050,229 @@ export default function App() {
                         doc.save(`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}.pdf`);
 
                     } else if (format === 'png-story' || format === 'png-post') {
-                        // Draw story/post PNG directly on canvas — no html2canvas, no oklch issues
                         const isStory = format === 'png-story';
-                        const CW = isStory ? 1080 : 1080;
+                        const CW = 1080;
                         const CH = isStory ? 1920 : 1080;
-                        const canvas = document.createElement('canvas');
-                        canvas.width = CW; canvas.height = CH;
-                        const ctx = canvas.getContext('2d');
 
-                        // Background
-                        ctx.fillStyle = '#0b0f1a';
-                        ctx.fillRect(0, 0, CW, CH);
+                        // Helper: rounded rect path
+                        function roundRectPath(ctx, x, y, w, h, r) {
+                            ctx.beginPath();
+                            ctx.moveTo(x + r, y);
+                            ctx.lineTo(x + w - r, y);
+                            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+                            ctx.lineTo(x + w, y + h - r);
+                            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+                            ctx.lineTo(x + r, y + h);
+                            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+                            ctx.lineTo(x, y + r);
+                            ctx.quadraticCurveTo(x, y, x + r, y);
+                            ctx.closePath();
+                        }
 
-                        // Orange logo box
-                        const logoSize = 90;
-                        const pad = 60;
-                        ctx.fillStyle = '#f97316';
-                        roundRect(ctx, pad, pad, logoSize, logoSize, 20);
-                        ctx.fill();
-                        ctx.fillStyle = '#ffffff';
-                        ctx.font = 'bold 18px system-ui, sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('BAGGED', pad + logoSize/2, pad + 46);
-                        ctx.fillText('UP', pad + logoSize/2, pad + 68);
+                        // Load logo
+                        let logoImg = null;
+                        try {
+                            logoImg = await new Promise((res, rej) => {
+                                const img = new Image();
+                                img.crossOrigin = 'anonymous';
+                                img.onload = () => res(img);
+                                img.onerror = () => res(null);
+                                img.src = '/baggedup.logo.png?' + Date.now();
+                            });
+                        } catch(e) {}
 
-                        // Bag name
-                        ctx.textAlign = 'left';
-                        ctx.fillStyle = '#f97316';
-                        ctx.font = 'bold 52px system-ui, sans-serif';
-                        ctx.fillText(activeBag?.name || 'My Bag', pad + logoSize + 28, pad + 52);
-                        ctx.fillStyle = '#475569';
-                        ctx.font = 'bold 22px system-ui, sans-serif';
-                        ctx.fillText('BaggedUp • Disc Golf', pad + logoSize + 28, pad + 82);
-
-                        // Divider
-                        ctx.strokeStyle = '#1e293b';
-                        ctx.lineWidth = 3;
-                        ctx.beginPath();
-                        ctx.moveTo(pad, pad + logoSize + 24);
-                        ctx.lineTo(CW - pad, pad + logoSize + 24);
-                        ctx.stroke();
-
-                        // Disc rows
-                        const rowH = isStory ? 88 : 76;
-                        let rowY = pad + logoSize + 48;
-                        const maxDiscs = isStory ? 18 : 10;
-                        exportDiscs.slice(0, maxDiscs).forEach(d => {
-                            // Row background
-                            ctx.fillStyle = '#0f172a';
-                            roundRect(ctx, pad, rowY, CW - pad*2, rowH - 8, 16);
-                            ctx.fill();
-
-                            // Color bar
-                            ctx.fillStyle = d.color || '#f97316';
-                            roundRect(ctx, pad, rowY, 8, rowH - 8, 4);
-                            ctx.fill();
-
-                            // Disc name
-                            ctx.fillStyle = '#ffffff';
-                            ctx.font = 'bold 28px system-ui, sans-serif';
+                        // Draw a standard header onto a canvas context
+                        function drawHeader(ctx, title, subtitle) {
+                            const pad = 60;
+                            // Logo
+                            if (logoImg) {
+                                ctx.drawImage(logoImg, pad, pad, 90, 90);
+                            } else {
+                                ctx.fillStyle = '#f97316';
+                                roundRectPath(ctx, pad, pad, 90, 90, 18);
+                                ctx.fill();
+                                ctx.fillStyle = '#fff';
+                                ctx.font = 'bold 18px system-ui,sans-serif';
+                                ctx.textAlign = 'center';
+                                ctx.fillText('BAGGED', pad + 45, pad + 46);
+                                ctx.fillText('UP', pad + 45, pad + 68);
+                            }
+                            // Bag name
                             ctx.textAlign = 'left';
-                            ctx.fillText(d.name.toUpperCase(), pad + 28, rowY + 34);
+                            ctx.fillStyle = '#f97316';
+                            ctx.font = 'bold 54px system-ui,sans-serif';
+                            ctx.fillText(title, pad + 110, pad + 52);
+                            ctx.fillStyle = '#475569';
+                            ctx.font = 'bold 22px system-ui,sans-serif';
+                            ctx.fillText(subtitle, pad + 110, pad + 84);
+                            // Divider
+                            ctx.strokeStyle = '#1e293b';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(pad, pad + 108);
+                            ctx.lineTo(CW - pad, pad + 108);
+                            ctx.stroke();
+                        }
 
-                            // Brand / plastic
-                            ctx.fillStyle = '#64748b';
-                            ctx.font = 'bold 18px system-ui, sans-serif';
-                            ctx.fillText(`${d.brand} • ${d.plastic || 'Premium'}`, pad + 28, rowY + 58);
+                        function drawFooter(ctx) {
+                            ctx.fillStyle = '#1e293b';
+                            ctx.font = 'bold 22px system-ui,sans-serif';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('bagged-up.app', CW / 2, CH - 40);
+                        }
 
-                            // Flight numbers on the right
+                        // ── SLIDE 1: Disc Overview ──
+                        const slide1 = document.createElement('canvas');
+                        slide1.width = CW; slide1.height = CH;
+                        const c1 = slide1.getContext('2d');
+                        c1.fillStyle = '#0b0f1a'; c1.fillRect(0, 0, CW, CH);
+                        drawHeader(c1, activeBag?.name || 'My Bag', 'BaggedUp • Disc Golf');
+
+                        const pad = 60;
+                        const rowH = isStory ? 90 : 80;
+                        let rowY = pad + 130;
+                        const maxDiscs = isStory ? 17 : 10;
+                        exportDiscs.slice(0, maxDiscs).forEach(d => {
+                            c1.fillStyle = '#0f172a';
+                            roundRectPath(c1, pad, rowY, CW - pad * 2, rowH - 10, 18);
+                            c1.fill();
+                            // Color bar
+                            c1.fillStyle = d.color || '#f97316';
+                            roundRectPath(c1, pad, rowY, 10, rowH - 10, 5);
+                            c1.fill();
+                            // Name
+                            c1.fillStyle = '#ffffff';
+                            c1.font = 'bold 30px system-ui,sans-serif';
+                            c1.textAlign = 'left';
+                            c1.fillText(d.name.toUpperCase(), pad + 32, rowY + 36);
+                            // Brand
+                            c1.fillStyle = '#64748b';
+                            c1.font = 'bold 19px system-ui,sans-serif';
+                            c1.fillText(`${d.brand} • ${d.plastic || 'Premium'}`, pad + 32, rowY + 62);
+                            // Flight numbers
                             const nums = [d.speed, d.glide, d.turn, d.fade];
                             const labels = ['S','G','T','F'];
-                            const boxW = 72; const boxH = rowH - 18; const gapX = 12;
+                            const boxW = 76; const boxH = rowH - 20; const gapX = 10;
                             const startX = CW - pad - (boxW + gapX) * 4;
                             nums.forEach((v, i) => {
                                 const bx = startX + i * (boxW + gapX);
-                                ctx.fillStyle = '#1e293b';
-                                roundRect(ctx, bx, rowY + 4, boxW, boxH, 10);
-                                ctx.fill();
-                                ctx.fillStyle = '#475569';
-                                ctx.font = 'bold 14px system-ui, sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.fillText(labels[i], bx + boxW/2, rowY + 22);
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = 'bold 22px system-ui, sans-serif';
-                                ctx.fillText(v, bx + boxW/2, rowY + 48);
+                                c1.fillStyle = '#1e293b';
+                                roundRectPath(c1, bx, rowY + 5, boxW, boxH, 10);
+                                c1.fill();
+                                c1.fillStyle = '#475569';
+                                c1.font = 'bold 15px system-ui,sans-serif';
+                                c1.textAlign = 'center';
+                                c1.fillText(labels[i], bx + boxW / 2, rowY + 24);
+                                c1.fillStyle = '#fff';
+                                c1.font = 'bold 24px system-ui,sans-serif';
+                                c1.fillText(String(v), bx + boxW / 2, rowY + 52);
                             });
-
                             rowY += rowH;
                         });
+                        drawFooter(c1);
 
-                        // Footer
-                        ctx.fillStyle = '#1e293b';
-                        ctx.font = 'bold 22px system-ui, sans-serif';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('bagged-up.app', CW/2, CH - 40);
+                        // ── SLIDE 2: Flight Path Chart ──
+                        const slide2 = document.createElement('canvas');
+                        slide2.width = CW; slide2.height = CH;
+                        const c2 = slide2.getContext('2d');
+                        c2.fillStyle = '#0b0f1a'; c2.fillRect(0, 0, CW, CH);
+                        drawHeader(c2, 'Flight Paths', activeBag?.name || 'My Bag');
 
-                        // Helper: rounded rect polyfill
-                        function roundRect(c, x, y, w, h, r) {
-                            c.beginPath();
-                            c.moveTo(x + r, y);
-                            c.lineTo(x + w - r, y);
-                            c.quadraticCurveTo(x + w, y, x + w, y + r);
-                            c.lineTo(x + w, y + h - r);
-                            c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-                            c.lineTo(x + r, y + h);
-                            c.quadraticCurveTo(x, y + h, x, y + h - r);
-                            c.lineTo(x, y + r);
-                            c.quadraticCurveTo(x, y, x + r, y);
-                            c.closePath();
+                        // Draw chart from canvas element
+                        const pathChartEl = document.getElementById('desktopPathChart') || document.getElementById('mainChart');
+                        if (pathChartEl) {
+                            const chartY = pad + 130;
+                            const chartH = isStory ? 700 : 500;
+                            c2.drawImage(pathChartEl, pad, chartY, CW - pad * 2, chartH);
+
+                            // Legend
+                            let lx = pad; let ly = chartY + chartH + 40;
+                            exportDiscs.forEach(d => {
+                                if (lx + 220 > CW - pad) { lx = pad; ly += 44; }
+                                c2.fillStyle = d.color || '#f97316';
+                                c2.beginPath(); c2.arc(lx + 10, ly - 8, 10, 0, Math.PI * 2); c2.fill();
+                                c2.fillStyle = '#fff';
+                                c2.font = 'bold 22px system-ui,sans-serif';
+                                c2.textAlign = 'left';
+                                c2.fillText(d.name, lx + 28, ly);
+                                lx += 220;
+                            });
+                        } else {
+                            c2.fillStyle = '#475569';
+                            c2.font = 'bold 28px system-ui,sans-serif';
+                            c2.textAlign = 'center';
+                            c2.fillText('Open the app on desktop to capture charts', CW / 2, CH / 2);
+                        }
+                        drawFooter(c2);
+
+                        // ── SLIDE 3: Stability Matrix ──
+                        const slide3 = document.createElement('canvas');
+                        slide3.width = CW; slide3.height = CH;
+                        const c3 = slide3.getContext('2d');
+                        c3.fillStyle = '#0b0f1a'; c3.fillRect(0, 0, CW, CH);
+                        drawHeader(c3, 'Stability Matrix', 'Speed vs Turn+Fade');
+
+                        const stabChartEl = document.getElementById('desktopStabChart') || document.getElementById('mainChart');
+                        if (stabChartEl) {
+                            const chartY2 = pad + 130;
+                            const chartH2 = isStory ? 700 : 500;
+                            c3.drawImage(stabChartEl, pad, chartY2, CW - pad * 2, chartH2);
+
+                            // Legend sorted by stability
+                            const sorted = [...exportDiscs].sort((a, b) => getStats(b).stability - getStats(a).stability);
+                            let lx2 = pad; let ly2 = chartY2 + chartH2 + 40;
+                            sorted.forEach(d => {
+                                if (lx2 + 250 > CW - pad) { lx2 = pad; ly2 += 44; }
+                                const st = getStats(d).stability;
+                                c3.fillStyle = d.color || '#f97316';
+                                c3.beginPath(); c3.arc(lx2 + 10, ly2 - 8, 10, 0, Math.PI * 2); c3.fill();
+                                c3.fillStyle = '#fff';
+                                c3.font = 'bold 20px system-ui,sans-serif';
+                                c3.textAlign = 'left';
+                                c3.fillText(`${d.name} (${st.toFixed(1)})`, lx2 + 28, ly2);
+                                lx2 += 250;
+                            });
+                        } else {
+                            c3.fillStyle = '#475569';
+                            c3.font = 'bold 28px system-ui,sans-serif';
+                            c3.textAlign = 'center';
+                            c3.fillText('Open the app on desktop to capture charts', CW / 2, CH / 2);
+                        }
+                        drawFooter(c3);
+
+                        // Download all 3 slides
+                        const slides = [
+                            { canvas: slide1, name: 'overview' },
+                            { canvas: slide2, name: 'flight-paths' },
+                            { canvas: slide3, name: 'stability' },
+                        ];
+                        const baseName = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}`;
+
+                        // Try Web Share with all 3 files on mobile
+                        if (isStory && navigator.share && navigator.canShare) {
+                            const files = await Promise.all(slides.map(s => new Promise(res =>
+                                s.canvas.toBlob(blob => res(new File([blob], `${baseName}-${s.name}.png`, { type: 'image/png' })))
+                            )));
+                            if (navigator.canShare({ files })) {
+                                try {
+                                    await navigator.share({ files, title: `My ${activeBag?.name} — BaggedUp` });
+                                    setExportLoading(false);
+                                    return;
+                                } catch(e) { /* fall through to download */ }
+                            }
                         }
 
-                        const filename = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}-${isStory?'story':'post'}.png`;
-
-                        // Try Web Share API first (mobile — share directly to Instagram/Facebook)
-                        if (format === 'png-story' && navigator.share && navigator.canShare) {
-                            canvas.toBlob(async (blob) => {
-                                const file = new File([blob], filename, { type: 'image/png' });
-                                if (navigator.canShare({ files: [file] })) {
-                                    try {
-                                        await navigator.share({ files: [file], title: `My ${activeBag?.name} — BaggedUp` });
-                                        setExportLoading(false);
-                                        return;
-                                    } catch(e) { /* user cancelled or not supported, fall through to download */ }
-                                }
-                                const link = document.createElement('a');
-                                link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
-                                setExportLoading(false);
+                        // Desktop / fallback: download each slide with a small delay
+                        for (const s of slides) {
+                            await new Promise(res => {
+                                s.canvas.toBlob(blob => {
+                                    const link = document.createElement('a');
+                                    link.download = `${baseName}-${s.name}.png`;
+                                    link.href = URL.createObjectURL(blob);
+                                    link.click();
+                                    setTimeout(res, 400);
+                                });
                             });
-                            return; // early return; setExportLoading handled in blob callback
-                        } else {
-                            const link = document.createElement('a');
-                            link.download = filename; link.href = canvas.toDataURL('image/png'); link.click();
                         }
                     }
                 } catch(err) {
@@ -1204,37 +1312,38 @@ export default function App() {
                             </button>
                         </div>
 
-                        {/* Story PNG Export */}
+                        {/* Story / Post PNG Export */}
                         <div className="bg-slate-900 border border-slate-800 rounded-[2rem] p-6 space-y-3">
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-2xl">📸</span>
                                 <div>
-                                    <div className="font-black uppercase text-sm text-white">Social Media Images</div>
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold">Story (1080×1920) or Square Post (1080×1080)</div>
+                                    <div className="font-black uppercase text-sm text-white">Social Media — 3 Images</div>
+                                    <div className="text-[10px] text-slate-500 uppercase font-bold">Overview · Flight Paths · Stability Matrix</div>
                                 </div>
                             </div>
-                            <p className="text-[10px] text-slate-600 uppercase font-bold">On mobile: tapping Story will open the share sheet so you can post directly to Instagram / Facebook. On desktop: saves a PNG you can upload manually.</p>
+                            <p className="text-[10px] text-slate-600 uppercase font-bold">On mobile, tapping Story opens the share sheet to post directly to Instagram / Facebook. On desktop, 3 PNGs are downloaded.</p>
                             <div className="flex gap-3">
                                 <button
                                     onClick={() => runExport('png-story')}
                                     disabled={exportLoading}
                                     className="flex-1 bg-gradient-to-br from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-xs text-white transition"
                                 >
-                                    {exportLoading ? '⏳' : '📱 Story (9:16)'}
+                                    {exportLoading ? '⏳ Generating…' : '📱 Story (9:16)'}
                                 </button>
                                 <button
                                     onClick={() => runExport('png-post')}
                                     disabled={exportLoading}
                                     className="flex-1 bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-xs text-white transition"
                                 >
-                                    {exportLoading ? '⏳' : '🖼 Post (1:1)'}
+                                    {exportLoading ? '⏳ Generating…' : '🖼 Post (1:1)'}
                                 </button>
                             </div>
                             <div className="flex items-start gap-2 bg-slate-800/50 rounded-2xl p-3">
-                                <span className="text-lg shrink-0">💡</span>
-                                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">After saving, open Instagram → + → Story or Post → select image. For Facebook, go to Stories → Create → Photo.</p>
+                                <span className="text-base shrink-0">💡</span>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">After saving: Instagram → + → Story/Post → select image. Facebook → Stories → Create → Photo.</p>
                             </div>
                         </div>
+
 
                         <button onClick={() => setShowExport(false)} className="w-full py-4 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Close</button>
                     </div>
