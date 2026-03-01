@@ -2047,9 +2047,16 @@ export default function App() {
                             <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
                                 <div className="flex items-center justify-between mb-3 shrink-0">
                                     <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">✈ Flight Path</div>
-                                    <div className="flex bg-slate-800 p-0.5 rounded-xl">
-                                        <button onClick={() => setThrowView('bh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩ BH</button>
-                                        <button onClick={() => setThrowView('fh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪ FH</button>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[9px] font-bold text-slate-600 uppercase">
+                                            {throwView === 'bh'
+                                                ? `${settings.unit === 'm' ? Math.round((settings.bhPower || 350) * 0.3048) : (settings.bhPower || 350)}${settings.unit}`
+                                                : `${settings.unit === 'm' ? Math.round((settings.fhPower || 250) * 0.3048) : (settings.fhPower || 250)}${settings.unit}`}
+                                        </span>
+                                        <div className="flex bg-slate-800 p-0.5 rounded-xl">
+                                            <button onClick={() => setThrowView('bh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>↩ BH</button>
+                                            <button onClick={() => setThrowView('fh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>↪ FH</button>
+                                        </div>
                                     </div>
                                 </div>
                                 <div className="flex-1 relative min-h-0">
@@ -2059,8 +2066,12 @@ export default function App() {
 
                             {/* Stability Matrix Chart */}
                             <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
-                                <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3 shrink-0">
-                                    ◎ Stability Matrix
+                                <div className="flex items-center justify-between mb-3 shrink-0">
+                                    <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">◎ Stability Matrix</div>
+                                    <div className="flex bg-slate-800 p-0.5 rounded-xl">
+                                        <button onClick={() => setThrowView('bh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩ BH</button>
+                                        <button onClick={() => setThrowView('fh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪ FH</button>
+                                    </div>
                                 </div>
                                 <div className="flex-1 relative min-h-0">
                                     <canvas id="desktopStabChart" className="absolute inset-0 w-full h-full"></canvas>
@@ -2315,11 +2326,11 @@ export default function App() {
 
             {/* SETTINGS */}
             {showSettings && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-4 lg:p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
-                    <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl my-auto overflow-hidden">
+                <div className="fixed inset-0 z-[200] bg-black/95 p-4 lg:p-8 backdrop-blur-xl flex items-start lg:items-center justify-center overflow-y-auto">
+                    <div className="bg-slate-900 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl my-auto flex flex-col max-h-[90vh]">
 
-                        {/* Header + tabs */}
-                        <div className="px-8 pt-8 pb-0">
+                        {/* Header + tabs — sticky */}
+                        <div className="px-8 pt-8 pb-0 shrink-0">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-2xl font-black italic uppercase text-orange-500">Settings</h2>
                                 <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
@@ -2336,7 +2347,7 @@ export default function App() {
                             </div>
                         </div>
 
-                        <div className="p-8 space-y-5">
+                        <div className="p-8 space-y-5 overflow-y-auto flex-1">
 
                             {/* ── BAG SETTINGS TAB ── */}
                             {settingsTab === 'bag' && (<>
