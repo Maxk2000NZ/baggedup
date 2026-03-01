@@ -618,6 +618,16 @@ export default function App() {
     const [lostComment, setLostComment] = useState({});
     const [roundBagId, setRoundBagId] = useState('');
     const [communityFormData, setCommunityFormData] = useState({name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5});
+    const [showTutorial, setShowTutorial] = useState(false);
+    const [tutorialStep, setTutorialStep] = useState(0);
+    const [showVerifyDisc, setShowVerifyDisc] = useState(null); // holds community disc to verify
+    const [verifyName, setVerifyName] = useState('');
+    const [verifyBrand, setVerifyBrand] = useState('');
+    const [verifySpeed, setVerifySpeed] = useState(0);
+    const [verifyGlide, setVerifyGlide] = useState(0);
+    const [verifyTurn, setVerifyTurn] = useState(0);
+    const [verifyFade, setVerifyFade] = useState(0);
+    const [verifyCorrecting, setVerifyCorrecting] = useState(false);
 
     // Wear slider — local state for smooth dragging, synced to DB on release
     const [localWear, setLocalWear] = useState({});
@@ -689,6 +699,14 @@ export default function App() {
             const { data: d } = await supabase.from('discs').select('*');
             if (d) setDiscs(d);
 
+            // Show tutorial for new users (no discs yet)
+            const isNewUser = !set || (!d || d.length === 0);
+            const tutorialSeen = localStorage.getItem(`tutorial_seen_${session.user.id}`);
+            if (isNewUser && !tutorialSeen) {
+                setShowTutorial(true);
+                setTutorialStep(0);
+            }
+
             const { data: cs, error: csError } = await supabase.from('community_suggestions').select('*');
             if (csError) console.error('Failed to load community suggestions:', csError);
             else if (cs) setCommunitySuggestions(cs);
@@ -733,7 +751,7 @@ export default function App() {
                 cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase()
             );
             if (!alreadyInCommunity) {
-                const communityPayload = { model: discObj.name, brand: discObj.brand || '', speed: parseFloat(discObj.speed), glide: parseFloat(discObj.glide), turn: parseFloat(discObj.turn), fade: parseFloat(discObj.fade) };
+                const communityPayload = { model: discObj.name, brand: discObj.brand || '', speed: parseFloat(discObj.speed), glide: parseFloat(discObj.glide), turn: parseFloat(discObj.turn), fade: parseFloat(discObj.fade), added_by: session.user.id, verified: false };
                 try {
                     const { data: csData, error: csError } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
                     if (csError) console.error('Error saving to community_suggestions:', csError);
@@ -792,7 +810,42 @@ export default function App() {
 
     const gapAnalysis = useMemo(() => {
         const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
-        if (active.length === 0) return { gaps: [], text: 'Bag is Empty', allFilled: false };
+        if (active.length === 0) {
+            // Show ALL slots as suggestions when bag is empty
+            const ALL_DISCS_EMPTY = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Glide:d.Glide, Turn:d.Turn, Fade:d.Fade, source:'factory' })),
+                ...communitySuggestions.map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community' }))];
+            const stabBucketE = (turn, fade) => { const s=parseFloat(turn)+parseFloat(fade); return s>=2?'OS':s<=-1?'US':'ST'; };
+            const SLOT_FILTER_E = {
+                putter_ST:d=>d.Speed<=3&&stabBucketE(d.Turn,d.Fade)==='ST',
+                putter_OS:d=>d.Speed<=3&&stabBucketE(d.Turn,d.Fade)==='OS',
+                putter_US:d=>d.Speed<=3&&stabBucketE(d.Turn,d.Fade)==='US',
+                mid_ST:d=>d.Speed>=4&&d.Speed<=6&&stabBucketE(d.Turn,d.Fade)==='ST',
+                mid_OS:d=>d.Speed>=4&&d.Speed<=6&&stabBucketE(d.Turn,d.Fade)==='OS',
+                mid_US:d=>d.Speed>=4&&d.Speed<=6&&stabBucketE(d.Turn,d.Fade)==='US',
+                fairway_ST:d=>d.Speed>=7&&d.Speed<=8&&stabBucketE(d.Turn,d.Fade)==='ST',
+                fairway_OS:d=>d.Speed>=7&&d.Speed<=8&&stabBucketE(d.Turn,d.Fade)==='OS',
+                fairway_US:d=>d.Speed>=7&&d.Speed<=8&&stabBucketE(d.Turn,d.Fade)==='US',
+                distance_ST:d=>d.Speed>=9&&stabBucketE(d.Turn,d.Fade)==='ST',
+                distance_OS:d=>d.Speed>=9&&stabBucketE(d.Turn,d.Fade)==='OS',
+                distance_US:d=>d.Speed>=9&&stabBucketE(d.Turn,d.Fade)==='US',
+            };
+            const ALL_SLOTS_E = [
+                {key:'putter_ST', label:'Straight Putter', priority:1},
+                {key:'putter_OS', label:'Overstable Putter', priority:2},
+                {key:'putter_US', label:'Understable Putter', priority:5},
+                {key:'mid_ST', label:'Straight Midrange', priority:1},
+                {key:'mid_OS', label:'Overstable Midrange', priority:2},
+                {key:'mid_US', label:'Understable Midrange', priority:3},
+                {key:'fairway_ST', label:'Straight Fairway Driver', priority:2},
+                {key:'fairway_OS', label:'Overstable Fairway Driver', priority:3},
+                {key:'fairway_US', label:'Understable Fairway Driver', priority:3},
+                {key:'distance_ST', label:'Straight Distance Driver', priority:3},
+                {key:'distance_OS', label:'Overstable Distance Driver', priority:2},
+                {key:'distance_US', label:'Understable Distance Driver', priority:4},
+            ];
+            const allGaps = ALL_SLOTS_E.map(s=>({...s, suggestions:ALL_DISCS_EMPTY.filter(SLOT_FILTER_E[s.key]).slice(0,4)}));
+            return { gaps: allGaps, allFilled: false, text: 'Bag is Empty — Build Your Bag', filter: null };
+        }
 
         const ALL_DISCS = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Glide:d.Glide, Turn:d.Turn, Fade:d.Fade, source:'factory' })),
             ...communitySuggestions.map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community' }))];
@@ -1250,7 +1303,7 @@ export default function App() {
                     {!gapAnalysis.allFilled && view === 'active' && (
                         <div className="px-4 pt-4">
                             <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length!==1?'s':''} — {gapAnalysis.text} — View All
+                                {gapAnalysis.text === 'Bag is Empty — Build Your Bag' ? '🎒 Bag Empty — View All 12 Slot Suggestions' : `${gapAnalysis.gaps.length} gap${gapAnalysis.gaps.length!==1?'s':''} — ${gapAnalysis.text} — View All`}
                             </button>
                         </div>
                     )}
@@ -1295,7 +1348,7 @@ export default function App() {
                         {/* Gap analysis banner */}
                         {!gapAnalysis.allFilled && view === 'active' && (
                             <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="shrink-0 w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.gaps.length} gap{gapAnalysis.gaps.length!==1?'s':''} detected — {gapAnalysis.text} — View All Suggestions
+                                {gapAnalysis.text === 'Bag is Empty — Build Your Bag' ? '🎒 Bag Empty — View All 12 Slot Suggestions' : `${gapAnalysis.gaps.length} gap${gapAnalysis.gaps.length!==1?'s':''} detected — ${gapAnalysis.text} — View All Suggestions`}
                             </button>
                         )}
                         {gapAnalysis.allFilled && view === 'active' && (
@@ -1369,12 +1422,40 @@ export default function App() {
                                 <div className="text-orange-500 font-black text-xl">+</div>
                             </div>
                         ))}
-                        {communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
-                            <div key={d.id} onClick={() => { addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setShowSearch(false); }} className="p-6 bg-emerald-900/20 rounded-2xl border border-emerald-600/30 flex justify-between items-center cursor-pointer hover:border-emerald-500 transition">
-                                <div><div className="font-black uppercase italic text-lg text-emerald-400">{d.model}</div><div className="text-[10px] font-bold text-emerald-600 uppercase">{d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade} • Community</div></div>
-                                <div className="text-emerald-500 font-black text-xl">+</div>
+                        {communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => {
+                            const isMyDisc = d.added_by === session?.user?.id;
+                            return (
+                            <div key={d.id}
+                                onClick={() => {
+                                    if (!isMyDisc && !d.verified) {
+                                        // Another user added this — prompt to verify
+                                        setVerifyName(d.model);
+                                        setVerifyBrand(d.brand);
+                                        setVerifySpeed(d.speed);
+                                        setVerifyGlide(d.glide);
+                                        setVerifyTurn(d.turn);
+                                        setVerifyFade(d.fade);
+                                        setVerifyCorrecting(false);
+                                        setShowVerifyDisc({ ...d, _fromSearch: true });
+                                        setShowSearch(false);
+                                    } else {
+                                        // My own disc, or already verified — just add it
+                                        addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                                        setShowSearch(false);
+                                    }
+                                }}
+                                className={`p-6 rounded-2xl border flex justify-between items-center cursor-pointer hover:border-emerald-500 transition ${d.verified ? 'bg-slate-900 border-slate-800' : 'bg-emerald-900/20 border-emerald-600/30'}`}>
+                                <div>
+                                    <div className={`font-black uppercase italic text-lg ${d.verified ? 'text-white' : 'text-emerald-400'}`}>{d.model}</div>
+                                    <div className={`text-[10px] font-bold uppercase ${d.verified ? 'text-slate-500' : 'text-emerald-600'}`}>
+                                        {d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade}
+                                        {d.verified ? ' • ✓ Verified' : ' • Community — Tap to Verify & Add'}
+                                    </div>
+                                </div>
+                                <div className={`font-black text-xl ${d.verified ? 'text-orange-500' : 'text-emerald-500'}`}>+</div>
                             </div>
-                        ))}
+                            );
+                        })}
                         {dbQuery && FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && (
                             <button onClick={() => { setCommunityFormData({ name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5 }); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
                                 Can't find your disc? Add to Global Directory
@@ -1595,6 +1676,7 @@ export default function App() {
                             })()}
                         </div>
                         <button onClick={() => { saveSettings(settings); setShowSettings(false); }} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Save & Close</button>
+                        <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="w-full bg-blue-600/20 border border-blue-500/30 py-3 rounded-2xl font-black uppercase text-blue-400 text-xs hover:bg-blue-600/30 transition">📖 View Tutorial</button>
                         <div className="space-y-2">
                             <h3 className="text-[10px] font-black uppercase text-slate-500">Your Bags</h3>
                             <div className="grid grid-cols-2 gap-2">
@@ -2068,6 +2150,187 @@ export default function App() {
                                 {missingDiscs.length > 0 ? `Finish Round — Move ${missingDiscs.length} to Graveyard` : 'Finish Round ✓'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            );
+        })()}
+
+        })()}
+
+        {/* =====================================================
+            COMMUNITY DISC VERIFICATION MODAL
+        ===================================================== */}
+        {showVerifyDisc && (() => {
+            const disc = showVerifyDisc;
+
+            const handleConfirm = async () => {
+                const { error } = await supabase.from('community_suggestions')
+                    .update({ model: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), verified: true })
+                    .eq('id', disc.id);
+                if (!error) {
+                    setCommunitySuggestions(prev => prev.map(cs => cs.id === disc.id
+                        ? { ...cs, model: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), verified: true }
+                        : cs));
+                }
+                await addDiscToDB({ name: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                setShowVerifyDisc(null);
+            };
+
+            const handleCorrect = async () => {
+                await supabase.from('community_suggestions')
+                    .update({ model: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade) })
+                    .eq('id', disc.id);
+                setCommunitySuggestions(prev => prev.map(cs => cs.id === disc.id
+                    ? { ...cs, model: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade) }
+                    : cs));
+                await addDiscToDB({ name: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                setShowVerifyDisc(null);
+            };
+
+            return (
+                <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6 overflow-y-auto">
+                    <div className="bg-slate-900 border border-emerald-600/40 rounded-[2.5rem] w-full max-w-lg p-8 space-y-6 my-auto">
+                        <div className="text-center">
+                            <div className="text-4xl mb-3">🔍</div>
+                            <h2 className="text-2xl font-black italic uppercase text-emerald-400">Verify This Disc</h2>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Another pilot added this disc. Please confirm the details are correct to help verify it for everyone!</p>
+                        </div>
+
+                        {verifyCorrecting ? (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Disc Model</p><input value={verifyName} onChange={e=>setVerifyName(e.target.value)} className="w-full bg-slate-800 p-3 rounded-xl font-bold uppercase text-white text-[16px] outline-none border border-slate-700 focus:border-emerald-500"/></div>
+                                    <div><p className="text-[9px] font-black text-slate-500 uppercase mb-1">Manufacturer</p><input value={verifyBrand} onChange={e=>setVerifyBrand(e.target.value)} className="w-full bg-slate-800 p-3 rounded-xl font-bold uppercase text-white text-[16px] outline-none border border-slate-700 focus:border-emerald-500"/></div>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2 text-center">
+                                    {[['Speed',verifySpeed,setVerifySpeed,1,13],['Glide',verifyGlide,setVerifyGlide,1,7],['Turn',verifyTurn,setVerifyTurn,-5,3],['Fade',verifyFade,setVerifyFade,0,4]].map(([label,val,setter,min,max])=>(
+                                        <div key={label}><p className="text-[8px] font-black text-slate-500 uppercase mb-1">{label}</p><input type="text" inputMode="decimal" value={val} onChange={e=>{const v=parseFloat(e.target.value);if(!isNaN(v))setter(Math.max(min,Math.min(max,v)));else setter(e.target.value);}} className="w-full bg-slate-800 p-3 rounded-xl font-black text-center text-white text-[16px] outline-none"/></div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-3">
+                                    <button onClick={()=>setVerifyCorrecting(false)} className="flex-1 py-3 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400">← Back</button>
+                                    <button onClick={handleCorrect} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-black uppercase text-xs text-white">Submit Correction & Add</button>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="bg-slate-800/60 rounded-2xl p-5">
+                                    <div className="flex justify-between items-start">
+                                        <div>
+                                            <div className="font-black uppercase italic text-xl text-white">{verifyName}</div>
+                                            <div className="text-[10px] font-bold text-slate-400 uppercase">{verifyBrand}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            {[['S',verifySpeed],['G',verifyGlide],['T',verifyTurn],['F',verifyFade]].map(([l,v])=>(
+                                                <div key={l} className="bg-slate-700 px-2.5 py-1.5 rounded-lg text-center">
+                                                    <div className="text-[7px] font-black text-slate-500 uppercase">{l}</div>
+                                                    <div className="text-sm font-black text-white">{v}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <p className="text-center text-[10px] font-bold text-slate-500 uppercase">Are these flight numbers correct?</p>
+                                <div className="flex gap-3">
+                                    <button onClick={()=>setShowVerifyDisc(null)} className="py-3 px-4 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400">Cancel</button>
+                                    <button onClick={()=>setVerifyCorrecting(true)} className="flex-1 py-3 bg-red-600/20 border border-red-500/30 rounded-2xl font-black uppercase text-xs text-red-400 hover:bg-red-600/30 transition">✗ Wrong Info</button>
+                                    <button onClick={handleConfirm} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-black uppercase text-xs text-white shadow-lg transition">✓ Confirm & Add</button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        })()}
+
+        {/* =====================================================
+            TUTORIAL MODAL
+        ===================================================== */}
+        {showTutorial && (() => {
+            const STEPS = [
+                {
+                    icon: '🎒',
+                    title: 'Welcome to BaggedUp!',
+                    color: 'text-orange-500',
+                    body: 'BaggedUp is your personal disc golf bag tracker. Track every disc you own, analyse your bag coverage, and never forget what you brought to the course.',
+                },
+                {
+                    icon: '➕',
+                    title: 'Adding Discs',
+                    color: 'text-orange-500',
+                    body: 'Tap the orange + button in the top right to search our disc directory. Find your disc and tap it to add it as an "idea" — mark it as Bought once you actually own it. Can\'t find your disc? Add it to the Global Directory and help the whole community!',
+                },
+                {
+                    icon: '📊',
+                    title: 'Flight Charts',
+                    color: 'text-blue-400',
+                    body: 'The Flight Path chart shows how each disc curves through the air. The Stability Matrix shows speed vs stability. Both update live as you add or adjust discs.',
+                },
+                {
+                    icon: '🎯',
+                    title: 'Bag Gap Analysis',
+                    color: 'text-blue-400',
+                    body: 'The blue banner at the top shows gaps in your bag coverage across 12 disc slots (Putter, Midrange, Fairway, Distance × Straight, Overstable, Understable). Tap it to see suggestions and add discs directly!',
+                },
+                {
+                    icon: '⚙️',
+                    title: 'Beat-In Wear Slider',
+                    color: 'text-yellow-400',
+                    body: 'Every disc card has a wear slider (Fresh → Beat). Drag it to simulate how a beat-in disc flies differently — the flight numbers and chart update in real time.',
+                },
+                {
+                    icon: '🥏',
+                    title: 'Play a Round',
+                    color: 'text-emerald-400',
+                    body: 'Before heading out, use Play Round to check off all your discs. When you get back, untick any missing ones and they\'ll move to the Graveyard with a note on where you lost them.',
+                },
+                {
+                    icon: '🌍',
+                    title: 'Community Directory',
+                    color: 'text-emerald-400',
+                    body: 'New discs added by other pilots appear in Community (green) in the search. When you add one, you\'ll be asked to verify the flight numbers — your confirmation helps it graduate to the main directory for everyone!',
+                },
+            ];
+            const step = STEPS[tutorialStep];
+            const isLast = tutorialStep === STEPS.length - 1;
+
+            return (
+                <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
+                    <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md p-8 space-y-6">
+                        {/* Progress dots */}
+                        <div className="flex gap-1.5 justify-center">
+                            {STEPS.map((_, i) => (
+                                <div key={i} className={`h-1.5 rounded-full transition-all ${i === tutorialStep ? 'w-6 bg-orange-500' : i < tutorialStep ? 'w-1.5 bg-orange-500/40' : 'w-1.5 bg-slate-700'}`} />
+                            ))}
+                        </div>
+
+                        <div className="text-center space-y-3">
+                            <div className="text-6xl">{step.icon}</div>
+                            <h2 className={`text-2xl font-black italic uppercase ${step.color}`}>{step.title}</h2>
+                            <p className="text-slate-400 font-bold text-sm leading-relaxed">{step.body}</p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            {tutorialStep > 0 && (
+                                <button onClick={() => setTutorialStep(s => s - 1)} className="py-3 px-5 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400">← Back</button>
+                            )}
+                            <button
+                                onClick={() => {
+                                    if (isLast) {
+                                        localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true');
+                                        setShowTutorial(false);
+                                    } else {
+                                        setTutorialStep(s => s + 1);
+                                    }
+                                }}
+                                className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-xs text-white shadow-lg transition"
+                            >
+                                {isLast ? 'Get Started 🚀' : 'Next →'}
+                            </button>
+                        </div>
+                        {!isLast && (
+                            <button onClick={() => { localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true'); setShowTutorial(false); }} className="w-full text-center text-[10px] font-bold text-slate-600 uppercase hover:text-slate-400 transition">Skip Tutorial</button>
+                        )}
                     </div>
                 </div>
             );
