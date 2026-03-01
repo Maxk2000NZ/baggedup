@@ -280,7 +280,15 @@ export default function App() {
                     responsive: true, maintainAspectRatio: false, 
                     scales: { 
                         x: { min: chartMode==='path'?-100:-6, max: chartMode==='path'?100:6, reverse: chartMode!=='path', grid: { color: '#1e293b' } }, 
-                        y: { min: 0, max: chartMode==='path'?(settings.unit==='m'?180:550):14, grid: { color: '#1e293b' } } 
+                        y: { 
+                            min: 0, 
+                            max: chartMode==='path'?(settings.unit==='m'?180:550):14, 
+                            grid: { color: '#1e293b' },
+                            ticks: chartMode === 'path' ? {} : { 
+                                stepSize: 1,
+                                callback: function(value) { return value; }
+                            }
+                        } 
                     }, 
                     plugins: { legend: { display: false } } 
                 }
@@ -368,7 +376,7 @@ export default function App() {
                             <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Flight Path</button>
                             <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
                         </div>
-                        <div className="h-[300px] lg:h-[550px] w-full"><canvas id="mainChart"></canvas></div>
+                        <div className="h-[400px] lg:h-[700px] w-full"><canvas id="mainChart"></canvas></div>
                     </div>
                 </section>
 
