@@ -73,21 +73,16 @@ const FACTORY_DB = [
 ];
 
 export default function App() {
-    // --- AUTH & UI STATES ---
     const [session, setSession] = useState(null);
     const [authEmail, setAuthEmail] = useState('');
     const [authPassword, setAuthPassword] = useState('');
     const [authLoading, setAuthLoading] = useState(false);
     const [authMessage, setAuthMessage] = useState('');
-    
-    // --- CORE DATA ---
     const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, country: 'New Zealand' });
     const [activeBagId, setActiveBagId] = useState('');
     const [bags, setBags] = useState([]);
     const [discs, setDiscs] = useState([]);
-    
-    // --- UI NAVIGATION ---
-    const [view, setView] = useState('active'); 
+    const [view, setView] = useState('active');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [chartMode, setChartMode] = useState('path');
     const [editing, setEditing] = useState(null);
@@ -99,9 +94,12 @@ export default function App() {
     const [showCommunityAdd, setShowCommunityAdd] = useState(false);
     const [communityFormData, setCommunityFormData] = useState({name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5});
 
+    // Mobile: one toggled chart
     const chartRef = useRef(null);
+    // Desktop: two always-visible charts
+    const desktopPathRef = useRef(null);
+    const desktopStabRef = useRef(null);
 
-    // --- AUTHENTICATION ---
     useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
@@ -122,7 +120,6 @@ export default function App() {
         setAuthLoading(false);
     };
 
-    // --- DATABASE SYNCING ---
     useEffect(() => {
         if (!session?.user) return;
         const loadData = async () => {
@@ -132,7 +129,7 @@ export default function App() {
 
             const { data: b } = await supabase.from('bags').select('*');
             if (b?.length) { setBags(b); setActiveBagId(b[0].id); }
-            else { 
+            else {
                 const { data: nb } = await supabase.from('bags').insert({ user_id: session.user.id, name: 'Main Bag' }).select().single();
                 setBags([nb]); setActiveBagId(nb.id);
             }
@@ -146,7 +143,6 @@ export default function App() {
         loadData();
     }, [session]);
 
-    // --- CLOUD MUTATIONS ---
     const saveSettings = async (newS) => {
         setSettings(newS);
         await supabase.from('settings').update({ unit: newS.unit, max_power: newS.maxPower, country: newS.country }).eq('user_id', session.user.id);
@@ -163,14 +159,13 @@ export default function App() {
     };
 
     const deleteBag = async (id) => {
-        if (confirm('Are you sure you want to delete this bag? All discs in it will be moved to storage.')) {
+        if (confirm('Delete this bag? All discs will move to storage.')) {
             await supabase.from('discs').update({ bag_id: null }).eq('bag_id', id);
             await supabase.from('bags').delete().eq('id', id);
             const updatedBags = bags.filter(b => b.id !== id);
             setBags(updatedBags);
-            if (activeBagId === id && updatedBags.length > 0) {
-                setActiveBagId(updatedBags[0].id);
-            } else if (updatedBags.length === 0) {
+            if (activeBagId === id && updatedBags.length > 0) setActiveBagId(updatedBags[0].id);
+            else if (updatedBags.length === 0) {
                 const { data: nb } = await supabase.from('bags').insert({ user_id: session.user.id, name: 'Main Bag' }).select().single();
                 if (nb) { setBags([nb]); setActiveBagId(nb.id); }
             }
@@ -179,34 +174,22 @@ export default function App() {
 
     const addDiscToDB = async (discObj) => {
         const isNotInFactory = !FACTORY_DB.some(d => d.Model.toLowerCase() === discObj.name.toLowerCase());
-        
         if (isNotInFactory) {
-            const alreadyInCommunity = communitySuggestions.some(cs => 
-                cs.model.toLowerCase() === discObj.name.toLowerCase() && 
+            const alreadyInCommunity = communitySuggestions.some(cs =>
+                cs.model.toLowerCase() === discObj.name.toLowerCase() &&
                 cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase()
             );
-            
             if (!alreadyInCommunity) {
-                const communityPayload = {
-                    model: discObj.name,
-                    brand: discObj.brand || '',
-                    speed: parseFloat(discObj.speed),
-                    glide: parseFloat(discObj.glide),
-                    turn: parseFloat(discObj.turn),
-                    fade: parseFloat(discObj.fade)
-                };
+                const communityPayload = { model: discObj.name, brand: discObj.brand || '', speed: parseFloat(discObj.speed), glide: parseFloat(discObj.glide), turn: parseFloat(discObj.turn), fade: parseFloat(discObj.fade) };
                 try {
                     const { data: csData, error: csError } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
                     if (csError) console.error('Error saving to community_suggestions:', csError);
                     else if (csData) setCommunitySuggestions([...communitySuggestions, csData]);
-                } catch (err) {
-                    console.error('Community suggestion error:', err);
-                }
+                } catch (err) { console.error('Community suggestion error:', err); }
             }
         }
-        
         const payload = { ...discObj, user_id: session.user.id };
-        delete payload.id; 
+        delete payload.id;
         const { data, error } = await supabase.from('discs').insert(payload).select().single();
         if (error) console.error('Error saving disc:', error);
         else if (data) setDiscs([...discs, data]);
@@ -223,43 +206,21 @@ export default function App() {
         await supabase.from('discs').delete().eq('id', id);
     };
 
-    // --- IMPROVED WEAR / BEAT-IN PHYSICS ---
-    // Based on real-world disc golf wear behaviour:
-    // - All discs become less stable over time (more turn, less fade)
-    // - Overstable discs (high fade) resist flipping — a Zone will never get truly flippy
-    // - High speed drivers lose fade more slowly but can develop moderate turn
-    // - Already understable discs mostly just lose their remaining fade
-    // - No disc goes below -5 turn, ever
+    // --- WEAR / BEAT-IN PHYSICS ---
     const getStats = (d) => {
         const w = parseFloat(d.wear) || 0;
         const baseTurn = parseFloat(d.turn);
         const baseFade = parseFloat(d.fade);
         const baseSpeed = parseFloat(d.speed);
-
-        // Natural overstability: high fade = strong resistance to becoming flippy
-        // e.g. Zone = 3, Destroyer = 2, Mamba = -4
         const overstability = baseFade + Math.max(0, baseTurn);
-
-        // Max additional turn a disc can develop from wear
-        // Very overstable discs (Zone, Firebird) cap at ~1.5 extra turn
-        // Neutral/understable discs barely change turn at all
         const maxTurnShift = Math.max(0, Math.min(1.5, overstability * 0.5));
-
-        // Turn creeps negative with wear, floored at -5
         const turn = Math.max(-5, baseTurn - (w * maxTurnShift));
-
-        // Fade reduces with wear
-        // Max 65% fade loss at full wear — a Zone 3 fade → ~1.05 at fully beat
         const maxFadeReduction = baseFade * 0.65;
         const fade = Math.max(0, baseFade - (w * maxFadeReduction));
-
-        // Distance: beat discs fly slightly farther up to ~70% worn (more glide phase)
-        // Very beat discs lose a touch of distance as they turn and burn
         const distBoost = w < 0.7 ? 1 + (w * 0.05) : 1 + (0.035 - (w - 0.7) * 0.1);
         const dist = d.max_dist
             ? parseFloat(d.max_dist)
             : parseFloat(settings.maxPower) * (0.4 + (baseSpeed / 12 * 0.6)) * distBoost;
-
         return { turn, fade, stability: turn + fade, dist };
     };
 
@@ -267,7 +228,7 @@ export default function App() {
         const s = getStats(d);
         const points = [];
         for (let i = 0; i <= 100; i++) {
-            const p = i / 100; 
+            const p = i / 100;
             const x = ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
             points.push({ x, y: settings.unit === 'm' ? p * s.dist * 0.3048 : p * s.dist });
         }
@@ -280,12 +241,40 @@ export default function App() {
         const hasOSApproach = active.some(d => d.speed <= 4 && parseFloat(d.fade) >= 2.5);
         const hasUSMid = active.some(d => d.speed >= 4 && d.speed <= 6 && parseFloat(d.turn) <= -1.5);
         const hasOSDriver = active.some(d => d.speed >= 9 && (parseFloat(d.turn) + parseFloat(d.fade)) >= 3.5);
-
         if (!hasOSApproach) return { text: "Need: OS Approach", filter: (d) => d.Speed <= 4 && d.Fade >= 2.5 };
         if (!hasUSMid) return { text: "Need: US Midrange", filter: (d) => d.Speed >= 4 && d.Speed <= 6 && d.Turn <= -2 };
         if (!hasOSDriver) return { text: "Need: OS Utility", filter: (d) => d.Speed >= 9 && (d.Turn + d.Fade) >= 3.5 };
         return { text: "Optimized", filter: null };
     }, [discs, activeBagId]);
+
+    // --- SHARED CHART CONFIG BUILDER ---
+    const buildChartConfig = (filtered, mode) => ({
+        type: 'scatter',
+        data: {
+            datasets: filtered.map(d => ({
+                label: d.name,
+                data: mode === 'path' ? calculatePath(d) : [{ x: getStats(d).stability, y: parseFloat(d.speed) }],
+                borderColor: d.color, backgroundColor: d.color,
+                showLine: mode === 'path',
+                pointRadius: mode === 'path' ? 0 : 8,
+                borderDash: d.is_idea ? [5, 5] : [],
+                borderWidth: 3
+            }))
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                x: { min: mode === 'path' ? -100 : -6, max: mode === 'path' ? 100 : 6, reverse: mode !== 'path', grid: { color: '#1e293b' } },
+                y: {
+                    min: 0,
+                    max: mode === 'path' ? (settings.unit === 'm' ? 180 : 550) : 14,
+                    grid: { color: '#1e293b' },
+                    ticks: mode === 'path' ? {} : { stepSize: 1, callback: v => v }
+                }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
 
     // --- CHART RENDERING ---
     useEffect(() => {
@@ -297,31 +286,24 @@ export default function App() {
             return d.bag_id === activeBagId && d.status === 'active';
         });
 
-        const canvas = document.getElementById('mainChart');
-        if (canvas) {
+        // Mobile: single toggled chart
+        const mobileCanvas = document.getElementById('mainChart');
+        if (mobileCanvas) {
             if (chartRef.current) chartRef.current.destroy();
-            chartRef.current = new Chart(canvas.getContext('2d'), {
-                type: 'scatter',
-                data: { datasets: filtered.map(d => ({ 
-                    label: d.name, 
-                    data: chartMode === 'path' ? calculatePath(d) : [{x: getStats(d).stability, y: parseFloat(d.speed)}],
-                    borderColor: d.color, backgroundColor: d.color, showLine: chartMode === 'path', 
-                    pointRadius: chartMode === 'path' ? 0 : 8, borderDash: d.is_idea ? [5, 5] : [], opacity: d.is_idea ? 0.6 : 1, borderWidth: 3
-                })) },
-                options: { 
-                    responsive: true, maintainAspectRatio: false, 
-                    scales: { 
-                        x: { min: chartMode==='path'?-100:-6, max: chartMode==='path'?100:6, reverse: chartMode!=='path', grid: { color: '#1e293b' } }, 
-                        y: { 
-                            min: 0, 
-                            max: chartMode==='path'?(settings.unit==='m'?180:550):14, 
-                            grid: { color: '#1e293b' },
-                            ticks: chartMode === 'path' ? {} : { stepSize: 1, callback: function(value) { return value; } }
-                        } 
-                    }, 
-                    plugins: { legend: { display: false } } 
-                }
-            });
+            chartRef.current = new Chart(mobileCanvas.getContext('2d'), buildChartConfig(filtered, chartMode));
+        }
+
+        // Desktop: both charts always visible
+        const pathCanvas = document.getElementById('desktopPathChart');
+        if (pathCanvas) {
+            if (desktopPathRef.current) desktopPathRef.current.destroy();
+            desktopPathRef.current = new Chart(pathCanvas.getContext('2d'), buildChartConfig(filtered, 'path'));
+        }
+
+        const stabCanvas = document.getElementById('desktopStabChart');
+        if (stabCanvas) {
+            if (desktopStabRef.current) desktopStabRef.current.destroy();
+            desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildChartConfig(filtered, 'matrix'));
         }
     }, [discs, activeBagId, view, session, settings, chartMode]);
 
@@ -332,12 +314,78 @@ export default function App() {
                 <img src={LOGO_URL} alt="BaggedUp Logo" className="h-48 w-48 mx-auto mb-8 object-contain" />
                 {authMessage && <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">{authMessage}</div>}
                 <form onSubmit={(e) => handleLogin(e, 'login')} className="space-y-4">
-                    <input type="email" placeholder="EMAIL" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
-                    <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e=>setAuthPassword(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
+                    <input type="email" placeholder="EMAIL" value={authEmail} onChange={e => setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
+                    <input type="password" placeholder="PASSWORD" value={authPassword} onChange={e => setAuthPassword(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
                     <button type="submit" className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Log In</button>
                     <button type="button" onClick={(e) => handleLogin(e, 'signup')} className="w-full text-orange-500 font-bold uppercase text-xs pt-2">Register New Account</button>
                 </form>
             </div>
+        </div>
+    );
+
+    // --- FILTERED DISCS (used in both layouts) ---
+    const filteredDiscs = discs.filter(d => {
+        if (view === 'graveyard') return d.status === 'lost';
+        if (view === 'favorites') return d.favorite;
+        if (view === 'storage') return d.status === 'active' && !d.bag_id;
+        return d.bag_id === activeBagId && d.status === 'active';
+    });
+
+    // --- INVENTORY CARD COMPONENT ---
+    const InventoryCards = () => (
+        <div className="space-y-3">
+            {filteredDiscs.map(d => {
+                const currentStats = getStats(d);
+                return (
+                    <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
+                        <div className="flex justify-between items-start">
+                            <div className="min-w-0 pr-4">
+                                <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
+                            </div>
+                            <div className="flex gap-3 shrink-0">
+                                <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
+                                <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-end">
+                            <div className="flex gap-2 text-center">
+                                {[
+                                    { label: 'S', base: d.speed, live: d.speed },
+                                    { label: 'G', base: d.glide, live: d.glide },
+                                    { label: 'T', base: d.turn, live: currentStats.turn },
+                                    { label: 'F', base: d.fade, live: currentStats.fade },
+                                ].map((val, i) => {
+                                    const worn = parseFloat(d.wear) > 0;
+                                    const changed = worn && val.live !== val.base;
+                                    return (
+                                        <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg">
+                                            <div className="text-[7px] font-black text-slate-600 uppercase">{val.label}</div>
+                                            <div className={`text-[10px] font-black ${changed ? 'text-orange-400' : 'text-slate-300'}`}>
+                                                {val.live.toFixed(changed ? 1 : 0)}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {!d.is_idea && (
+                                <div className="flex-grow ml-6">
+                                    <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1">
+                                        <span>Fresh</span><span>Beat</span>
+                                    </div>
+                                    <input type="range" min="0" max="1" step="0.05" value={d.wear}
+                                        onChange={(e) => updateDiscInDB({ ...d, wear: parseFloat(e.target.value) })}
+                                        className="w-full" />
+                                </div>
+                            )}
+                            {d.is_idea && (
+                                <button onClick={() => updateDiscInDB({ ...d, is_idea: false })} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>
+                            )}
+                        </div>
+                    </div>
+                );
+            })}
         </div>
     );
 
@@ -347,19 +395,13 @@ export default function App() {
                 .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
                 input[type="range"] { -webkit-appearance: none; background: #1e293b; height: 6px; border-radius: 10px; }
                 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #f97316; border: 2px solid #0b0f1a; }
-                @media (max-width: 1024px) {
-                    .desktop-sidebar { display: none; }
-                    .mobile-only { display: block; }
-                }
-                @media (min-width: 1025px) {
-                    .mobile-menu-btn { display: none; }
-                    .mobile-only { display: none; }
-                }
             `}</style>
 
-            {/* --- DESKTOP SIDEBAR --- */}
-            <div className="desktop-sidebar hidden lg:flex w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex-col gap-6 sticky top-0">
-                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-16 w-16 object-contain" />
+            {/* =====================================================
+                DESKTOP SIDEBAR (lg+)
+            ===================================================== */}
+            <div className="hidden lg:flex w-60 h-full bg-slate-900 border-r border-slate-800 p-6 flex-col gap-4 shrink-0">
+                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-14 w-14 object-contain mb-2" />
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
                     { id: 'storage', label: 'Storage', icon: '📦' },
@@ -374,7 +416,9 @@ export default function App() {
                 <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
             </div>
 
-            {/* --- MOBILE SIDEBAR OVERLAY --- */}
+            {/* =====================================================
+                MOBILE SIDEBAR OVERLAY
+            ===================================================== */}
             {sidebarOpen && (
                 <div className="lg:hidden fixed inset-0 z-[100] flex">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
@@ -396,143 +440,138 @@ export default function App() {
                 </div>
             )}
 
-            {/* --- MAIN CONTENT AREA --- */}
-            <div className="flex-1 flex flex-col overflow-hidden">
-                {/* --- HEADER --- */}
+            {/* =====================================================
+                MAIN CONTENT AREA
+            ===================================================== */}
+            <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+
+                {/* HEADER */}
                 <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 glass sticky top-0">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => setSidebarOpen(true)} className="mobile-menu-btn text-2xl lg:hidden">☰</button>
+                        <button onClick={() => setSidebarOpen(true)} className="text-2xl lg:hidden">☰</button>
                         <img src={LOGO_URL} alt="BaggedUp Logo" className="h-10 w-10 object-contain lg:hidden" />
                     </div>
                     <div className="bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 flex items-center gap-2">
                         <select value={activeBagId} onChange={(e) => setActiveBagId(e.target.value)} className="bg-transparent text-[10px] font-black uppercase outline-none text-orange-500">
                             {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
-                        <button onClick={() => {const n=prompt("Rename Bag:"); if(n) updateBagName(activeBagId, n);}} className="text-slate-500 text-xs">✎</button>
+                        <button onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }} className="text-slate-500 text-xs">✎</button>
                     </div>
                     <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
                 </header>
 
-                {/* --- MAIN CONTENT --- */}
-                <main className="flex-1 overflow-y-auto">
-                    
-                    {/* Gap Analysis Ticker */}
+                {/* =====================================================
+                    MOBILE LAYOUT (below lg): stacked — chart then inventory
+                ===================================================== */}
+                <main className="lg:hidden flex-1 overflow-y-auto">
                     {gapAnalysis.filter && view === 'active' && (
-                        <div className="px-4 lg:px-8 pt-4">
+                        <div className="px-4 pt-4">
                             <button onClick={() => setSuggestionPool(FACTORY_DB.filter(gapAnalysis.filter).slice(0, 5))} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
                                 {gapAnalysis.text} — View Suggestions
                             </button>
                         </div>
                     )}
-
-                    {/* Chart Section */}
-                    <section className="p-4 lg:p-8">
-                        <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl overflow-hidden">
+                    <section className="p-4">
+                        <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl">
                             <div className="flex bg-slate-800/50 p-1 rounded-2xl mb-4 w-full max-w-xs mx-auto">
                                 <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Flight Path</button>
                                 <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
                             </div>
-                            <div className="h-[400px] lg:h-[700px] w-full"><canvas id="mainChart"></canvas></div>
+                            <div className="h-[400px] w-full"><canvas id="mainChart"></canvas></div>
                         </div>
                     </section>
-
-                    {/* Inventory Cards */}
-                    <section className="px-4 lg:px-8 pb-24 lg:pb-8">
+                    <section className="px-4 pb-24">
                         <h2 className="px-2 italic text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4">{view} Inventory</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                            {discs.filter(d => {
-                                if(view === 'graveyard') return d.status === 'lost';
-                                if(view === 'favorites') return d.favorite;
-                                if(view === 'storage') return d.status === 'active' && !d.bag_id;
-                                return d.bag_id === activeBagId && d.status === 'active';
-                            }).map(d => {
-                                const currentStats = getStats(d);
-                                return (
-                                    <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
-                                        <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
-                                        <div className="flex justify-between items-start">
-                                            <div className="min-w-0 pr-4">
-                                                <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
-                                                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
-                                            </div>
-                                            <div className="flex gap-3 shrink-0">
-                                                <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
-                                                <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* Flight numbers: show live worn values if worn, base if fresh */}
-                                        <div className="flex justify-between items-end">
-                                            <div className="flex gap-2 text-center">
-                                                {[
-                                                    { label: 'S', base: d.speed, live: d.speed },
-                                                    { label: 'G', base: d.glide, live: d.glide },
-                                                    { label: 'T', base: d.turn, live: currentStats.turn },
-                                                    { label: 'F', base: d.fade, live: currentStats.fade },
-                                                ].map((val, i) => {
-                                                    const worn = parseFloat(d.wear) > 0;
-                                                    const changed = worn && val.live !== val.base;
-                                                    return (
-                                                        <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg">
-                                                            <div className="text-[7px] font-black text-slate-600 uppercase">{val.label}</div>
-                                                            <div className={`text-[10px] font-black ${changed ? 'text-orange-400' : 'text-slate-300'}`}>
-                                                                {val.live.toFixed(changed ? 1 : 0)}
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            {!d.is_idea && (
-                                                <div className="flex-grow ml-6">
-                                                    <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1">
-                                                        <span>Fresh</span>
-                                                        <span>Beat</span>
-                                                    </div>
-                                                    <input 
-                                                        type="range" min="0" max="1" step="0.05" 
-                                                        value={d.wear} 
-                                                        onChange={(e) => updateDiscInDB({...d, wear: parseFloat(e.target.value)})} 
-                                                        className="w-full" 
-                                                    />
-                                                </div>
-                                            )}
-                                            {d.is_idea && (
-                                                <button onClick={() => updateDiscInDB({...d, is_idea: false})} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
+                        <InventoryCards />
                     </section>
                 </main>
-            </div>
 
-            {/* --- SEARCH DIRECTORY --- */}
+                {/* =====================================================
+                    DESKTOP LAYOUT (lg+):
+                    Left panel  = both charts side by side (fills remaining width)
+                    Right panel = scrollable inventory list (fixed 380px)
+                ===================================================== */}
+                <div className="hidden lg:flex flex-1 overflow-hidden min-w-0">
+
+                    {/* LEFT: Charts — flex-1 so they fill all space not taken by inventory */}
+                    <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden min-w-0">
+
+                        {/* Gap analysis banner */}
+                        {gapAnalysis.filter && view === 'active' && (
+                            <button onClick={() => setSuggestionPool(FACTORY_DB.filter(gapAnalysis.filter).slice(0, 5))} className="shrink-0 w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
+                                {gapAnalysis.text} — View Suggestions
+                            </button>
+                        )}
+
+                        {/* Two charts side by side, filling all remaining vertical space */}
+                        <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
+
+                            {/* Flight Path Chart */}
+                            <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
+                                <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3 shrink-0">
+                                    ✈ Flight Path
+                                </div>
+                                <div className="flex-1 relative min-h-0">
+                                    <canvas id="desktopPathChart" className="absolute inset-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                            {/* Stability Matrix Chart */}
+                            <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
+                                <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3 shrink-0">
+                                    ◎ Stability Matrix
+                                </div>
+                                <div className="flex-1 relative min-h-0">
+                                    <canvas id="desktopStabChart" className="absolute inset-0 w-full h-full"></canvas>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {/* RIGHT: Inventory panel — fixed width, full height, scrollable */}
+                    <div className="w-[380px] shrink-0 h-full border-l border-slate-800 bg-slate-950/50 flex flex-col">
+                        <div className="px-5 py-4 border-b border-slate-800 shrink-0">
+                            <span className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</span>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-4 pb-6">
+                            <InventoryCards />
+                        </div>
+                    </div>
+
+                </div>
+                {/* end desktop layout */}
+
+            </div>
+            {/* end main content area */}
+
+            {/* =====================================================
+                MODALS (shared, appear over both layouts)
+            ===================================================== */}
+
+            {/* SEARCH DIRECTORY */}
             {showSearch && !showCommunityAdd && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col pt-safe">
+                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
                         <button onClick={() => { setShowSearch(false); setDbQuery(''); }} className="text-2xl">✕</button>
                     </div>
-                    <input autoFocus placeholder="DISC MODEL..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full bg-slate-900 p-6 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-6 outline-none focus:border-orange-500" />
-                    <div className="flex-grow overflow-y-auto space-y-3 pb-10">
+                    <input autoFocus placeholder="DISC MODEL..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full max-w-2xl mx-auto bg-slate-900 p-6 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-6 outline-none focus:border-orange-500" />
+                    <div className="flex-grow overflow-y-auto space-y-3 pb-10 max-w-2xl w-full mx-auto">
                         {FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
-                            <div key={d.Model} onClick={() => { addDiscToDB({name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setShowSearch(false); }} className="p-6 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
+                            <div key={d.Model} onClick={() => { addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setShowSearch(false); }} className="p-6 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
                                 <div><div className="font-black uppercase italic text-lg">{d.Model}</div><div className="text-[10px] font-bold text-slate-500 uppercase">{d.Manufacturer} • {d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</div></div>
                                 <div className="text-orange-500 font-black text-xl">+</div>
                             </div>
                         ))}
-                        
                         {communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
-                            <div key={d.id} onClick={() => { addDiscToDB({name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setShowSearch(false); }} className="p-6 bg-emerald-900/20 rounded-2xl border border-emerald-600/30 flex justify-between items-center cursor-pointer hover:border-emerald-500 transition">
+                            <div key={d.id} onClick={() => { addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setShowSearch(false); }} className="p-6 bg-emerald-900/20 rounded-2xl border border-emerald-600/30 flex justify-between items-center cursor-pointer hover:border-emerald-500 transition">
                                 <div><div className="font-black uppercase italic text-lg text-emerald-400">{d.model}</div><div className="text-[10px] font-bold text-emerald-600 uppercase">{d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade} • Community</div></div>
                                 <div className="text-emerald-500 font-black text-xl">+</div>
                             </div>
                         ))}
-                        
                         {dbQuery && FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && (
-                            <button onClick={() => { setCommunityFormData({name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5}); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
+                            <button onClick={() => { setCommunityFormData({ name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5 }); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
                                 Can't find your disc? Add to Global Directory
                             </button>
                         )}
@@ -540,55 +579,49 @@ export default function App() {
                 </div>
             )}
 
-            {/* --- COMMUNITY ADD MODAL --- */}
+            {/* COMMUNITY ADD */}
             {showCommunityAdd && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
                     <form onSubmit={async e => {
                         e.preventDefault();
-                        await addDiscToDB({...communityFormData, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true});
+                        await addDiscToDB({ ...communityFormData, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
                         alert(`✅ "${communityFormData.name}" added to your bag and the global directory!`);
-                        setShowCommunityAdd(false);
-                        setShowSearch(false);
-                        setDbQuery('');
-                        setCommunityFormData({name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5});
+                        setShowCommunityAdd(false); setShowSearch(false); setDbQuery('');
+                        setCommunityFormData({ name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5 });
                     }} className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-lg space-y-4 my-auto">
-                        <div className="flex justify-between"><h3 className="text-2xl font-black italic uppercase text-blue-500">Add to Global Directory</h3><button type="button" onClick={()=>{ setShowCommunityAdd(false); }}>✕</button></div>
+                        <div className="flex justify-between"><h3 className="text-2xl font-black italic uppercase text-blue-500">Add to Global Directory</h3><button type="button" onClick={() => setShowCommunityAdd(false)}>✕</button></div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Help the community by adding this disc! It will be available to all pilots.</p>
                         <div className="grid grid-cols-2 gap-3">
-                            <input type="text" value={communityFormData.name} onChange={(e) => setCommunityFormData({...communityFormData, name: e.target.value})} placeholder="DISC MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none"/>
-                            <input type="text" value={communityFormData.brand} onChange={(e) => setCommunityFormData({...communityFormData, brand: e.target.value})} placeholder="MANUFACTURER" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none"/>
+                            <input type="text" value={communityFormData.name} onChange={(e) => setCommunityFormData({ ...communityFormData, name: e.target.value })} placeholder="DISC MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
+                            <input type="text" value={communityFormData.brand} onChange={(e) => setCommunityFormData({ ...communityFormData, brand: e.target.value })} placeholder="MANUFACTURER" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
                             {['speed', 'glide', 'turn', 'fade'].map((l, i) => {
-                                const constraints = {speed: {min: 1, max: 13}, glide: {min: 1, max: 7}, turn: {min: -5, max: 3}, fade: {min: 0, max: 4}};
-                                const {min, max} = constraints[l];
-                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input type="text" inputMode="decimal" value={communityFormData[l]} onChange={(e) => {
+                                const constraints = { speed: { min: 1, max: 13 }, glide: { min: 1, max: 7 }, turn: { min: -5, max: 3 }, fade: { min: 0, max: 4 } };
+                                const { min, max } = constraints[l];
+                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd', 'Gld', 'Trn', 'Fde'][i]}</span><input type="text" inputMode="decimal" value={communityFormData[l]} onChange={(e) => {
                                     const val = parseFloat(e.target.value);
-                                    if (!isNaN(val)) {
-                                        const clamped = Math.max(min, Math.min(max, val));
-                                        setCommunityFormData({...communityFormData, [l]: clamped});
-                                    } else if (e.target.value === '' || e.target.value === '-') {
-                                        setCommunityFormData({...communityFormData, [l]: e.target.value});
-                                    }
-                                }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
+                                    if (!isNaN(val)) setCommunityFormData({ ...communityFormData, [l]: Math.max(min, Math.min(max, val)) });
+                                    else if (e.target.value === '' || e.target.value === '-') setCommunityFormData({ ...communityFormData, [l]: e.target.value });
+                                }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]" /></div>);
                             })}
                         </div>
                         <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl hover:bg-blue-700 transition">Add to Directory</button>
-                        <button type="button" onClick={() => setShowCommunityAdd(false)} className="w-full py-3 text-slate-400 font-black uppercase text-xs hover:text-slate-300 transition">Cancel</button>
+                        <button type="button" onClick={() => setShowCommunityAdd(false)} className="w-full py-3 text-slate-400 font-black uppercase text-xs">Cancel</button>
                     </form>
                 </div>
             )}
 
-            {/* --- GAP ANALYSIS SUGGESTIONS MODAL --- */}
+            {/* GAP SUGGESTIONS */}
             {suggestionPool && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col pt-safe">
+                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-3xl font-black italic text-blue-500 uppercase">Suggested Discs</h2>
                         <button onClick={() => setSuggestionPool(null)} className="text-2xl">✕</button>
                     </div>
-                    <div className="flex-grow overflow-y-auto space-y-3 pb-10">
+                    <div className="flex-grow overflow-y-auto space-y-3 pb-10 max-w-2xl w-full mx-auto">
                         {suggestionPool.map(d => (
-                            <div key={d.Model} onClick={() => { addDiscToDB({name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setSuggestionPool(null); }} className="p-6 bg-blue-900/20 rounded-2xl border border-blue-600/30 flex justify-between items-center cursor-pointer hover:border-blue-500 transition">
+                            <div key={d.Model} onClick={() => { addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setSuggestionPool(null); }} className="p-6 bg-blue-900/20 rounded-2xl border border-blue-600/30 flex justify-between items-center cursor-pointer hover:border-blue-500 transition">
                                 <div><div className="font-black uppercase italic text-lg text-blue-400">{d.Model}</div><div className="text-[10px] font-bold text-blue-600 uppercase">{d.Manufacturer} • {d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</div></div>
                                 <div className="text-blue-500 font-black text-xl">+</div>
                             </div>
@@ -597,7 +630,7 @@ export default function App() {
                 </div>
             )}
 
-            {/* --- FULL EDIT MODAL --- */}
+            {/* EDIT MODAL */}
             {editing && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
                     <form onSubmit={e => {
@@ -605,70 +638,109 @@ export default function App() {
                         const distValue = parseFloat(fd.get('d'));
                         const savedDist = settings.unit === 'm' ? distValue / 0.3048 : distValue;
                         updateDiscInDB({
-                            ...editing, name: fd.get('n'), brand: fd.get('b'), plastic: fd.get('pl'), weight: fd.get('wt'), bag_id: fd.get('bag') || null, status: fd.get('lost') === 'on' ? 'lost' : 'active', 
-                            speed: parseFloat(fd.get('s')), glide: parseFloat(fd.get('g')), turn: parseFloat(fd.get('t')), fade: parseFloat(fd.get('f')), color: fd.get('c'), 
-                            max_dist: savedDist, aces: parseInt(fd.get('a')), favorite: fd.get('fav') === 'on', is_idea: false
+                            ...editing, name: fd.get('n'), brand: fd.get('b'), plastic: fd.get('pl'), weight: fd.get('wt'),
+                            bag_id: fd.get('bag') || null, status: fd.get('lost') === 'on' ? 'lost' : 'active',
+                            speed: parseFloat(fd.get('s')), glide: parseFloat(fd.get('g')), turn: parseFloat(fd.get('t')), fade: parseFloat(fd.get('f')),
+                            color: fd.get('c'), max_dist: savedDist, aces: parseInt(fd.get('a')), favorite: fd.get('fav') === 'on', is_idea: false
                         });
                         setEditing(null);
                     }} className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-lg space-y-4 my-auto">
-                        <div className="flex justify-between"><h3 className="text-2xl font-black italic uppercase text-orange-500">Edit Disc</h3><button type="button" onClick={()=>setEditing(null)}>✕</button></div>
+                        <div className="flex justify-between"><h3 className="text-2xl font-black italic uppercase text-orange-500">Edit Disc</h3><button type="button" onClick={() => setEditing(null)}>✕</button></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <input name="n" defaultValue={editing.name} placeholder="MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none"/>
+                            <input name="n" defaultValue={editing.name} placeholder="MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
                             <select name="bag" defaultValue={editing.bag_id || ''} className="bg-slate-800 p-4 rounded-xl text-[16px] text-white">
                                 <option value="">Storage</option>
                                 {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <input name="b" defaultValue={editing.brand} placeholder="BRAND" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none"/>
-                            <input name="pl" defaultValue={editing.plastic} placeholder="PLASTIC" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none"/>
+                            <input name="b" defaultValue={editing.brand} placeholder="BRAND" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
+                            <input name="pl" defaultValue={editing.plastic} placeholder="PLASTIC" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT (g)" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white outline-none"/>
+                            <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT (g)" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white outline-none" />
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
-                            {['s','g','t','f'].map((l, i) => {
-                                const constraints = {'s': {min: 1, max: 13}, 'g': {min: 1, max: 7}, 't': {min: -5, max: 3}, 'f': {min: 0, max: 4}};
-                                const {min, max} = constraints[l];
-                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input name={l} type="text" inputMode="decimal" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} onBlur={(e) => {
+                            {['s', 'g', 't', 'f'].map((l, i) => {
+                                const constraints = { s: { min: 1, max: 13 }, g: { min: 1, max: 7 }, t: { min: -5, max: 3 }, f: { min: 0, max: 4 } };
+                                const { min, max } = constraints[l];
+                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd', 'Gld', 'Trn', 'Fde'][i]}</span><input name={l} type="text" inputMode="decimal" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} onBlur={(e) => {
                                     const val = parseFloat(e.target.value);
-                                    if (!isNaN(val)) {
-                                        const clamped = Math.max(min, Math.min(max, val));
-                                        e.target.value = clamped;
-                                    }
-                                }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
+                                    if (!isNaN(val)) e.target.value = Math.max(min, Math.min(max, val));
+                                }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]" /></div>);
                             })}
                         </div>
                         <div className="bg-slate-800 p-4 rounded-xl">
-                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1"><span>Power Calibration</span><span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span></div>
+                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1">
+                                <span>Power Calibration</span>
+                                <span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span>
+                            </div>
                             <input name="d" type="range" min={settings.unit === 'm' ? 15 : 50} max={settings.unit === 'm' ? 198 : 650} step="1" defaultValue={settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)} className="w-full" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Aces</span><input name="a" type="number" defaultValue={editing.aces || 0} className="bg-transparent font-black text-orange-500 w-full text-[16px]"/></div>
-                            <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Path Color</span><input name="c" type="color" defaultValue={editing.color} className="w-full h-6 bg-transparent"/></div>
+                            <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Aces</span><input name="a" type="number" defaultValue={editing.aces || 0} className="bg-transparent font-black text-orange-500 w-full text-[16px]" /></div>
+                            <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Path Color</span><input name="c" type="color" defaultValue={editing.color} className="w-full h-6 bg-transparent" /></div>
                         </div>
                         <div className="flex gap-2">
-                            <label className="flex-1 bg-slate-800 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-slate-500"><input name="fav" type="checkbox" defaultChecked={editing.favorite} className="accent-orange-500 h-5 w-5"/>Collection</label>
-                            <label className="flex-1 bg-red-900/20 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-red-500"><input name="lost" type="checkbox" defaultChecked={editing.status === 'lost'} className="accent-red-500 h-5 w-5"/>Lost Disc</label>
+                            <label className="flex-1 bg-slate-800 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-slate-500"><input name="fav" type="checkbox" defaultChecked={editing.favorite} className="accent-orange-500 h-5 w-5" />Collection</label>
+                            <label className="flex-1 bg-red-900/20 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-red-500"><input name="lost" type="checkbox" defaultChecked={editing.status === 'lost'} className="accent-red-500 h-5 w-5" />Lost Disc</label>
                         </div>
                         <button type="submit" className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Sync to Cloud</button>
                     </form>
                 </div>
             )}
 
-            {/* --- SETTINGS --- */}
+            {/* SETTINGS */}
             {showSettings && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center">
                     <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-md space-y-6">
                         <h2 className="text-2xl font-black italic uppercase text-orange-500">Pilot Settings</h2>
                         <div className="flex flex-col gap-2 bg-slate-800 p-4 rounded-xl border border-slate-700">
                             <span className="text-[10px] font-black uppercase text-slate-500">Home Territory</span>
-                            <input value={settings.country || ''} onChange={(e) => setSettings({...settings, country: e.target.value})} className="bg-transparent font-black text-white uppercase outline-none"/>
+                            <input value={settings.country || ''} onChange={(e) => setSettings({ ...settings, country: e.target.value })} className="bg-transparent font-black text-white uppercase outline-none" />
                         </div>
-                        <button onClick={() => setSettings({...settings, unit: settings.unit === 'ft' ? 'm' : 'ft'})} className="w-full bg-slate-800 p-5 rounded-2xl font-black text-xs uppercase flex justify-between"><span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span></button>
+                        <button onClick={() => {
+                            // maxPower always stored in feet internally; just flip the display unit
+                            setSettings({ ...settings, unit: settings.unit === 'ft' ? 'm' : 'ft' });
+                        }} className="w-full bg-slate-800 p-5 rounded-2xl font-black text-xs uppercase flex justify-between">
+                            <span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span>
+                        </button>
                         <div className="bg-slate-800 p-5 rounded-2xl space-y-4">
-                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400"><span>Global Max Power</span><span className="text-orange-500">{settings.maxPower}{settings.unit}</span></div>
-                            <input type="range" min="100" max="600" step="10" value={settings.maxPower} onChange={(e) => setSettings({...settings, maxPower: Number(e.target.value)})} className="w-full" />
+                            {/* maxPower stored in feet. Slider displays in current unit. */}
+                            {(() => {
+                                const displayVal = settings.unit === 'm'
+                                    ? Math.round(settings.maxPower * 0.3048)
+                                    : settings.maxPower;
+                                const displayMin = settings.unit === 'm' ? 30 : 100;
+                                const displayMax = settings.unit === 'm' ? 183 : 600;
+                                const displayStep = settings.unit === 'm' ? 1 : 5;
+                                return (
+                                    <>
+                                        <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                            <span>Global Max Power</span>
+                                            <span className="text-orange-500">{displayVal}{settings.unit}</span>
+                                        </div>
+                                        <input
+                                            type="range"
+                                            min={displayMin}
+                                            max={displayMax}
+                                            step={displayStep}
+                                            value={displayVal}
+                                            onChange={(e) => {
+                                                const v = Number(e.target.value);
+                                                const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v;
+                                                setSettings({ ...settings, maxPower: inFeet });
+                                            }}
+                                            className="w-full"
+                                        />
+                                        <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mt-1">
+                                            <span>{settings.unit === 'm' ? '30m' : '100ft'}</span>
+                                            <span className="text-slate-600">100m / 328ft avg</span>
+                                            <span>{settings.unit === 'm' ? '183m' : '600ft'}</span>
+                                        </div>
+                                    </>
+                                );
+                            })()}
                         </div>
                         <button onClick={() => { saveSettings(settings); setShowSettings(false); }} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Save & Close</button>
                         <div className="space-y-2">
@@ -676,16 +748,15 @@ export default function App() {
                             {bags.map(bag => (
                                 <div key={bag.id} className="flex items-center justify-between bg-slate-800 p-3 rounded-xl">
                                     <span className={`text-sm font-black uppercase ${bag.id === activeBagId ? 'text-orange-500' : 'text-slate-400'}`}>{bag.name}</span>
-                                    {bags.length > 1 && (
-                                        <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black">✕</button>
-                                    )}
+                                    {bags.length > 1 && <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black">✕</button>}
                                 </div>
                             ))}
                         </div>
-                        <button onClick={() => {const n=prompt("New Bag Name:"); if(n) createBag(n); setShowSettings(false);}} className="w-full py-4 text-xs font-black uppercase text-slate-500">Create New Bag</button>
+                        <button onClick={() => { const n = prompt("New Bag Name:"); if (n) createBag(n); setShowSettings(false); }} className="w-full py-4 text-xs font-black uppercase text-slate-500">Create New Bag</button>
                     </div>
                 </div>
             )}
+
         </div>
     );
 }
