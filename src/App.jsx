@@ -185,11 +185,14 @@ export default function App() {
     };
 
     const addDiscToDB = async (discObj) => {
+        console.log('addDiscToDB called with:', discObj);
         const isNotInFactory = !FACTORY_DB.some(d => d.Model.toLowerCase() === discObj.name.toLowerCase());
+        console.log('Is not in factory:', isNotInFactory);
         
         // Save to community_suggestions if not in factory database
         if (isNotInFactory) {
             const alreadyInCommunity = communitySuggestions.some(cs => cs.model.toLowerCase() === discObj.name.toLowerCase() && cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase());
+            console.log('Already in community:', alreadyInCommunity);
             
             if (!alreadyInCommunity) {
                 const communityPayload = {
@@ -200,24 +203,35 @@ export default function App() {
                     turn: parseFloat(discObj.turn),
                     fade: parseFloat(discObj.fade)
                 };
+                console.log('Inserting community payload:', communityPayload);
                 try {
                     const { data: csData, error: csError } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
                     if (csError) {
-                        console.error('Error saving to community_suggestions:', csError);
+                        console.error('❌ Error saving to community_suggestions:', csError.message, csError.code, csError);
+                        alert(`Failed to add to directory: ${csError.message}`);
                     } else if (csData) {
                         setCommunitySuggestions([...communitySuggestions, csData]);
-                        console.log('Community suggestion saved:', csData);
+                        console.log('✅ Community suggestion saved:', csData);
                     }
                 } catch (err) {
-                    console.error('Community suggestion error:', err);
+                    console.error('❌ Community suggestion error:', err);
+                    alert(`Error: ${err.message}`);
                 }
+            } else {
+                console.log('Disc already exists in community suggestions');
             }
         }
         
         const payload = { ...discObj, user_id: session.user.id };
         delete payload.id; 
-        const { data } = await supabase.from('discs').insert(payload).select().single();
-        if (data) setDiscs([...discs, data]);
+        console.log('Inserting disc payload:', payload);
+        const { data, error } = await supabase.from('discs').insert(payload).select().single();
+        if (error) {
+            console.error('❌ Error saving to discs:', error);
+        } else if (data) {
+            console.log('✅ Disc saved:', data);
+            setDiscs([...discs, data]);
+        }
     };
 
     const updateDiscInDB = async (u) => {
@@ -499,7 +513,8 @@ export default function App() {
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
                     <form onSubmit={async e => {
                         e.preventDefault();
-                        addDiscToDB({...communityFormData, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true});
+                        await addDiscToDB({...communityFormData, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true});
+                        alert(`✅ "${communityFormData.name}" added to your bag and the global directory!`);
                         setShowCommunityAdd(false);
                         setShowSearch(false);
                         setDbQuery('');
