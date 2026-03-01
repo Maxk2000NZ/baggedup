@@ -139,7 +139,11 @@ export default function App() {
             const { data: d } = await supabase.from('discs').select('*');
             if (d) setDiscs(d);
             const { data: cs } = await supabase.from('community_suggestions').select('*');
-            if (cs) setCommunitySuggestions(cs);
+            if (cs) {
+                setCommunitySuggestions(cs);
+            } else {
+                console.warn('No community suggestions loaded. Check if table exists in Supabase.');
+            }
         };
         loadData();
     }, [session]);
@@ -185,11 +189,11 @@ export default function App() {
         
         // Save to community_suggestions if not in factory database
         if (isNotInFactory) {
-            const alreadyInCommunity = communitySuggestions.some(cs => cs.name.toLowerCase() === discObj.name.toLowerCase() && cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase());
+            const alreadyInCommunity = communitySuggestions.some(cs => cs.model.toLowerCase() === discObj.name.toLowerCase() && cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase());
             
             if (!alreadyInCommunity) {
                 const communityPayload = {
-                    name: discObj.name,
+                    model: discObj.name,
                     brand: discObj.brand || '',
                     speed: parseFloat(discObj.speed),
                     glide: parseFloat(discObj.glide),
@@ -197,12 +201,15 @@ export default function App() {
                     fade: parseFloat(discObj.fade)
                 };
                 try {
-                    const { data: csData } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
-                    if (csData) {
+                    const { data: csData, error: csError } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
+                    if (csError) {
+                        console.error('Error saving to community_suggestions:', csError);
+                    } else if (csData) {
                         setCommunitySuggestions([...communitySuggestions, csData]);
+                        console.log('Community suggestion saved:', csData);
                     }
                 } catch (err) {
-                    console.log('Community suggestion already exists or error:', err);
+                    console.error('Community suggestion error:', err);
                 }
             }
         }
@@ -313,16 +320,41 @@ export default function App() {
     );
 
     return (
-        <div className="h-[100dvh] w-full bg-[#0b0f1a] flex flex-col overflow-hidden text-slate-200">
+        <div className="h-[100dvh] w-full bg-[#0b0f1a] flex overflow-hidden text-slate-200">
             <style>{`
                 .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
                 input[type="range"] { -webkit-appearance: none; background: #1e293b; height: 6px; border-radius: 10px; }
                 input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #f97316; border: 2px solid #0b0f1a; }
+                @media (max-width: 1024px) {
+                    .desktop-sidebar { display: none; }
+                    .mobile-only { display: block; }
+                }
+                @media (min-width: 1025px) {
+                    .mobile-menu-btn { display: none; }
+                    .mobile-only { display: none; }
+                }
             `}</style>
 
-            {/* --- SIDEBAR OVERLAY --- */}
+            {/* --- DESKTOP SIDEBAR (Always visible on desktop) --- */}
+            <div className="desktop-sidebar hidden lg:flex w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex-col gap-6 sticky top-0">
+                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-16 w-16 object-contain" />
+                {[
+                    { id: 'active', label: 'My Bag', icon: '🎒' },
+                    { id: 'storage', label: 'Storage', icon: '📦' },
+                    { id: 'favorites', label: 'Collection', icon: '⭐' },
+                    { id: 'graveyard', label: 'Lost & Found', icon: '🪦' }
+                ].map(item => (
+                    <button key={item.id} onClick={() => setView(item.id)} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+                        <span className="text-xl">{item.icon}</span> {item.label}
+                    </button>
+                ))}
+                <button onClick={() => setShowSettings(true)} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
+                <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
+            </div>
+
+            {/* --- MOBILE SIDEBAR OVERLAY --- */}
             {sidebarOpen && (
-                <div className="fixed inset-0 z-[100] flex">
+                <div className="lg:hidden fixed inset-0 z-[100] flex">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
                     <div className="relative w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex flex-col gap-6">
                         <img src={LOGO_URL} alt="BaggedUp Logo" className="h-12 w-12 object-contain" />
@@ -342,86 +374,90 @@ export default function App() {
                 </div>
             )}
 
-            {/* --- HEADER --- */}
-            <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 glass sticky top-0">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setSidebarOpen(true)} className="text-2xl">☰</button>
-                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-10 w-10 object-contain" />
-                </div>
-                <div className="bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 flex items-center gap-2">
-                    <select value={activeBagId} onChange={(e) => setActiveBagId(e.target.value)} className="bg-transparent text-[10px] font-black uppercase outline-none text-orange-500">
-                        {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                    </select>
-                    <button onClick={() => {const n=prompt("Rename Bag:"); if(n) updateBagName(activeBagId, n);}} className="text-slate-500 text-xs">✎</button>
-                </div>
-                <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
-            </header>
-
-            {/* --- MAIN CONTENT --- */}
-            <main className="flex-grow overflow-y-auto pb-24">
-                
-                {/* Gap Analysis Ticker */}
-                {gapAnalysis.filter && view === 'active' && (
-                    <div className="px-4 pt-4">
-                        <button onClick={() => setSuggestionPool(FACTORY_DB.filter(gapAnalysis.filter).slice(0, 5))} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                            {gapAnalysis.text} — View Suggestions
-                        </button>
+            {/* --- MAIN CONTENT AREA --- */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* --- HEADER --- */}
+                <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 glass sticky top-0">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setSidebarOpen(true)} className="mobile-menu-btn text-2xl lg:hidden">☰</button>
+                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-10 w-10 object-contain lg:hidden" />
                     </div>
-                )}
+                    <div className="bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 flex items-center gap-2">
+                        <select value={activeBagId} onChange={(e) => setActiveBagId(e.target.value)} className="bg-transparent text-[10px] font-black uppercase outline-none text-orange-500">
+                            {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
+                        <button onClick={() => {const n=prompt("Rename Bag:"); if(n) updateBagName(activeBagId, n);}} className="text-slate-500 text-xs">✎</button>
+                    </div>
+                    <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
+                </header>
 
-                {/* Chart Section */}
-                <section className="p-4 lg:p-8">
-                    <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl overflow-hidden">
-                        <div className="flex bg-slate-800/50 p-1 rounded-2xl mb-4 w-full max-w-xs mx-auto">
-                            <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Flight Path</button>
-                            <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
+                {/* --- MAIN CONTENT --- */}
+                <main className="flex-1 overflow-y-auto">
+                    
+                    {/* Gap Analysis Ticker */}
+                    {gapAnalysis.filter && view === 'active' && (
+                        <div className="px-4 lg:px-8 pt-4">
+                            <button onClick={() => setSuggestionPool(FACTORY_DB.filter(gapAnalysis.filter).slice(0, 5))} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
+                                {gapAnalysis.text} — View Suggestions
+                            </button>
                         </div>
-                        <div className="h-[400px] lg:h-[700px] w-full"><canvas id="mainChart"></canvas></div>
-                    </div>
-                </section>
+                    )}
 
-                {/* Inventory Cards */}
-                <section className="px-4 lg:px-8 space-y-4 max-w-5xl mx-auto">
-                    <h2 className="px-2 italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {discs.filter(d => {
-                            if(view === 'graveyard') return d.status === 'lost';
-                            if(view === 'favorites') return d.favorite;
-                            if(view === 'storage') return d.status === 'active' && !d.bag_id;
-                            return d.bag_id === activeBagId && d.status === 'active';
-                        }).map(d => (
-                            <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
-                                <div className="flex justify-between items-start">
-                                    <div className="min-w-0 pr-4">
-                                        <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
-                                        <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
-                                    </div>
-                                    <div className="flex gap-3 shrink-0">
-                                        <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
-                                        <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex justify-between items-end">
-                                    <div className="flex gap-2 text-center">
-                                        {[d.speed, d.glide, d.turn, d.fade].map((val, i) => (
-                                            <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg"><div className="text-[7px] font-black text-slate-600 uppercase">{['S','G','T','F'][i]}</div><div className="text-[10px] font-black text-slate-300">{val}</div></div>
-                                        ))}
-                                    </div>
-                                    {!d.is_idea && (
-                                        <div className="flex-grow ml-6">
-                                            <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1"><span>New</span><span>Beat</span></div>
-                                            <input type="range" min="0" max="1" step="0.05" value={d.wear} onChange={(e) => updateDiscInDB({...d, wear: parseFloat(e.target.value)})} className="w-full" />
-                                        </div>
-                                    )}
-                                    {d.is_idea && <button onClick={() => updateDiscInDB({...d, is_idea: false})} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>}
-                                </div>
+                    {/* Chart Section */}
+                    <section className="p-4 lg:p-8">
+                        <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl overflow-hidden">
+                            <div className="flex bg-slate-800/50 p-1 rounded-2xl mb-4 w-full max-w-xs mx-auto">
+                                <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Flight Path</button>
+                                <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
                             </div>
-                        ))}
-                    </div>
-                </section>
-            </main>
+                            <div className="h-[400px] lg:h-[700px] w-full"><canvas id="mainChart"></canvas></div>
+                        </div>
+                    </section>
+
+                    {/* Inventory Cards */}
+                    <section className="px-4 lg:px-8 pb-24 lg:pb-8">
+                        <h2 className="px-2 italic text-[10px] font-black uppercase text-slate-500 tracking-widest mb-4">{view} Inventory</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                            {discs.filter(d => {
+                                if(view === 'graveyard') return d.status === 'lost';
+                                if(view === 'favorites') return d.favorite;
+                                if(view === 'storage') return d.status === 'active' && !d.bag_id;
+                                return d.bag_id === activeBagId && d.status === 'active';
+                            }).map(d => (
+                                <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
+                                    <div className="flex justify-between items-start">
+                                        <div className="min-w-0 pr-4">
+                                            <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
+                                        </div>
+                                        <div className="flex gap-3 shrink-0">
+                                            <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
+                                            <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="flex justify-between items-end">
+                                        <div className="flex gap-2 text-center">
+                                            {[d.speed, d.glide, d.turn, d.fade].map((val, i) => (
+                                                <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg"><div className="text-[7px] font-black text-slate-600 uppercase">{['S','G','T','F'][i]}</div><div className="text-[10px] font-black text-slate-300">{val}</div></div>
+                                            ))}
+                                        </div>
+                                        {!d.is_idea && (
+                                            <div className="flex-grow ml-6">
+                                                <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1"><span>New</span><span>Beat</span></div>
+                                                <input type="range" min="0" max="1" step="0.05" value={d.wear} onChange={(e) => updateDiscInDB({...d, wear: parseFloat(e.target.value)})} className="w-full" />
+                                            </div>
+                                        )}
+                                        {d.is_idea && <button onClick={() => updateDiscInDB({...d, is_idea: false})} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </section>
+                </main>
+            </div>
+        </div>
 
             {/* --- SEARCH DIRECTORY --- */}
             {showSearch && !showCommunityAdd && (
@@ -441,15 +477,15 @@ export default function App() {
                         ))}
                         
                         {/* Community Suggestions */}
-                        {communitySuggestions.filter(d => d.name.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
-                            <div key={d.id} onClick={() => { addDiscToDB({name: d.name, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setShowSearch(false); }} className="p-6 bg-emerald-900/20 rounded-2xl border border-emerald-600/30 flex justify-between items-center cursor-pointer hover:border-emerald-500 transition">
-                                <div><div className="font-black uppercase italic text-lg text-emerald-400">{d.name}</div><div className="text-[10px] font-bold text-emerald-600 uppercase">{d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade} • Community</div></div>
+                        {communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
+                            <div key={d.id} onClick={() => { addDiscToDB({name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setShowSearch(false); }} className="p-6 bg-emerald-900/20 rounded-2xl border border-emerald-600/30 flex justify-between items-center cursor-pointer hover:border-emerald-500 transition">
+                                <div><div className="font-black uppercase italic text-lg text-emerald-400">{d.model}</div><div className="text-[10px] font-bold text-emerald-600 uppercase">{d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade} • Community</div></div>
                                 <div className="text-emerald-500 font-black text-xl">+</div>
                             </div>
                         ))}
                         
                         {/* Can't Find Button */}
-                        {dbQuery && FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && communitySuggestions.filter(d => d.name.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && (
+                        {dbQuery && FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && (
                             <button onClick={() => { setCommunityFormData({name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5}); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
                                 Can't find your disc? Add to Global Directory
                             </button>
@@ -479,7 +515,15 @@ export default function App() {
                             {['speed', 'glide', 'turn', 'fade'].map((l, i) => {
                                 const constraints = {speed: {min: 1, max: 13}, glide: {min: 1, max: 7}, turn: {min: -5, max: 3}, fade: {min: 0, max: 4}};
                                 const {min, max} = constraints[l];
-                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input type="number" min={min} max={max} step="0.5" value={communityFormData[l]} onChange={(e) => setCommunityFormData({...communityFormData, [l]: parseFloat(e.target.value)})} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
+                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input type="text" inputMode="decimal" value={communityFormData[l]} onChange={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                        const clamped = Math.max(min, Math.min(max, val));
+                                        setCommunityFormData({...communityFormData, [l]: clamped});
+                                    } else if (e.target.value === '' || e.target.value === '-') {
+                                        setCommunityFormData({...communityFormData, [l]: e.target.value});
+                                    }
+                                }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
                             })}
                         </div>
                         <button type="submit" className="w-full bg-blue-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl hover:bg-blue-700 transition">Add to Directory</button>
@@ -536,7 +580,13 @@ export default function App() {
                             {['s','g','t','f'].map((l, i) => {
                                 const constraints = {'s': {min: 1, max: 13}, 'g': {min: 1, max: 7}, 't': {min: -5, max: 3}, 'f': {min: 0, max: 4}};
                                 const {min, max} = constraints[l];
-                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input name={l} type="number" min={min} max={max} step="0.5" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
+                                return (<div key={l}><span className="text-[8px] font-black text-slate-500 uppercase">{['Spd','Gld','Trn','Fde'][i]}</span><input name={l} type="text" inputMode="decimal" defaultValue={[editing.speed, editing.glide, editing.turn, editing.fade][i]} onBlur={(e) => {
+                                    const val = parseFloat(e.target.value);
+                                    if (!isNaN(val)) {
+                                        const clamped = Math.max(min, Math.min(max, val));
+                                        e.target.value = clamped;
+                                    }
+                                }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]"/></div>);
                             })}
                         </div>
                         <div className="bg-slate-800 p-4 rounded-xl">
