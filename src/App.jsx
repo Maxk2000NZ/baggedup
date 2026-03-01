@@ -2155,8 +2155,6 @@ export default function App() {
             );
         })()}
 
-        })()}
-
         {/* =====================================================
             COMMUNITY DISC VERIFICATION MODAL
         ===================================================== */}
@@ -2172,7 +2170,8 @@ export default function App() {
                         ? { ...cs, model: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), verified: true }
                         : cs));
                 }
-                await addDiscToDB({ name: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                // Add to bag as a REAL disc (is_idea: false) since user verified it
+                await addDiscToDB({ name: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: false });
                 setShowVerifyDisc(null);
             };
 
@@ -2183,7 +2182,8 @@ export default function App() {
                 setCommunitySuggestions(prev => prev.map(cs => cs.id === disc.id
                     ? { ...cs, model: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade) }
                     : cs));
-                await addDiscToDB({ name: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                // Add to bag as real disc — they corrected and confirmed it
+                await addDiscToDB({ name: verifyName, brand: verifyBrand, speed: parseFloat(verifySpeed), glide: parseFloat(verifyGlide), turn: parseFloat(verifyTurn), fade: parseFloat(verifyFade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: false });
                 setShowVerifyDisc(null);
             };
 
@@ -2252,85 +2252,149 @@ export default function App() {
                     icon: '🎒',
                     title: 'Welcome to BaggedUp!',
                     color: 'text-orange-500',
-                    body: 'BaggedUp is your personal disc golf bag tracker. Track every disc you own, analyse your bag coverage, and never forget what you brought to the course.',
+                    tag: null,
+                    body: 'Your complete disc golf bag tracker. Let\'s take a quick tour of everything BaggedUp can do for you.',
+                    tip: null,
                 },
                 {
                     icon: '➕',
                     title: 'Adding Discs',
                     color: 'text-orange-500',
-                    body: 'Tap the orange + button in the top right to search our disc directory. Find your disc and tap it to add it as an "idea" — mark it as Bought once you actually own it. Can\'t find your disc? Add it to the Global Directory and help the whole community!',
+                    tag: '+ Button — Top Right',
+                    body: 'Tap the orange + button to search the disc directory. Tap any disc to add it to your bag as a "wishlist idea". Once you\'ve bought it, hit ✓ Bought to mark it as owned.',
+                    tip: 'Can\'t find your disc? Use "Add to Global Directory" to contribute it for the whole community!',
                 },
                 {
                     icon: '📊',
                     title: 'Flight Charts',
                     color: 'text-blue-400',
-                    body: 'The Flight Path chart shows how each disc curves through the air. The Stability Matrix shows speed vs stability. Both update live as you add or adjust discs.',
+                    tag: 'Main Screen',
+                    body: 'Two live charts update as you build your bag. Flight Path shows how each disc curves through the air. Stability Matrix plots speed vs stability so you can spot gaps at a glance.',
+                    tip: 'Toggle between them on mobile using the Flight Path / Stability buttons.',
                 },
                 {
                     icon: '🎯',
                     title: 'Bag Gap Analysis',
                     color: 'text-blue-400',
-                    body: 'The blue banner at the top shows gaps in your bag coverage across 12 disc slots (Putter, Midrange, Fairway, Distance × Straight, Overstable, Understable). Tap it to see suggestions and add discs directly!',
+                    tag: 'Blue Banner — Top of Screen',
+                    body: 'BaggedUp tracks 12 disc slots (Putter, Midrange, Fairway, Distance — each in Straight, Overstable, Understable). The blue banner shows which slots are missing and suggests discs to fill them.',
+                    tip: 'When your bag is empty, all 12 slots show as open so you can build from scratch.',
                 },
                 {
-                    icon: '⚙️',
+                    icon: '📏',
+                    title: 'Units & Max Power',
+                    color: 'text-purple-400',
+                    tag: '⚙️ Settings',
+                    body: 'Head to Settings to switch between Feet and Metres for all distance calculations. Set your Global Max Power (how far you throw at 100%) and the flight path charts will scale accordingly.',
+                    tip: 'Max power is stored in feet internally — flip the unit toggle anytime and all charts update instantly.',
+                },
+                {
+                    icon: '🌡️',
                     title: 'Beat-In Wear Slider',
                     color: 'text-yellow-400',
-                    body: 'Every disc card has a wear slider (Fresh → Beat). Drag it to simulate how a beat-in disc flies differently — the flight numbers and chart update in real time.',
+                    tag: 'Each Disc Card',
+                    body: 'Every disc card has a Fresh → Beat slider. Drag it to simulate how a worn-in disc flies differently — overstable discs get flippy, turn increases, fade decreases. The chart updates live.',
+                    tip: 'Beat-in physics are based on the disc\'s natural stability profile — a very overstable disc handles wear differently than a neutral one.',
                 },
                 {
                     icon: '🥏',
                     title: 'Play a Round',
                     color: 'text-emerald-400',
-                    body: 'Before heading out, use Play Round to check off all your discs. When you get back, untick any missing ones and they\'ll move to the Graveyard with a note on where you lost them.',
+                    tag: '🥏 Play Round — Sidebar',
+                    body: 'Before heading out, use Play Round to see your full bag checklist. When you get back, tick every disc you still have. Any unticked discs get moved to the Graveyard — and you can note where you lost them.',
+                    tip: null,
+                },
+                {
+                    icon: '🪦',
+                    title: 'Graveyard',
+                    color: 'text-red-400',
+                    tag: '🪦 Graveyard — Sidebar',
+                    body: 'Lost discs live in the Graveyard, with the note you left about where they went. They\'re removed from your flight charts but stay on record — a hall of fame for fallen discs.',
+                    tip: 'You can still view Graveyard discs in the Stability Matrix to remember what they flew like.',
+                },
+                {
+                    icon: '📤',
+                    title: 'Export & Share',
+                    color: 'text-purple-400',
+                    tag: '📤 Export Bag — Sidebar',
+                    body: 'Export your full bag as a PDF or image. The export includes all disc names, brands, plastics, weights, flight numbers, and wear-adjusted stats — perfect for sharing with your crew or printing for the course.',
+                    tip: 'The export also renders your flight path and stability charts at full resolution.',
                 },
                 {
                     icon: '🌍',
                     title: 'Community Directory',
                     color: 'text-emerald-400',
-                    body: 'New discs added by other pilots appear in Community (green) in the search. When you add one, you\'ll be asked to verify the flight numbers — your confirmation helps it graduate to the main directory for everyone!',
+                    tag: 'Search → Community Discs',
+                    body: 'Discs added by other pilots show in green with a "Community" badge. When you tap one, you\'ll be asked to verify the flight numbers. Confirming them graduates the disc into the main directory for everyone.',
+                    tip: 'If the numbers look wrong, hit "Wrong Info" to correct them before adding.',
                 },
             ];
             const step = STEPS[tutorialStep];
             const isLast = tutorialStep === STEPS.length - 1;
 
             return (
-                <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
-                    <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md p-8 space-y-6">
-                        {/* Progress dots */}
-                        <div className="flex gap-1.5 justify-center">
-                            {STEPS.map((_, i) => (
-                                <div key={i} className={`h-1.5 rounded-full transition-all ${i === tutorialStep ? 'w-6 bg-orange-500' : i < tutorialStep ? 'w-1.5 bg-orange-500/40' : 'w-1.5 bg-slate-700'}`} />
-                            ))}
-                        </div>
+                <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+                    <div className="bg-slate-900 border border-slate-700 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden">
+                        {/* Coloured top bar */}
+                        <div className={`h-1 w-full ${step.color.replace('text-','bg-')}`} />
 
-                        <div className="text-center space-y-3">
-                            <div className="text-6xl">{step.icon}</div>
-                            <h2 className={`text-2xl font-black italic uppercase ${step.color}`}>{step.title}</h2>
-                            <p className="text-slate-400 font-bold text-sm leading-relaxed">{step.body}</p>
-                        </div>
+                        <div className="p-8 space-y-5">
+                            {/* Progress bar */}
+                            <div className="flex gap-1 justify-center">
+                                {STEPS.map((_, i) => (
+                                    <div key={i} onClick={() => setTutorialStep(i)} className={`h-1 rounded-full transition-all cursor-pointer ${i === tutorialStep ? 'w-8 bg-orange-500' : i < tutorialStep ? 'flex-1 bg-orange-500/40' : 'flex-1 bg-slate-700'}`} />
+                                ))}
+                            </div>
 
-                        <div className="flex gap-3">
-                            {tutorialStep > 0 && (
-                                <button onClick={() => setTutorialStep(s => s - 1)} className="py-3 px-5 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400">← Back</button>
+                            {/* Step counter */}
+                            <div className="text-center">
+                                <span className="text-[9px] font-black uppercase text-slate-600 tracking-widest">{tutorialStep + 1} of {STEPS.length}</span>
+                            </div>
+
+                            {/* Icon + title */}
+                            <div className="text-center space-y-2">
+                                <div className="text-5xl">{step.icon}</div>
+                                <h2 className={`text-xl font-black italic uppercase ${step.color}`}>{step.title}</h2>
+                                {step.tag && (
+                                    <div className="inline-flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-full px-3 py-1">
+                                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">📍 {step.tag}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Body */}
+                            <p className="text-slate-300 font-bold text-sm leading-relaxed text-center">{step.body}</p>
+
+                            {/* Tip */}
+                            {step.tip && (
+                                <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl px-4 py-3">
+                                    <p className="text-orange-400 text-[11px] font-bold leading-relaxed">💡 {step.tip}</p>
+                                </div>
                             )}
-                            <button
-                                onClick={() => {
-                                    if (isLast) {
-                                        localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true');
-                                        setShowTutorial(false);
-                                    } else {
-                                        setTutorialStep(s => s + 1);
-                                    }
-                                }}
-                                className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-xs text-white shadow-lg transition"
-                            >
-                                {isLast ? 'Get Started 🚀' : 'Next →'}
-                            </button>
+
+                            {/* Navigation */}
+                            <div className="flex gap-3 pt-1">
+                                {tutorialStep > 0 && (
+                                    <button onClick={() => setTutorialStep(s => s - 1)} className="py-3 px-5 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">← Back</button>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        if (isLast) {
+                                            localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true');
+                                            setShowTutorial(false);
+                                        } else {
+                                            setTutorialStep(s => s + 1);
+                                        }
+                                    }}
+                                    className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-xs text-white shadow-lg transition"
+                                >
+                                    {isLast ? '🚀 Let\'s Go!' : 'Next →'}
+                                </button>
+                            </div>
+                            {!isLast && (
+                                <button onClick={() => { localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true'); setShowTutorial(false); }} className="w-full text-center text-[10px] font-bold text-slate-700 uppercase hover:text-slate-500 transition">Skip Tour</button>
+                            )}
                         </div>
-                        {!isLast && (
-                            <button onClick={() => { localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true'); setShowTutorial(false); }} className="w-full text-center text-[10px] font-bold text-slate-600 uppercase hover:text-slate-400 transition">Skip Tutorial</button>
-                        )}
                     </div>
                 </div>
             );
