@@ -648,6 +648,7 @@ export default function App() {
     const [view, setView] = useState('active');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [chartMode, setChartMode] = useState('path');
+    const [throwView, setThrowView] = useState('bh'); // 'bh' | 'fh' — which arm speed to use for chart
     const [editing, setEditing] = useState(null);
     const [showSearch, setShowSearch] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -1065,7 +1066,8 @@ export default function App() {
         }
 
         // Use real throw data if available, otherwise scale from arm speed
-        const armPower = settings.bhPower || settings.maxPower;
+        // throwView selects BH or FH arm power for chart display
+        const armPower = throwView === 'fh' ? (settings.fhPower || settings.bhPower || settings.maxPower) : (settings.bhPower || settings.maxPower);
         const distBoost = w < 0.7 ? 1 + (w * 0.05) : 1 + (0.035 - (w - 0.7) * 0.1);
         // Wind affects distance: headwind reduces, tailwind adds (capped)
         const windDistMult = wc.type === 'headwind' ? Math.max(0.65, 1 - (windMph / 100))
@@ -1370,7 +1372,7 @@ export default function App() {
             if (desktopStabRef.current) desktopStabRef.current.destroy();
             desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildChartConfig(filtered, 'matrix'));
         }
-    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windConfig]);
+    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windConfig, throwView]);
 
     // --- AUTH RENDER ---
     if (!session || authMode === 'profile_setup') return (
@@ -1722,9 +1724,14 @@ export default function App() {
             {/* =====================================================
                 DESKTOP SIDEBAR (lg+)
             ===================================================== */}
-            <div className="hidden lg:flex w-60 h-full bg-slate-900 border-r border-slate-800 p-6 flex-col gap-4 shrink-0">
-                <div className="flex justify-center w-full mb-1">
-                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-36 w-36 object-contain" />
+            <div className="hidden lg:flex w-52 h-full bg-slate-900 border-r border-slate-800 px-3 py-4 flex-col gap-1 shrink-0 overflow-y-auto">
+                {/* Logo + username compact */}
+                <div className="flex items-center gap-2 px-2 pb-3 border-b border-slate-800 mb-1">
+                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-8 w-8 object-contain shrink-0" />
+                    <div className="min-w-0">
+                        <div className="font-black uppercase text-white text-[10px] tracking-wide leading-tight">Bagged<span className="text-orange-500">Up</span></div>
+                        {myProfile?.username && <div className="text-[9px] font-bold text-slate-500 truncate">@{myProfile.username}</div>}
+                    </div>
                 </div>
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
@@ -1732,25 +1739,32 @@ export default function App() {
                     { id: 'favorites', label: 'Favourites', icon: '⭐' },
                     { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
                 ].map(item => (
-                    <button key={item.id} onClick={() => setView(item.id)} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-                        <span className="text-xl">{item.icon}</span> {item.label}
+                    <button key={item.id} onClick={() => setView(item.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+                        <span className="text-base">{item.icon}</span> {item.label}
                     </button>
                 ))}
-                <button onClick={() => setShowExport(true)} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition">
-                    <span className="text-xl">📤</span> Export Bag
+                <div className="border-t border-slate-800 my-1" />
+                <button onClick={() => setShowExport(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-purple-400 hover:bg-slate-800 transition">
+                    <span className="text-base">📤</span> Export
                 </button>
-                <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
-                    <span className="text-xl">🥏</span> Play Round
+                <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-emerald-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🥏</span> Play Round
                 </button>
-                <button onClick={() => setShowCardMates(true)} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${showCardMates ? 'bg-cyan-600 text-white' : 'text-cyan-400 hover:bg-slate-800'}`}>
-                    <span className="text-xl">🤝</span> Card Mates
-                    {cardMates.length > 0 && <span className="ml-auto bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
+                <button onClick={() => setShowCardMates(true)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] transition ${showCardMates ? 'bg-cyan-600 text-white' : 'text-cyan-400 hover:bg-slate-800'}`}>
+                    <span className="text-base">🤝</span> Card Mates
+                    {cardMates.length > 0 && <span className="ml-auto bg-cyan-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                 </button>
-                <button onClick={() => setShowHeatmap(true)} className="flex items-center gap-4 p-4 text-violet-400 font-black uppercase text-xs hover:bg-slate-800 rounded-2xl transition">
-                    <span className="text-xl">🔥</span> Mold Heatmap
+                <button onClick={() => setShowHeatmap(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-violet-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🔥</span> Heatmap
                 </button>
-                <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
-                <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
+                <div className="mt-auto border-t border-slate-800 pt-1">
+                    <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-slate-500 hover:text-slate-300 hover:bg-slate-800 w-full transition">
+                        <span className="text-base">⚙️</span> Settings
+                    </button>
+                    <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-red-500 hover:bg-red-900/20 w-full transition">
+                        <span className="text-base">✕</span> Log Out
+                    </button>
+                </div>
             </div>
 
             {/* =====================================================
@@ -1817,7 +1831,13 @@ export default function App() {
                             title="Rename bag"
                         >✎</button>
                     </div>
-                    <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }}
+                            className="lg:hidden w-9 h-9 rounded-2xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition flex items-center justify-center text-sm"
+                        >⚙️</button>
+                        <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
+                    </div>
                 </header>
 
                 {/* =====================================================
@@ -1920,9 +1940,15 @@ export default function App() {
 
                     <section className="p-4">
                         <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl">
-                            <div className="flex bg-slate-800/50 p-1 rounded-2xl mb-4 w-full max-w-xs mx-auto">
-                                <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Flight Path</button>
-                                <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
+                            <div className="flex gap-2 mb-4 max-w-xs mx-auto w-full">
+                                <div className="flex bg-slate-800/50 p-1 rounded-2xl flex-1">
+                                    <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Path</button>
+                                    <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
+                                </div>
+                                <div className="flex bg-slate-800/50 p-1 rounded-2xl">
+                                    <button onClick={() => setThrowView('bh')} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩BH</button>
+                                    <button onClick={() => setThrowView('fh')} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪FH</button>
+                                </div>
                             </div>
                             <div className="h-[400px] w-full"><canvas id="mainChart"></canvas></div>
                         </div>
@@ -2019,8 +2045,12 @@ export default function App() {
 
                             {/* Flight Path Chart */}
                             <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
-                                <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3 shrink-0">
-                                    ✈ Flight Path
+                                <div className="flex items-center justify-between mb-3 shrink-0">
+                                    <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">✈ Flight Path</div>
+                                    <div className="flex bg-slate-800 p-0.5 rounded-xl">
+                                        <button onClick={() => setThrowView('bh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩ BH</button>
+                                        <button onClick={() => setThrowView('fh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪ FH</button>
+                                    </div>
                                 </div>
                                 <div className="flex-1 relative min-h-0">
                                     <canvas id="desktopPathChart" className="absolute inset-0 w-full h-full"></canvas>
@@ -2319,40 +2349,31 @@ export default function App() {
                                     <span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span>
                                 </button>
 
-                                {/* Handedness + Skill Level + Throw Style */}
-                                <div className="grid grid-cols-3 gap-2">
+                                {/* Handedness + Skill Level — 2 col */}
+                                <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
-                                        <div className="text-[9px] font-black uppercase text-slate-500">Hand</div>
-                                        <div className="flex flex-col gap-1">
+                                        <div className="text-[9px] font-black uppercase text-slate-500">Throwing Hand</div>
+                                        <div className="flex gap-1">
                                             {['right','left'].map(h => (
                                                 <button key={h} onClick={() => setSettings({...settings, handedness: h})}
-                                                    className={`py-1.5 rounded-xl text-[9px] font-black uppercase transition ${settings.handedness === h ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                    className={`flex-1 py-2 rounded-xl text-[9px] font-black uppercase transition ${settings.handedness === h ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
                                                     {h === 'right' ? '✋ RH' : '🤚 LH'}
                                                 </button>
                                             ))}
                                         </div>
+                                        <p className="text-[8px] text-slate-600 font-bold">Flips the flight chart curve</p>
                                     </div>
                                     <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
-                                        <div className="text-[9px] font-black uppercase text-slate-500">Skill</div>
-                                        <div className="flex flex-col gap-1">
-                                            {[['beginner','🌱'],['intermediate','⚡'],['advanced','🔥'],['pro','🏆']].map(([s,e]) => (
+                                        <div className="text-[9px] font-black uppercase text-slate-500">Skill Level</div>
+                                        <div className="grid grid-cols-2 gap-1">
+                                            {[['beginner','🌱 Beg'],['intermediate','⚡ Int'],['advanced','🔥 Adv'],['pro','🏆 Pro']].map(([s,l]) => (
                                                 <button key={s} onClick={() => setSettings({...settings, skillLevel: s})}
-                                                    className={`py-1.5 rounded-xl text-[9px] font-black uppercase transition ${settings.skillLevel === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
-                                                    {e} {s.slice(0,3).toUpperCase()}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
-                                        <div className="text-[9px] font-black uppercase text-slate-500">Style</div>
-                                        <div className="flex flex-col gap-1">
-                                            {[['both','↕ Both'],['backhand','↩ BH'],['forehand','↪ FH'],['roller','🌀 Roll']].map(([s,l]) => (
-                                                <button key={s} onClick={() => setSettings({...settings, throwStyle: s})}
-                                                    className={`py-1.5 rounded-xl text-[9px] font-black uppercase transition ${settings.throwStyle === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                    className={`py-1.5 rounded-xl text-[8px] font-black uppercase transition ${settings.skillLevel === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
                                                     {l}
                                                 </button>
                                             ))}
                                         </div>
+                                        <p className="text-[8px] text-slate-600 font-bold">Used by Smart Bag Coach</p>
                                     </div>
                                 </div>
 
@@ -3125,7 +3146,7 @@ export default function App() {
                     title: 'Welcome to BaggedUp!',
                     color: 'text-orange-500',
                     tag: null,
-                    body: 'Your complete disc golf bag tracker. Let\'s take a quick tour of everything BaggedUp can do for you.',
+                    body: 'Your complete disc golf bag tracker and coach. Add your discs, visualise flights, simulate wind, analyse your bag gaps and get smart coaching — all in one place.',
                     tip: null,
                 },
                 {
@@ -3133,72 +3154,72 @@ export default function App() {
                     title: 'Adding Discs',
                     color: 'text-orange-500',
                     tag: '+ Button — Top Right',
-                    body: 'Tap the orange + button to search the disc directory. Tap any disc to add it to your bag as a "wishlist idea". Once you\'ve bought it, hit ✓ Bought to mark it as owned.',
-                    tip: 'Can\'t find your disc? Use "Add to Global Directory" to contribute it for the whole community!',
+                    body: 'Tap the orange + to search thousands of disc moulds. Tap any disc to add it as a wishlist idea first. Once you own it, hit ✓ Bought to mark it active. Can't find yours? Add it to the global community directory.',
+                    tip: 'Community discs show in green — tap to verify the numbers and help everyone.',
                 },
                 {
                     icon: '📊',
                     title: 'Flight Charts',
                     color: 'text-blue-400',
                     tag: 'Main Screen',
-                    body: 'Two live charts update as you build your bag. Flight Path shows how each disc curves through the air. Stability Matrix plots speed vs stability so you can spot gaps at a glance.',
-                    tip: 'Toggle between them on mobile using the Flight Path / Stability buttons.',
+                    body: 'Two live charts update as you build your bag. Flight Path shows how each disc curves. Toggle ↩ BH / ↪ FH on the chart to switch between your backhand and forehand arm speeds. Stability Matrix shows speed vs stability across your whole bag.',
+                    tip: 'Wear affects the chart too — drag the Fresh → Beat slider on any disc to see how beat-in plastic flies.',
                 },
                 {
-                    icon: '🎯',
-                    title: 'Bag Gap Analysis',
+                    icon: '💨',
+                    title: 'Wind Simulator',
                     color: 'text-blue-400',
-                    tag: 'Blue Banner — Top of Screen',
-                    body: 'BaggedUp tracks 12 disc slots (Putter, Midrange, Fairway, Distance — each in Straight, Overstable, Understable). The blue banner shows which slots are missing and suggests discs to fill them.',
-                    tip: 'When your bag is empty, all 12 slots show as open so you can build from scratch.',
+                    tag: 'Above the Charts',
+                    body: 'Select Headwind, Tailwind or Crosswind and dial in the exact speed in mph or km/h. The flight paths update in real time — overstable discs tighten up in headwinds, understable discs balloon. Crosswind direction (L→R or R→L) matters too.',
+                    tip: 'At 20+ mph headwind, a straight disc flies like an understable one. Use this to plan your shot selection on windy days.',
                 },
                 {
-                    icon: '📏',
-                    title: 'Units & Max Power',
+                    icon: '🧠',
+                    title: 'Smart Bag Coach',
+                    color: 'text-orange-500',
+                    tag: 'Bag Score — Tap It',
+                    body: 'Your bag gets a score from 0–100 (grade S to D) based on slot coverage, speed spread and bag size. Tap the score bar to open the Coach — it shows overlapping discs, speed gaps, arm speed mismatches and missing slots with suggestions.',
+                    tip: 'Set your Backhand and Forehand max distance in Settings — the Coach uses them to flag discs that may be too fast for your arm.',
+                },
+                {
+                    icon: '🔥',
+                    title: 'Mold Slot Heatmap',
+                    color: 'text-violet-400',
+                    tag: '🔥 Heatmap — Sidebar',
+                    body: 'A visual grid showing all 12 speed × stability combinations. Orange cells = covered, dark = missing. Each cell lists your discs including plastic and wear. Overlapping slots are highlighted yellow.',
+                    tip: 'Community insights will appear here as more players join — showing trending moulds and what similar players carry.',
+                },
+                {
+                    icon: '⚙️',
+                    title: 'Settings & Profile',
                     color: 'text-purple-400',
-                    tag: '⚙️ Settings',
-                    body: 'Head to Settings to switch between Feet and Metres for all distance calculations. Set your Global Max Power (how far you throw at 100%) and the flight path charts will scale accordingly.',
-                    tip: 'Max power is stored in feet internally — flip the unit toggle anytime and all charts update instantly.',
+                    tag: '⚙️ Settings — Sidebar',
+                    body: 'Set your unit (ft/m), backhand and forehand max distance, throwing hand (flips the chart) and skill level (personalises coaching). In My Account, choose your player icon and colour — visible to Card Mates.',
+                    tip: 'Bags can be set Public or Private — public bags are visible to your Card Mates.',
                 },
                 {
-                    icon: '🌡️',
-                    title: 'Beat-In Wear Slider',
-                    color: 'text-yellow-400',
-                    tag: 'Each Disc Card',
-                    body: 'Every disc card has a Fresh → Beat slider. Drag it to simulate how a worn-in disc flies differently — overstable discs get flippy, turn increases, fade decreases. The chart updates live.',
-                    tip: 'Beat-in physics are based on the disc\'s natural stability profile — a very overstable disc handles wear differently than a neutral one.',
+                    icon: '🤝',
+                    title: 'Card Mates',
+                    color: 'text-cyan-400',
+                    tag: '🤝 Card Mates — Sidebar',
+                    body: 'Search any player by username, PDGA number or email to view their public bag. Save them as Card Mates to quickly check what they're throwing before a round. Their icon and colour show on their profile.',
+                    tip: 'Make your bags public in Settings to let your crew view them.',
                 },
                 {
                     icon: '🥏',
                     title: 'Play a Round',
                     color: 'text-emerald-400',
                     tag: '🥏 Play Round — Sidebar',
-                    body: 'Before heading out, use Play Round to see your full bag checklist. When you get back, tick every disc you still have. Any unticked discs get moved to the Graveyard — and you can note where you lost them.',
+                    body: 'Before heading out, open Play Round for a checklist of your full bag. When you get back, tick every disc you still have. Unticked discs move to the Graveyard with a note about where you lost them.',
                     tip: null,
-                },
-                {
-                    icon: '🪦',
-                    title: 'Graveyard',
-                    color: 'text-red-400',
-                    tag: '🪦 Graveyard — Sidebar',
-                    body: 'Lost discs live in the Graveyard, with the note you left about where they went. They\'re removed from your flight charts but stay on record — a hall of fame for fallen discs.',
-                    tip: 'You can still view Graveyard discs in the Stability Matrix to remember what they flew like.',
                 },
                 {
                     icon: '📤',
                     title: 'Export & Share',
                     color: 'text-purple-400',
-                    tag: '📤 Export Bag — Sidebar',
-                    body: 'Export your full bag as a PDF or image. The export includes all disc names, brands, plastics, weights, flight numbers, and wear-adjusted stats — perfect for sharing with your crew or printing for the course.',
-                    tip: 'The export also renders your flight path and stability charts at full resolution.',
-                },
-                {
-                    icon: '🌍',
-                    title: 'Community Directory',
-                    color: 'text-emerald-400',
-                    tag: 'Search → Community Discs',
-                    body: 'Discs added by other pilots show in green with a "Community" badge. When you tap one, you\'ll be asked to verify the flight numbers. Confirming them graduates the disc into the main directory for everyone.',
-                    tip: 'If the numbers look wrong, hit "Wrong Info" to correct them before adding.',
+                    tag: '📤 Export — Sidebar',
+                    body: 'Export your bag as a PDF or image with all disc specs, flight numbers, wear stats and charts at full resolution. Perfect for sharing with your crew or printing for the course.',
+                    tip: 'The export renders both Flight Path and Stability Matrix charts.',
                 },
             ];
             const step = STEPS[tutorialStep];
