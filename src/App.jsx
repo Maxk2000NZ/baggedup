@@ -629,6 +629,15 @@ export default function App() {
     const [verifyFade, setVerifyFade] = useState(0);
     const [verifyCorrecting, setVerifyCorrecting] = useState(false);
 
+    // Card Mates
+    const [showCardMates, setShowCardMates] = useState(false);
+    const [cardMates, setCardMates] = useState([]);
+    const [cardMateSearch, setCardMateSearch] = useState('');
+    const [cardMateSearchResult, setCardMateSearchResult] = useState(null); // { found: bool, user }
+    const [cardMateSearchLoading, setCardMateSearchLoading] = useState(false);
+    const [viewingMate, setViewingMate] = useState(null); // { userId, email, bags, discs }
+    const [viewingMateBagId, setViewingMateBagId] = useState('');
+
     // Wear slider — local state for smooth dragging, synced to DB on release
     const [localWear, setLocalWear] = useState({});
     const [favSubView, setFavSubView] = useState('all'); // 'all' | 'aces'
@@ -710,6 +719,10 @@ export default function App() {
             const { data: cs, error: csError } = await supabase.from('community_suggestions').select('*');
             if (csError) console.error('Failed to load community suggestions:', csError);
             else if (cs) setCommunitySuggestions(cs);
+
+            // Load saved card mates
+            const { data: cm } = await supabase.from('card_mates').select('*').eq('user_id', session.user.id);
+            if (cm) setCardMates(cm);
         };
         loadData();
     }, [session]);
@@ -717,6 +730,51 @@ export default function App() {
     const saveSettings = async (newS) => {
         setSettings(newS);
         await supabase.from('settings').update({ unit: newS.unit, max_power: newS.maxPower, country: newS.country }).eq('user_id', session.user.id);
+    };
+
+    // --- CARD MATES ---
+    const searchCardMate = async (email) => {
+        setCardMateSearchLoading(true);
+        setCardMateSearchResult(null);
+        try {
+            // Look up user by email in the profiles/settings table
+            const { data: found } = await supabase.from('settings').select('user_id, country').eq('email', email.trim().toLowerCase()).single();
+            if (found) {
+                setCardMateSearchResult({ found: true, userId: found.user_id, email: email.trim().toLowerCase(), country: found.country });
+            } else {
+                // Try auth lookup via a public profiles approach — fall back to discs table user match
+                const { data: discMatch } = await supabase.from('bags').select('user_id').eq('user_id', email).limit(1);
+                if (discMatch?.length) {
+                    setCardMateSearchResult({ found: true, userId: discMatch[0].user_id, email: email.trim().toLowerCase() });
+                } else {
+                    setCardMateSearchResult({ found: false });
+                }
+            }
+        } catch {
+            setCardMateSearchResult({ found: false });
+        }
+        setCardMateSearchLoading(false);
+    };
+
+    const addCardMate = async (mateUserId, mateEmail) => {
+        const alreadySaved = cardMates.some(cm => cm.mate_user_id === mateUserId);
+        if (alreadySaved) return;
+        const { data } = await supabase.from('card_mates').insert({ user_id: session.user.id, mate_user_id: mateUserId, mate_email: mateEmail }).select().single();
+        if (data) setCardMates(prev => [...prev, data]);
+    };
+
+    const removeCardMate = async (id) => {
+        await supabase.from('card_mates').delete().eq('id', id);
+        setCardMates(prev => prev.filter(cm => cm.id !== id));
+        if (viewingMate?.id === id) setViewingMate(null);
+    };
+
+    const loadMateBag = async (mateUserId, mateEmail, mateId) => {
+        const { data: mateBags } = await supabase.from('bags').select('*').eq('user_id', mateUserId);
+        const { data: mateDiscs } = await supabase.from('discs').select('*').eq('user_id', mateUserId);
+        const firstBagId = mateBags?.[0]?.id || '';
+        setViewingMate({ id: mateId, userId: mateUserId, email: mateEmail, bags: mateBags || [], discs: mateDiscs || [] });
+        setViewingMateBagId(firstBagId);
     };
 
     const createBag = async (name) => {
@@ -1230,6 +1288,10 @@ export default function App() {
                 <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
                     <span className="text-xl">🥏</span> Play Round
                 </button>
+                <button onClick={() => setShowCardMates(true)} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${showCardMates ? 'bg-cyan-600 text-white' : 'text-cyan-400 hover:bg-slate-800'}`}>
+                    <span className="text-xl">🤝</span> Card Mates
+                    {cardMates.length > 0 && <span className="ml-auto bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
+                </button>
                 <button onClick={() => setShowSettings(true)} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
                 <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
             </div>
@@ -1257,6 +1319,10 @@ export default function App() {
                         </button>
                         <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🥏</span> Play Round
+                        </button>
+                        <button onClick={() => { setShowCardMates(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
+                            <span className="text-xl">🤝</span> Card Mates
+                            {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                         </button>
                         <button onClick={() => { setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
                         <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
@@ -2399,6 +2465,162 @@ export default function App() {
                 </div>
             );
         })()}
+
+        {/* =====================================================
+            CARD MATES MODAL
+        ===================================================== */}
+        {showCardMates && (
+            <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col p-6 overflow-y-auto">
+                <div className="w-full max-w-2xl mx-auto flex flex-col gap-6 my-auto">
+
+                    {/* Header */}
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-3xl font-black italic text-cyan-400 uppercase">🤝 Card Mates</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Search players by email, check their bag, save them as mates</p>
+                        </div>
+                        <button onClick={() => { setShowCardMates(false); setViewingMate(null); setCardMateSearchResult(null); setCardMateSearch(''); }} className="text-2xl text-slate-500 hover:text-white">✕</button>
+                    </div>
+
+                    {/* Search bar */}
+                    <div className="flex gap-3">
+                        <input
+                            type="email"
+                            placeholder="Search by player email..."
+                            value={cardMateSearch}
+                            onChange={e => { setCardMateSearch(e.target.value); setCardMateSearchResult(null); }}
+                            onKeyDown={e => e.key === 'Enter' && cardMateSearch && searchCardMate(cardMateSearch)}
+                            className="flex-1 bg-slate-900 border border-slate-700 text-white font-bold text-sm px-5 py-4 rounded-2xl outline-none focus:border-cyan-500 placeholder-slate-600"
+                        />
+                        <button
+                            onClick={() => cardMateSearch && searchCardMate(cardMateSearch)}
+                            disabled={cardMateSearchLoading}
+                            className="bg-cyan-600 hover:bg-cyan-500 px-6 py-4 rounded-2xl font-black uppercase text-xs text-white transition disabled:opacity-50"
+                        >
+                            {cardMateSearchLoading ? '...' : 'Search'}
+                        </button>
+                    </div>
+
+                    {/* Search result */}
+                    {cardMateSearchResult && (
+                        <div className={`rounded-2xl border p-5 ${cardMateSearchResult.found ? 'bg-cyan-900/20 border-cyan-600/40' : 'bg-red-900/20 border-red-600/30'}`}>
+                            {cardMateSearchResult.found ? (
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-2xl">🎯</span>
+                                            <span className="font-black uppercase text-white text-sm">{cardMateSearchResult.email}</span>
+                                        </div>
+                                        {cardMateSearchResult.country && <p className="text-[10px] font-bold text-slate-500 uppercase">📍 {cardMateSearchResult.country}</p>}
+                                    </div>
+                                    <div className="flex gap-2 shrink-0">
+                                        <button
+                                            onClick={() => loadMateBag(cardMateSearchResult.userId, cardMateSearchResult.email, null)}
+                                            className="bg-slate-800 hover:bg-slate-700 border border-slate-600 px-4 py-2 rounded-xl font-black uppercase text-xs text-white transition"
+                                        >👀 View Bag</button>
+                                        {!cardMates.some(cm => cm.mate_user_id === cardMateSearchResult.userId) ? (
+                                            <button
+                                                onClick={() => addCardMate(cardMateSearchResult.userId, cardMateSearchResult.email)}
+                                                className="bg-cyan-600 hover:bg-cyan-500 px-4 py-2 rounded-xl font-black uppercase text-xs text-white transition"
+                                            >+ Add Mate</button>
+                                        ) : (
+                                            <span className="bg-emerald-900/30 border border-emerald-600/30 px-4 py-2 rounded-xl font-black uppercase text-xs text-emerald-400">✓ Saved</span>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-red-400 font-black uppercase text-xs text-center">No player found with that email address</p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Viewing a mate's bag */}
+                    {viewingMate && (
+                        <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden">
+                            {/* Mate bag header */}
+                            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800 bg-slate-900/80">
+                                <div>
+                                    <p className="font-black uppercase text-white text-sm">🎒 {viewingMate.email}'s Bag</p>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">{viewingMate.discs.filter(d => d.bag_id === viewingMateBagId && d.status === 'active').length} discs</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {viewingMate.bags.length > 1 && (
+                                        <select value={viewingMateBagId} onChange={e => setViewingMateBagId(e.target.value)}
+                                            className="bg-slate-800 border border-slate-700 text-white text-xs font-bold px-3 py-2 rounded-xl outline-none">
+                                            {viewingMate.bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                        </select>
+                                    )}
+                                    <button onClick={() => setViewingMate(null)} className="text-slate-500 hover:text-white text-sm font-black">✕</button>
+                                </div>
+                            </div>
+                            {/* Disc list */}
+                            <div className="max-h-80 overflow-y-auto p-4 space-y-2">
+                                {viewingMate.discs
+                                    .filter(d => d.bag_id === viewingMateBagId && d.status === 'active' && !d.is_idea)
+                                    .length === 0 ? (
+                                    <p className="text-center text-slate-600 font-bold uppercase text-xs py-8">No discs in this bag</p>
+                                ) : viewingMate.discs
+                                    .filter(d => d.bag_id === viewingMateBagId && d.status === 'active' && !d.is_idea)
+                                    .map(d => (
+                                    <div key={d.id} className="flex items-center gap-3 bg-slate-800/60 rounded-2xl px-4 py-3 relative overflow-hidden">
+                                        <div className="absolute left-0 top-0 h-full w-1 rounded-l-2xl" style={{ backgroundColor: d.color || '#f97316' }} />
+                                        <div className="pl-2 flex-1 min-w-0">
+                                            <div className="font-black uppercase italic text-sm text-white truncate">{d.name}</div>
+                                            <div className="text-[10px] font-bold text-slate-500 uppercase">{d.brand} • {d.plastic || 'Premium'}</div>
+                                        </div>
+                                        <div className="flex gap-1.5 shrink-0">
+                                            {[['S',d.speed],['G',d.glide],['T',d.turn],['F',d.fade]].map(([l,v]) => (
+                                                <div key={l} className="bg-slate-700 px-1.5 py-1 rounded-lg text-center min-w-[26px]">
+                                                    <div className="text-[6px] font-black text-slate-500 uppercase">{l}</div>
+                                                    <div className="text-[10px] font-black text-white">{v}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Saved card mates list */}
+                    <div>
+                        <h3 className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-3">
+                            Saved Mates {cardMates.length > 0 && `(${cardMates.length})`}
+                        </h3>
+                        {cardMates.length === 0 ? (
+                            <div className="text-center py-10 bg-slate-900/50 rounded-3xl border border-slate-800">
+                                <div className="text-4xl mb-3">🤝</div>
+                                <p className="text-slate-600 font-bold uppercase text-xs">No card mates yet</p>
+                                <p className="text-slate-700 font-bold uppercase text-[10px] mt-1">Search a player by email above</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {cardMates.map(cm => (
+                                    <div key={cm.id} className="flex items-center gap-4 bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4">
+                                        <div className="w-10 h-10 rounded-2xl bg-cyan-900/40 border border-cyan-600/30 flex items-center justify-center text-lg shrink-0">🎯</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-black uppercase text-white text-sm truncate">{cm.mate_email}</div>
+                                            <div className="text-[10px] font-bold text-slate-600 uppercase">Card Mate</div>
+                                        </div>
+                                        <div className="flex gap-2 shrink-0">
+                                            <button
+                                                onClick={() => loadMateBag(cm.mate_user_id, cm.mate_email, cm.id)}
+                                                className="bg-cyan-600/20 hover:bg-cyan-600/40 border border-cyan-500/30 text-cyan-400 px-3 py-2 rounded-xl font-black uppercase text-[10px] transition"
+                                            >👀 View</button>
+                                            <button
+                                                onClick={() => removeCardMate(cm.id)}
+                                                className="bg-red-600/10 hover:bg-red-600/30 border border-red-500/20 text-red-400 px-3 py-2 rounded-xl font-black uppercase text-[10px] transition"
+                                            >Remove</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                </div>
+            </div>
+        )}
 
         </div>
     );
