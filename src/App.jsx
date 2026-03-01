@@ -602,7 +602,9 @@ export default function App() {
     const [authUsername, setAuthUsername] = useState('');
     const [authPdga, setAuthPdga] = useState('');
     const [myProfile, setMyProfile] = useState(null); // { username, pdga_number }
-    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, country: 'New Zealand' });
+    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both' });
+    const [windMode, setWindMode] = useState('calm'); // 'calm'|'headwind10'|'headwind20'|'tailwind10'|'tailwind20'|'crosswind'
+    const [showCoach, setShowCoach] = useState(false);
     const [activeBagId, setActiveBagId] = useState('');
     const [bags, setBags] = useState([]);
     const [discs, setDiscs] = useState([]);
@@ -733,7 +735,7 @@ export default function App() {
         if (!session?.user) return;
         const loadData = async () => {
             let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
-            if (set) setSettings({ unit: set.unit, maxPower: set.max_power, country: set.country });
+            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both' });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
             const { data: b } = await supabase.from('bags').select('*');
@@ -777,7 +779,16 @@ export default function App() {
 
     const saveSettings = async (newS) => {
         setSettings(newS);
-        await supabase.from('settings').update({ unit: newS.unit, max_power: newS.maxPower, country: newS.country }).eq('user_id', session.user.id);
+        await supabase.from('settings').update({
+            unit: newS.unit,
+            max_power: newS.maxPower,
+            bh_power: newS.bhPower,
+            fh_power: newS.fhPower,
+            country: newS.country,
+            handedness: newS.handedness,
+            skill_level: newS.skillLevel,
+            throw_style: newS.throwStyle,
+        }).eq('user_id', session.user.id);
     };
 
     // --- CARD MATES ---
@@ -914,20 +925,32 @@ export default function App() {
     };
 
     // --- WEAR / BEAT-IN PHYSICS ---
-    const getStats = (d) => {
+    const getStats = (d, windOverride) => {
         const w = parseFloat(d.wear) || 0;
         const baseTurn = parseFloat(d.turn);
         const baseFade = parseFloat(d.fade);
         const baseSpeed = parseFloat(d.speed);
         const overstability = baseFade + Math.max(0, baseTurn);
         const maxTurnShift = Math.max(0, Math.min(1.5, overstability * 0.5));
-        const turn = Math.max(-5, baseTurn - (w * maxTurnShift));
+        let turn = Math.max(-5, baseTurn - (w * maxTurnShift));
         const maxFadeReduction = baseFade * 0.65;
-        const fade = Math.max(0, baseFade - (w * maxFadeReduction));
+        let fade = Math.max(0, baseFade - (w * maxFadeReduction));
+
+        // Wind modifiers
+        const wind = windOverride || windMode;
+        if (wind === 'headwind10')  { turn = Math.max(-5, turn - 0.5); fade = Math.min(5, fade + 0.5); }
+        if (wind === 'headwind20')  { turn = Math.max(-5, turn - 1.2); fade = Math.min(5, fade + 1.2); }
+        if (wind === 'tailwind10')  { turn = Math.min(3, turn + 0.5);  fade = Math.max(0, fade - 0.4); }
+        if (wind === 'tailwind20')  { turn = Math.min(3, turn + 1.1);  fade = Math.max(0, fade - 0.8); }
+        if (wind === 'crosswind')   { turn = turn - 0.3; fade = Math.min(5, fade + 0.6); }
+
+        // Use real throw data if available, otherwise scale from arm speed
+        const armPower = settings.bhPower || settings.maxPower;
         const distBoost = w < 0.7 ? 1 + (w * 0.05) : 1 + (0.035 - (w - 0.7) * 0.1);
-        const dist = d.max_dist
+        const dist = d.max_dist && parseFloat(d.max_dist) > 0
             ? parseFloat(d.max_dist)
-            : parseFloat(settings.maxPower) * (0.4 + (baseSpeed / 12 * 0.6)) * distBoost;
+            : armPower * (0.4 + (baseSpeed / 12 * 0.6)) * distBoost;
+
         return { turn, fade, stability: turn + fade, dist };
     };
 
@@ -936,11 +959,49 @@ export default function App() {
         const points = [];
         for (let i = 0; i <= 100; i++) {
             const p = i / 100;
-            const x = ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
+            // Handedness flips the x-axis (left-hand throw curves opposite)
+            const handMult = settings.handedness === 'left' ? -1 : 1;
+            const x = handMult * ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
             points.push({ x, y: settings.unit === 'm' ? p * s.dist * 0.3048 : p * s.dist });
         }
         return points;
     };
+
+    // --- BAG EFFICIENCY SCORE ---
+    const bagScore = useMemo(() => {
+        const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+        if (active.length === 0) return null;
+        const stabBucket = (t, f) => { const s = parseFloat(t) + parseFloat(f); return s >= 2 ? 'OS' : s <= -1 ? 'US' : 'ST'; };
+        const slotKey = (sp, t, f) => {
+            const s = parseFloat(sp), b = stabBucket(t, f);
+            if (s <= 3) return `putter_${b}`; if (s <= 6) return `mid_${b}`; if (s <= 8) return `fairway_${b}`; return `distance_${b}`;
+        };
+        const SLOTS_12 = ['putter_ST','putter_OS','putter_US','mid_ST','mid_OS','mid_US','fairway_ST','fairway_OS','fairway_US','distance_ST','distance_OS','distance_US'];
+        const filled = new Set(active.map(d => slotKey(d.speed, d.turn, d.fade)));
+        const coverageScore = Math.round((filled.size / 12) * 40); // 40pts max
+
+        // Overlap penalty — discs in same slot
+        const slotCounts = {};
+        active.forEach(d => { const k = slotKey(d.speed, d.turn, d.fade); slotCounts[k] = (slotCounts[k] || 0) + 1; });
+        const overlapPenalty = Object.values(slotCounts).reduce((acc, c) => acc + Math.max(0, c - 1) * 5, 0);
+
+        // Speed spread (want coverage from low to high)
+        const speeds = active.map(d => parseFloat(d.speed));
+        const hasLow = speeds.some(s => s <= 3);
+        const hasMid = speeds.some(s => s >= 4 && s <= 8);
+        const hasHigh = speeds.some(s => s >= 9);
+        const spreadScore = (hasLow ? 10 : 0) + (hasMid ? 15 : 0) + (hasHigh ? 15 : 0); // 40pts max
+
+        // Ideal size bonus (10-18 discs is ideal)
+        const sizeScore = active.length >= 6 && active.length <= 20 ? 20 : active.length < 6 ? Math.round(active.length / 6 * 20) : 15;
+
+        const total = Math.max(0, Math.min(100, coverageScore + spreadScore + sizeScore - overlapPenalty));
+        const grade = total >= 90 ? 'S' : total >= 75 ? 'A' : total >= 60 ? 'B' : total >= 45 ? 'C' : 'D';
+        const color = total >= 90 ? 'text-emerald-400' : total >= 75 ? 'text-green-400' : total >= 60 ? 'text-yellow-400' : total >= 45 ? 'text-orange-400' : 'text-red-400';
+        const filledSlots = filled.size;
+        const overlaps = Object.values(slotCounts).filter(c => c > 1).length;
+        return { total, grade, color, filledSlots, overlaps, coverageScore, spreadScore, sizeScore, overlapPenalty };
+    }, [discs, activeBagId]);
 
     const gapAnalysis = useMemo(() => {
         const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
@@ -1184,7 +1245,7 @@ export default function App() {
             if (desktopStabRef.current) desktopStabRef.current.destroy();
             desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildChartConfig(filtered, 'matrix'));
         }
-    }, [discs, activeBagId, view, session, settings, chartMode, favSubView]);
+    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windMode]);
 
     // --- AUTH RENDER ---
     if (!session || authMode === 'profile_setup') return (
@@ -1617,6 +1678,45 @@ export default function App() {
                             <div className="w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 slots filled</div>
                         </div>
                     )}
+                    {/* WIND BAR — mobile */}
+                    {view === 'active' && (
+                        <div className="px-4 pt-3">
+                            <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1.5 overflow-x-auto">
+                                {[
+                                    { id: 'calm', label: '😌 Calm', color: 'text-slate-300' },
+                                    { id: 'headwind10', label: '💨 HW 10', color: 'text-blue-400' },
+                                    { id: 'headwind20', label: '💨 HW 20', color: 'text-blue-500' },
+                                    { id: 'tailwind10', label: '🌬 TW 10', color: 'text-green-400' },
+                                    { id: 'tailwind20', label: '🌬 TW 20', color: 'text-green-500' },
+                                    { id: 'crosswind', label: '↔ Cross', color: 'text-yellow-400' },
+                                ].map(w => (
+                                    <button key={w.id} onClick={() => setWindMode(w.id)}
+                                        className={`shrink-0 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition whitespace-nowrap ${windMode === w.id ? 'bg-slate-700 ' + w.color : 'text-slate-600 hover:text-slate-400'}`}>
+                                        {w.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* BAG SCORE STRIP — mobile */}
+                    {bagScore && view === 'active' && (
+                        <div className="px-4 pt-2">
+                            <button onClick={() => setShowCoach(true)} className="w-full flex items-center gap-3 bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 rounded-2xl px-4 py-2.5 transition">
+                                <div className={`text-2xl font-black italic ${bagScore.color}`}>{bagScore.grade}</div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                            <div className={`h-full rounded-full transition-all ${bagScore.total >= 75 ? 'bg-emerald-500' : bagScore.total >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`} style={{ width: `${bagScore.total}%` }} />
+                                        </div>
+                                        <span className={`text-xs font-black ${bagScore.color}`}>{bagScore.total}/100</span>
+                                    </div>
+                                    <div className="text-[9px] font-bold text-slate-600 uppercase mt-0.5">{bagScore.filledSlots}/12 slots • {bagScore.overlaps > 0 ? `${bagScore.overlaps} overlap${bagScore.overlaps > 1 ? 's' : ''}` : 'No overlaps'} — Tap for Smart Bag Coach 🧠</div>
+                                </div>
+                            </button>
+                        </div>
+                    )}
+
                     <section className="p-4">
                         <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl">
                             <div className="flex bg-slate-800/50 p-1 rounded-2xl mb-4 w-full max-w-xs mx-auto">
@@ -1658,6 +1758,41 @@ export default function App() {
                         )}
                         {gapAnalysis.allFilled && view === 'active' && (
                             <div className="shrink-0 w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 disc slots covered</div>
+                        )}
+
+                        {/* WIND BAR + SCORE — desktop */}
+                        {view === 'active' && (
+                            <div className="shrink-0 flex gap-3 items-center">
+                                <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1">
+                                    {[
+                                        { id: 'calm', label: '😌 Calm' },
+                                        { id: 'headwind10', label: '💨 HW 10mph' },
+                                        { id: 'headwind20', label: '💨 HW 20mph' },
+                                        { id: 'tailwind10', label: '🌬 TW 10mph' },
+                                        { id: 'tailwind20', label: '🌬 TW 20mph' },
+                                        { id: 'crosswind', label: '↔ Crosswind' },
+                                    ].map(w => (
+                                        <button key={w.id} onClick={() => setWindMode(w.id)}
+                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition whitespace-nowrap ${windMode === w.id ? 'bg-slate-700 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
+                                            {w.label}
+                                        </button>
+                                    ))}
+                                </div>
+                                {bagScore && (
+                                    <button onClick={() => setShowCoach(true)} className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 rounded-2xl px-4 py-2 transition shrink-0">
+                                        <span className={`text-xl font-black italic ${bagScore.color}`}>{bagScore.grade}</span>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${bagScore.total >= 75 ? 'bg-emerald-500' : bagScore.total >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`} style={{ width: `${bagScore.total}%` }} />
+                                                </div>
+                                                <span className={`text-xs font-black ${bagScore.color}`}>{bagScore.total}</span>
+                                            </div>
+                                            <div className="text-[8px] font-bold text-slate-600 uppercase">Smart Bag Coach 🧠</div>
+                                        </div>
+                                    </button>
+                                )}
+                            </div>
                         )}
 
                         {/* Two charts side by side, filling all remaining vertical space */}
@@ -1908,12 +2043,13 @@ export default function App() {
                                 }} className="bg-slate-800 p-3 rounded-xl font-black text-center w-full text-[16px]" /></div>);
                             })}
                         </div>
-                        <div className="bg-slate-800 p-4 rounded-xl">
+                        <div className="bg-slate-800 p-4 rounded-xl space-y-3">
                             <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1">
-                                <span>Power Calibration</span>
+                                <span>My Actual Max Distance</span>
                                 <span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span>
                             </div>
                             <input name="d" type="range" min={settings.unit === 'm' ? 15 : 50} max={settings.unit === 'm' ? 198 : 650} step="1" defaultValue={settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)} className="w-full" />
+                            <p className="text-[9px] text-slate-600 font-bold">Set your real throw distance for this disc — overrides the calculated estimate. This personalises your flight chart.</p>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Aces</span><input name="a" type="number" defaultValue={editing.aces || 0} className="bg-transparent font-black text-orange-500 w-full text-[16px]" /></div>
@@ -1963,28 +2099,66 @@ export default function App() {
                                     className="w-full bg-slate-800 p-5 rounded-2xl font-black text-xs uppercase flex justify-between">
                                     <span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span>
                                 </button>
-                                <div className="bg-slate-800 p-5 rounded-2xl space-y-4">
-                                    {(() => {
-                                        const displayVal = settings.unit === 'm' ? Math.round(settings.maxPower * 0.3048) : settings.maxPower;
-                                        const displayMin = settings.unit === 'm' ? 30 : 100;
-                                        const displayMax = settings.unit === 'm' ? 183 : 600;
-                                        const displayStep = settings.unit === 'm' ? 1 : 5;
-                                        return (<>
-                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                                                <span>Global Max Power</span>
-                                                <span className="text-orange-500">{displayVal}{settings.unit}</span>
-                                            </div>
-                                            <input type="range" min={displayMin} max={displayMax} step={displayStep} value={displayVal}
-                                                onChange={(e) => { const v = Number(e.target.value); const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v; setSettings({ ...settings, maxPower: inFeet }); }}
-                                                className="w-full" />
-                                            <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mt-1">
-                                                <span>{settings.unit === 'm' ? '30m' : '100ft'}</span>
-                                                <span className="text-slate-600">100m / 328ft avg</span>
-                                                <span>{settings.unit === 'm' ? '183m' : '600ft'}</span>
-                                            </div>
-                                        </>);
-                                    })()}
+
+                                {/* Handedness + Skill Level + Throw Style */}
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
+                                        <div className="text-[9px] font-black uppercase text-slate-500">Hand</div>
+                                        <div className="flex flex-col gap-1">
+                                            {['right','left'].map(h => (
+                                                <button key={h} onClick={() => setSettings({...settings, handedness: h})}
+                                                    className={`py-1.5 rounded-xl text-[9px] font-black uppercase transition ${settings.handedness === h ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                    {h === 'right' ? '✋ RH' : '🤚 LH'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
+                                        <div className="text-[9px] font-black uppercase text-slate-500">Skill</div>
+                                        <div className="flex flex-col gap-1">
+                                            {[['beginner','🌱'],['intermediate','⚡'],['advanced','🔥'],['pro','🏆']].map(([s,e]) => (
+                                                <button key={s} onClick={() => setSettings({...settings, skillLevel: s})}
+                                                    className={`py-1.5 rounded-xl text-[9px] font-black uppercase transition ${settings.skillLevel === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                    {e} {s.slice(0,3).toUpperCase()}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
+                                        <div className="text-[9px] font-black uppercase text-slate-500">Style</div>
+                                        <div className="flex flex-col gap-1">
+                                            {[['both','↕ Both'],['backhand','↩ BH'],['forehand','↪ FH'],['roller','🌀 Roll']].map(([s,l]) => (
+                                                <button key={s} onClick={() => setSettings({...settings, throwStyle: s})}
+                                                    className={`py-1.5 rounded-xl text-[9px] font-black uppercase transition ${settings.throwStyle === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                    {l}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
+
+                                {/* BH and FH arm speed sliders */}
+                                {[
+                                    { key: 'bhPower', label: '↩ Backhand Max', color: 'text-orange-500' },
+                                    { key: 'fhPower', label: '↪ Forehand Max', color: 'text-cyan-400' },
+                                ].map(({ key, label, color }) => {
+                                    const val = settings.unit === 'm' ? Math.round((settings[key] || 300) * 0.3048) : (settings[key] || 300);
+                                    return (
+                                        <div key={key} className="bg-slate-800 p-4 rounded-2xl space-y-3">
+                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                <span>{label}</span>
+                                                <span className={color}>{val}{settings.unit}</span>
+                                            </div>
+                                            <input type="range"
+                                                min={settings.unit === 'm' ? 30 : 100}
+                                                max={settings.unit === 'm' ? 183 : 600}
+                                                step={settings.unit === 'm' ? 1 : 5}
+                                                value={val}
+                                                onChange={(e) => { const v = Number(e.target.value); const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v; setSettings({...settings, [key]: inFeet, maxPower: key === 'bhPower' ? inFeet : settings.maxPower}); }}
+                                                className="w-full" />
+                                        </div>
+                                    );
+                                })}
                                 <button onClick={() => { saveSettings(settings); setShowSettings(false); }}
                                     className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition">
                                     Save & Close
@@ -3043,6 +3217,174 @@ export default function App() {
                 </div>
             </div>
         )}
+
+        {/* =====================================================
+            SMART BAG COACH MODAL
+        ===================================================== */}
+        {showCoach && (() => {
+            const active = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+            const stabBucket = (t, f) => { const s = parseFloat(t) + parseFloat(f); return s >= 2 ? 'OS' : s <= -1 ? 'US' : 'ST'; };
+            const slotKey = (sp, t, f) => { const s = parseFloat(sp), b = stabBucket(t, f); if (s <= 3) return `putter_${b}`; if (s <= 6) return `mid_${b}`; if (s <= 8) return `fairway_${b}`; return `distance_${b}`; };
+
+            // Overlaps
+            const slotMap = {};
+            active.forEach(d => { const k = slotKey(d.speed, d.turn, d.fade); if (!slotMap[k]) slotMap[k] = []; slotMap[k].push(d); });
+            const overlaps = Object.entries(slotMap).filter(([,v]) => v.length > 1);
+
+            // Missing slots
+            const ALL_SLOTS = ['putter_ST','putter_OS','putter_US','mid_ST','mid_OS','mid_US','fairway_ST','fairway_OS','fairway_US','distance_ST','distance_OS','distance_US'];
+            const SLOT_LABELS = { putter_ST:'Straight Putter', putter_OS:'Overstable Putter', putter_US:'Understable Putter', mid_ST:'Straight Mid', mid_OS:'Overstable Mid', mid_US:'Understable Mid', fairway_ST:'Straight Fairway', fairway_OS:'Overstable Fairway', fairway_US:'Understable Fairway', distance_ST:'Straight Distance', distance_OS:'Overstable Distance', distance_US:'Understable Distance' };
+            const missingSlots = ALL_SLOTS.filter(s => !slotMap[s]);
+
+            // Speed gap detection
+            const speeds = active.map(d => parseFloat(d.speed)).sort((a,b) => a-b);
+            const speedGaps = [];
+            for (let i = 0; i < speeds.length - 1; i++) { if (speeds[i+1] - speeds[i] >= 4) speedGaps.push({ from: speeds[i], to: speeds[i+1] }); }
+
+            // Arm speed tip
+            const bh = settings.bhPower || settings.maxPower;
+            const bhFt = settings.unit === 'm' ? Math.round(bh * 0.3048) : bh;
+            const maxUsableSpeed = Math.round(bhFt / 30);
+            const tooFast = active.filter(d => parseFloat(d.speed) > maxUsableSpeed + 2);
+
+            const skillTips = {
+                beginner: 'Focus on discs speed 1-7. High-speed drivers are harder to control and will actually fly shorter for beginners.',
+                intermediate: 'Build your bag around speed 5-10 discs. A reliable fairway driver in each stability category is your foundation.',
+                advanced: 'You can now benefit from speed 9-12 drivers. Prioritise filling overstable slots for windy conditions.',
+                pro: 'Optimise for shot shape diversity. Make sure every stability and speed range is covered.',
+            };
+
+            const windTips = {
+                calm: null,
+                headwind10: 'In a 10mph headwind: overstable discs become more predictable. Understable discs will flip more aggressively.',
+                headwind20: 'In a 20mph headwind: throw lower and harder. Understable discs become nearly unthrowable; overstable discs fly straighter.',
+                tailwind10: 'In a 10mph tailwind: discs fly farther but your overstable discs lose their reliable fade.',
+                tailwind20: 'In a 20mph tailwind: understable discs become your friend. Overstable discs may fly nearly straight.',
+                crosswind: 'In crosswind: hyzer angle is your friend. Throw overstable discs to fight the wind or understable discs to use it.',
+            };
+
+            return (
+                <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl overflow-y-auto p-4 lg:p-6">
+                    <div className="w-full max-w-2xl mx-auto space-y-4 my-auto py-6">
+
+                        {/* Header */}
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h2 className="text-3xl font-black italic uppercase text-orange-500">🧠 Smart Bag Coach</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">{settings.skillLevel} • {settings.handedness}-handed • {settings.throwStyle} throws</p>
+                            </div>
+                            <button onClick={() => setShowCoach(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
+                        </div>
+
+                        {/* Score card */}
+                        {bagScore && (
+                            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                                <div className="flex items-center gap-5">
+                                    <div className={`text-6xl font-black italic ${bagScore.color}`}>{bagScore.grade}</div>
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className={`h-full rounded-full transition-all ${bagScore.total >= 75 ? 'bg-emerald-500' : bagScore.total >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`} style={{ width: `${bagScore.total}%` }} />
+                                            </div>
+                                            <span className={`text-xl font-black ${bagScore.color}`}>{bagScore.total}/100</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2 text-center">
+                                            <div className="bg-slate-800 rounded-xl p-2"><div className="text-[8px] font-black text-slate-500 uppercase">Coverage</div><div className="text-sm font-black text-white">{bagScore.coverageScore}/40</div></div>
+                                            <div className="bg-slate-800 rounded-xl p-2"><div className="text-[8px] font-black text-slate-500 uppercase">Spread</div><div className="text-sm font-black text-white">{bagScore.spreadScore}/40</div></div>
+                                            <div className="bg-slate-800 rounded-xl p-2"><div className="text-[8px] font-black text-slate-500 uppercase">Size</div><div className="text-sm font-black text-white">{bagScore.sizeScore}/20</div></div>
+                                        </div>
+                                        {bagScore.overlapPenalty > 0 && <div className="text-[9px] font-bold text-red-400 uppercase mt-2">−{bagScore.overlapPenalty} overlap penalty</div>}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Wind tip */}
+                        {windTips[windMode] && (
+                            <div className="bg-blue-900/20 border border-blue-500/30 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-blue-400 mb-1">💨 Wind Tip — {windMode.replace(/([0-9]+)/, ' $1mph')}</p>
+                                <p className="text-sm font-bold text-blue-300">{windTips[windMode]}</p>
+                            </div>
+                        )}
+
+                        {/* Skill tip */}
+                        <div className="bg-orange-900/20 border border-orange-500/30 rounded-2xl px-5 py-4">
+                            <p className="text-[10px] font-black uppercase text-orange-400 mb-1">⚡ {settings.skillLevel} Tip</p>
+                            <p className="text-sm font-bold text-orange-200">{skillTips[settings.skillLevel] || skillTips.intermediate}</p>
+                        </div>
+
+                        {/* Arm speed warning */}
+                        {tooFast.length > 0 && (
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-red-400 mb-2">⚠️ Arm Speed Mismatch</p>
+                                <p className="text-sm font-bold text-red-300 mb-3">Based on your {settings.unit === 'm' ? Math.round(bh * 0.3048) : bh}{settings.unit} backhand, discs above speed {maxUsableSpeed + 2} may not fly as intended:</p>
+                                <div className="space-y-1">
+                                    {tooFast.map(d => <div key={d.id} className="flex items-center gap-2 text-[11px] font-bold text-red-300"><span style={{color: d.color}}>●</span>{d.name} (speed {d.speed})</div>)}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Overlapping discs */}
+                        {overlaps.length > 0 && (
+                            <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-yellow-400 mb-2">🔁 Overlapping Slots</p>
+                                <p className="text-sm font-bold text-yellow-300 mb-3">These disc slots have multiple discs covering the same role:</p>
+                                {overlaps.map(([slot, discsInSlot]) => (
+                                    <div key={slot} className="mb-2">
+                                        <div className="text-[9px] font-black uppercase text-yellow-500 mb-1">{SLOT_LABELS[slot]}</div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {discsInSlot.map(d => <span key={d.id} style={{borderColor: d.color}} className="border px-2 py-0.5 rounded-full text-[10px] font-bold text-white">{d.name}</span>)}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Speed gaps */}
+                        {speedGaps.length > 0 && (
+                            <div className="bg-slate-800/60 border border-slate-700 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-slate-400 mb-2">📉 Speed Gaps Detected</p>
+                                {speedGaps.map((g, i) => (
+                                    <p key={i} className="text-sm font-bold text-slate-300">Gap between speed {g.from} and {g.to} — consider adding a disc in this range</p>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Missing priority slots */}
+                        {missingSlots.length > 0 && (
+                            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                                <p className="text-[10px] font-black uppercase text-slate-500 mb-3">Missing Slots ({missingSlots.length})</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {missingSlots.map(slot => {
+                                        const suggestions = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Turn:d.Turn, Fade:d.Fade }))].filter(d => {
+                                            const b = stabBucket(d.Turn, d.Fade);
+                                            const sp = parseFloat(d.Speed);
+                                            if (slot.startsWith('putter') && sp > 3) return false;
+                                            if (slot.startsWith('mid') && (sp < 4 || sp > 6)) return false;
+                                            if (slot.startsWith('fairway') && (sp < 7 || sp > 8)) return false;
+                                            if (slot.startsWith('distance') && sp < 9) return false;
+                                            return slot.endsWith(b);
+                                        }).filter(d => d.Speed <= maxUsableSpeed + 2).slice(0, 2);
+                                        return (
+                                            <div key={slot} className="bg-slate-800 rounded-2xl p-3">
+                                                <div className="text-[9px] font-black uppercase text-slate-500 mb-1">{SLOT_LABELS[slot]}</div>
+                                                {suggestions.map(s => (
+                                                    <div key={s.Model} className="text-[11px] font-bold text-white">{s.Model} <span className="text-slate-500">{s.Manufacturer}</span></div>
+                                                ))}
+                                                {suggestions.length === 0 && <div className="text-[10px] text-slate-600 font-bold">Build arm speed first</div>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        <button onClick={() => setShowCoach(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
+                    </div>
+                </div>
+            );
+        })()}
+
 
         </div>
     );
