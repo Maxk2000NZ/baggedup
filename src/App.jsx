@@ -160,6 +160,26 @@ export default function App() {
         await supabase.from('bags').update({ name }).eq('id', id);
     };
 
+    const deleteBag = async (id) => {
+        if (confirm('Are you sure you want to delete this bag? All discs in it will be moved to storage.')) {
+            // Move all discs from this bag to storage (set bag_id to null)
+            await supabase.from('discs').update({ bag_id: null }).eq('bag_id', id);
+            // Delete the bag
+            await supabase.from('bags').delete().eq('id', id);
+            // Update local state
+            const updatedBags = bags.filter(b => b.id !== id);
+            setBags(updatedBags);
+            // If deleted bag was active, switch to first available bag
+            if (activeBagId === id && updatedBags.length > 0) {
+                setActiveBagId(updatedBags[0].id);
+            } else if (updatedBags.length === 0) {
+                // Create default bag if none exist
+                const { data: nb } = await supabase.from('bags').insert({ user_id: session.user.id, name: 'Main Bag' }).select().single();
+                if (nb) { setBags([nb]); setActiveBagId(nb.id); }
+            }
+        }
+    };
+
     const addDiscToDB = async (discObj) => {
         const isNotInFactory = !FACTORY_DB.some(d => d.Model.toLowerCase() === discObj.name.toLowerCase());
         
@@ -533,6 +553,17 @@ export default function App() {
                             <input type="range" min="100" max="600" step="10" value={settings.maxPower} onChange={(e) => setSettings({...settings, maxPower: Number(e.target.value)})} className="w-full" />
                         </div>
                         <button onClick={() => { saveSettings(settings); setShowSettings(false); }} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Save & Close</button>
+                        <div className="space-y-2">
+                            <h3 className="text-[10px] font-black uppercase text-slate-500">Your Bags</h3>
+                            {bags.map(bag => (
+                                <div key={bag.id} className="flex items-center justify-between bg-slate-800 p-3 rounded-xl">
+                                    <span className={`text-sm font-black uppercase ${bag.id === activeBagId ? 'text-orange-500' : 'text-slate-400'}`}>{bag.name}</span>
+                                    {bags.length > 1 && (
+                                        <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black">✕</button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                         <button onClick={() => {const n=prompt("New Bag Name:"); if(n) createBag(n); setShowSettings(false);}} className="w-full py-4 text-xs font-black uppercase text-slate-500">Create New Bag</button>
                     </div>
                 </div>
