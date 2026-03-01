@@ -450,7 +450,11 @@ export default function App() {
         if (!session) return;
         const filtered = discs.filter(d => {
             if (view === 'graveyard') return d.status === 'lost';
-            if (view === 'favorites') return d.favorite;
+            if (view === 'favorites') {
+                if (!d.favorite) return false;
+                if (favSubView === 'aces') return d.aces > 0;
+                return true;
+            }
             if (view === 'storage') return d.status === 'active' && !d.bag_id;
             return d.bag_id === activeBagId && d.status === 'active';
         });
@@ -474,7 +478,7 @@ export default function App() {
             if (desktopStabRef.current) desktopStabRef.current.destroy();
             desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildChartConfig(filtered, 'matrix'));
         }
-    }, [discs, activeBagId, view, session, settings, chartMode]);
+    }, [discs, activeBagId, view, session, settings, chartMode, favSubView]);
 
     // --- AUTH RENDER ---
     if (!session) return (
@@ -617,8 +621,9 @@ export default function App() {
         <div className="h-[100dvh] w-full bg-[#0b0f1a] flex overflow-hidden text-slate-200">
             <style>{`
                 .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
-                input[type="range"] { -webkit-appearance: none; background: #1e293b; height: 6px; border-radius: 10px; }
-                input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 18px; width: 18px; border-radius: 50%; background: #f97316; border: 2px solid #0b0f1a; }
+                input[type="range"] { -webkit-appearance: none; background: linear-gradient(to right, #f97316, #fb923c); height: 8px; border-radius: 10px; outline: none; cursor: pointer; }
+                input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: #f97316; border: 3px solid #fff; box-shadow: 0 0 8px rgba(249,115,22,0.7); cursor: pointer; }
+                input[type="range"]::-moz-range-thumb { height: 24px; width: 24px; border-radius: 50%; background: #f97316; border: 3px solid #fff; box-shadow: 0 0 8px rgba(249,115,22,0.7); cursor: pointer; }
             `}</style>
 
             {/* =====================================================
@@ -626,7 +631,7 @@ export default function App() {
             ===================================================== */}
             <div className="hidden lg:flex w-60 h-full bg-slate-900 border-r border-slate-800 p-6 flex-col gap-4 shrink-0">
                 <div className="flex justify-center w-full mb-1">
-                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-[6.25rem] w-[6.25rem] object-contain" />
+                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-36 w-36 object-contain" />
                 </div>
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
@@ -654,8 +659,8 @@ export default function App() {
             {sidebarOpen && (
                 <div className="lg:hidden fixed inset-0 z-[100] flex">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
-                    <div className="relative w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex flex-col gap-6">
-                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-12 w-12 object-contain" />
+                    <div className="relative w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex flex-col gap-4 overflow-y-auto">
+                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-20 w-20 object-contain shrink-0" />
                         {[
                             { id: 'active', label: 'My Bag', icon: '🎒' },
                             { id: 'storage', label: 'Storage', icon: '📦' },
@@ -672,8 +677,8 @@ export default function App() {
                         <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🥏</span> Play Round
                         </button>
-                        <button onClick={() => { setShowSettings(true); setSidebarOpen(false); }} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs">⚙️ Settings</button>
-                        <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs">✕ Log Out</button>
+                        <button onClick={() => { setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
+                        <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
                     </div>
                 </div>
             )}
@@ -1011,8 +1016,8 @@ export default function App() {
 
             {/* SETTINGS */}
             {showSettings && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center">
-                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-md space-y-6">
+                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex items-center justify-center overflow-y-auto">
+                    <div className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-2xl space-y-6 my-auto">
                         <h2 className="text-2xl font-black italic uppercase text-orange-500">Bag Settings</h2>
                         <div className="flex flex-col gap-2 bg-slate-800 p-4 rounded-xl border border-slate-700">
                             <span className="text-[10px] font-black uppercase text-slate-500">Home Territory</span>
@@ -1064,12 +1069,14 @@ export default function App() {
                         <button onClick={() => { saveSettings(settings); setShowSettings(false); }} className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Save & Close</button>
                         <div className="space-y-2">
                             <h3 className="text-[10px] font-black uppercase text-slate-500">Your Bags</h3>
+                            <div className="grid grid-cols-2 gap-2">
                             {bags.map(bag => (
                                 <div key={bag.id} className="flex items-center justify-between bg-slate-800 p-3 rounded-xl">
                                     <span className={`text-sm font-black uppercase ${bag.id === activeBagId ? 'text-orange-500' : 'text-slate-400'}`}>{bag.name}</span>
                                     {bags.length > 1 && <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black">✕</button>}
                                 </div>
                             ))}
+                            </div>
                         </div>
                         <button onClick={() => { const n = prompt("New Bag Name:"); if (n) createBag(n); setShowSettings(false); }} className="w-full py-4 text-xs font-black uppercase text-slate-500">Create New Bag</button>
                     </div>
@@ -1132,13 +1139,24 @@ export default function App() {
                             if (y > H-22) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F'); y=20; }
                             const s = getStats(d);
                             if (idx%2===0) { doc.setFillColor(15,23,42); doc.rect(13,y-5,W-26,10,'F'); }
-                            const hex=d.color||'#f97316';
-                            const cr=parseInt(hex.slice(1,3),16)||249, cg=parseInt(hex.slice(3,5),16)||115, cb=parseInt(hex.slice(5,7),16)||22;
-                            doc.setFillColor(cr,cg,cb); doc.rect(13,y-5,2.5,10,'F');
+                            // Parse color robustly - convert hsl to rgb if needed
+                            let cr=249, cg=115, cb=22;
+                            try {
+                                const hex=d.color||'#f97316';
+                                if (hex.startsWith('#') && hex.length >= 7) {
+                                    cr=parseInt(hex.slice(1,3),16)||249; cg=parseInt(hex.slice(3,5),16)||115; cb=parseInt(hex.slice(5,7),16)||22;
+                                } else if (hex.startsWith('hsl')) {
+                                    // Convert hsl to rgb via off-screen canvas
+                                    const tmpC=document.createElement('canvas'); tmpC.width=1; tmpC.height=1;
+                                    const tmpCtx=tmpC.getContext('2d'); tmpCtx.fillStyle=hex; tmpCtx.fillRect(0,0,1,1);
+                                    const px=tmpCtx.getImageData(0,0,1,1).data; cr=px[0]; cg=px[1]; cb=px[2];
+                                }
+                            } catch(e) {}
+                            doc.setFillColor(cr,cg,cb); doc.rect(13,y-5,3,10,'F');
                             doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-                            // Disc name + ace trophies
-                            const aceStr = d.aces > 0 ? ' ' + '★'.repeat(Math.min(d.aces,3)) + (d.aces > 3 ? `×${d.aces}` : '') : '';
-                            doc.text(((d.name||'').slice(0,14) + aceStr).slice(0,20), cols[0]+2, y);
+                            // Disc name — aces shown as trophy emoji text (PDF-safe)
+                            const aceStr = d.aces > 0 ? (' [ACE' + (d.aces > 1 ? ' x'+d.aces : '') + ']') : '';
+                            doc.text(((d.name||'').slice(0,14) + aceStr).slice(0,24), cols[0]+2, y);
                             doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
                             doc.text((d.brand||'').slice(0,12), cols[1], y);
                             doc.text((d.plastic||'—').slice(0,8), cols[2], y);
@@ -1267,24 +1285,26 @@ export default function App() {
                         let ry=top1+4;
                         exportDiscs.forEach(d => {
                             c1.fillStyle='#0f172a'; rrPath(c1,PAD,ry,CW-PAD*2,rh-8,14); c1.fill();
-                            c1.fillStyle=d.color||'#f97316'; rrPath(c1,PAD,ry,10,rh-8,4); c1.fill();
+                            // Color bar — use disc color directly (canvas handles hsl natively)
+                            c1.fillStyle=d.color||'#f97316'; rrPath(c1,PAD,ry,12,rh-8,4); c1.fill();
                             const fs=Math.min(28,rh*0.34);
                             // Disc name
                             c1.fillStyle='#fff'; c1.font=`bold ${fs}px system-ui,sans-serif`; c1.textAlign='left';
-                            c1.fillText(d.name.toUpperCase(), PAD+22, ry+(rh-8)*0.44);
+                            c1.fillText(d.name.toUpperCase(), PAD+26, ry+(rh-8)*0.44);
                             // Ace trophies — draw after name
                             if (d.aces > 0) {
                                 const nameWidth = c1.measureText(d.name.toUpperCase()).width;
-                                const trophyX = PAD + 22 + nameWidth + 10;
+                                const trophyX = PAD + 26 + nameWidth + 10;
                                 const trophyY = ry + (rh-8)*0.44;
                                 const trophyCount = Math.min(d.aces, 4);
-                                c1.font = `${Math.min(fs*0.8, 22)}px system-ui,sans-serif`;
+                                const trophySize = Math.min(fs*0.85, 24);
+                                c1.font = `${trophySize}px serif`;
                                 for (let i = 0; i < trophyCount; i++) {
-                                    c1.fillText('🏆', trophyX + i * (Math.min(fs*0.8, 22) + 2), trophyY);
+                                    c1.fillText('🏆', trophyX + i * (trophySize + 3), trophyY);
                                 }
                                 if (d.aces > 4) {
                                     c1.fillStyle='#fbbf24'; c1.font=`bold ${Math.min(14,rh*0.16)}px system-ui,sans-serif`;
-                                    c1.fillText(`×${d.aces}`, trophyX + 4 * (Math.min(fs*0.8, 22) + 2), trophyY);
+                                    c1.fillText(`×${d.aces}`, trophyX + 4 * (trophySize + 3), trophyY);
                                     c1.fillStyle='#fff';
                                 }
                             }
