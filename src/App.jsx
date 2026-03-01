@@ -281,36 +281,75 @@ export default function App() {
     }, [discs, activeBagId]);
 
     // --- SHARED CHART CONFIG BUILDER ---
-    const buildChartConfig = (filtered, mode) => {
-        // Custom plugin: draw disc name labels directly on the chart
-        const inlineLabelPlugin = {
-            id: 'inlineLabels',
+    // forExport=true draws inline disc name labels (used when rendering off-screen export charts)
+    const buildChartConfig = (filtered, mode, forExport = false) => {
+
+        // Only used when forExport=true: draw names on the chart canvas directly
+        const exportLabelPlugin = {
+            id: 'exportLabels',
             afterDatasetsDraw(chart) {
+                if (!forExport) return;
                 const ctx = chart.ctx;
+                // Collect all label positions so we can nudge overlaps
+                const positions = [];
                 chart.data.datasets.forEach((ds, i) => {
                     if (!ds.data || ds.data.length === 0) return;
                     const meta = chart.getDatasetMeta(i);
                     if (meta.hidden) return;
-                    ctx.save();
-                    ctx.font = 'bold 11px system-ui, sans-serif';
-                    ctx.fillStyle = ds.borderColor || '#fff';
-                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                    ctx.shadowBlur = 4;
+                    let px, py;
                     if (mode === 'path') {
-                        // Label at the tip (last point = furthest distance)
-                        const lastPt = meta.data[meta.data.length - 1];
-                        if (lastPt) {
-                            ctx.textAlign = 'center';
-                            ctx.fillText(ds.label, lastPt.x, lastPt.y - 6);
-                        }
+                        // place label at the tip of the arc (the point with max y-pixel = lowest distance end)
+                        // find the point closest to mid-arc where the curve bends most
+                        const pts = meta.data;
+                        // use ~65% along the path for label placement (visible bend area)
+                        const idx = Math.floor(pts.length * 0.65);
+                        const pt = pts[Math.min(idx, pts.length - 1)];
+                        px = pt?.x; py = pt?.y;
                     } else {
-                        // Label next to each dot on stability matrix
                         const pt = meta.data[0];
-                        if (pt) {
-                            ctx.textAlign = 'left';
-                            ctx.fillText(ds.label, pt.x + 10, pt.y + 4);
+                        px = pt?.x; py = pt?.y;
+                    }
+                    if (px == null) return;
+                    positions.push({ label: ds.label, color: ds.borderColor, px, py });
+                });
+
+                // Simple collision nudge — push overlapping labels apart
+                for (let iter = 0; iter < 5; iter++) {
+                    for (let a = 0; a < positions.length; a++) {
+                        for (let b = a + 1; b < positions.length; b++) {
+                            const dy = positions[a].py - positions[b].py;
+                            const dx = positions[a].px - positions[b].px;
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist < 28) {
+                                const push = (28 - dist) / 2;
+                                const angle = Math.atan2(dy, dx);
+                                positions[a].py += Math.sin(angle) * push;
+                                positions[b].py -= Math.sin(angle) * push;
+                                positions[a].px += Math.cos(angle) * push * 0.5;
+                                positions[b].px -= Math.cos(angle) * push * 0.5;
+                            }
                         }
                     }
+                }
+
+                positions.forEach(({ label, color, px, py }) => {
+                    ctx.save();
+                    ctx.font = 'bold 12px system-ui, sans-serif';
+                    const tw = ctx.measureText(label).width;
+                    // pill background
+                    const pad = 5; const rr = 5; const bw = tw + pad*2; const bh = 18;
+                    const bx = px - bw/2; const by = py - bh/2;
+                    ctx.fillStyle = 'rgba(11,15,26,0.82)';
+                    ctx.beginPath();
+                    ctx.roundRect(bx, by, bw, bh, rr);
+                    ctx.fill();
+                    // text
+                    ctx.fillStyle = color || '#fff';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+                    ctx.shadowBlur = 3;
+                    ctx.fillText(label, px, py + 1);
                     ctx.restore();
                 });
             }
@@ -325,7 +364,7 @@ export default function App() {
                     borderColor: d.color,
                     backgroundColor: d.color,
                     showLine: mode === 'path',
-                    pointRadius: mode === 'path' ? 0 : 10,
+                    pointRadius: mode === 'path' ? 0 : 9,
                     pointStyle: 'circle',
                     borderDash: d.is_idea ? [5, 5] : [],
                     borderWidth: mode === 'path' ? 1.5 : 2,
@@ -334,9 +373,15 @@ export default function App() {
                 }))
             },
             options: {
-                responsive: true, maintainAspectRatio: false,
+                responsive: true,
+                maintainAspectRatio: false,
                 scales: {
-                    x: { min: mode === 'path' ? -100 : -6, max: mode === 'path' ? 100 : 6, reverse: mode !== 'path', grid: { color: '#1e293b' } },
+                    x: {
+                        min: mode === 'path' ? -100 : -6,
+                        max: mode === 'path' ? 100 : 6,
+                        reverse: mode !== 'path',
+                        grid: { color: '#1e293b' }
+                    },
                     y: {
                         min: 0,
                         max: mode === 'path' ? (settings.unit === 'm' ? 180 : 550) : 14,
@@ -377,7 +422,7 @@ export default function App() {
                     }
                 }
             },
-            plugins: [inlineLabelPlugin]
+            plugins: forExport ? [exportLabelPlugin] : []
         };
     };
 
@@ -938,76 +983,100 @@ export default function App() {
             const runExport = async (format) => {
                 setExportLoading(true);
                 try {
-                    // Dynamically load jsPDF + html2canvas
-                    const [{ jsPDF }, h2c] = await Promise.all([
+                    const [{ jsPDF }] = await Promise.all([
                         import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js').catch(() => window),
-                        import('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js').catch(() => window),
                     ]);
-
                     const JSPDF = window.jspdf?.jsPDF || jsPDF;
+
+                    // ── Helper: render a Chart.js chart off-screen at exact pixel size ──
+                    const renderChartToCanvas = (mode, width, height) => new Promise(resolve => {
+                        const filtered = exportDiscs;
+                        const offscreen = document.createElement('canvas');
+                        offscreen.width = width;
+                        offscreen.height = height;
+                        offscreen.style.position = 'absolute';
+                        offscreen.style.left = '-9999px';
+                        document.body.appendChild(offscreen);
+                        const cfg = buildChartConfig(filtered, mode, true); // forExport=true → labels drawn on chart
+                        cfg.options.animation = false;
+                        cfg.options.responsive = false;
+                        cfg.options.maintainAspectRatio = false;
+                        const ch = new Chart(offscreen.getContext('2d'), cfg);
+                        // Chart.js renders synchronously with animation=false after one tick
+                        requestAnimationFrame(() => {
+                            requestAnimationFrame(() => {
+                                const dataUrl = offscreen.toDataURL('image/png');
+                                ch.destroy();
+                                document.body.removeChild(offscreen);
+                                resolve(dataUrl);
+                            });
+                        });
+                    });
+
+                    // ── Helper: load logo as base64 ──
+                    const loadLogo = async () => {
+                        try {
+                            const res = await fetch('/baggedup.logo.png');
+                            const blob = await res.blob();
+                            return await new Promise(res2 => {
+                                const fr = new FileReader();
+                                fr.onload = () => res2(fr.result);
+                                fr.readAsDataURL(blob);
+                            });
+                        } catch(e) { return null; }
+                    };
+
+                    // ── Helper: load logo as Image element ──
+                    const loadLogoImg = () => new Promise(res => {
+                        const img = new Image();
+                        img.crossOrigin = 'anonymous';
+                        img.onload = () => res(img);
+                        img.onerror = () => res(null);
+                        img.src = '/baggedup.logo.png?' + Date.now();
+                    });
 
                     if (format === 'pdf') {
                         const doc = new JSPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
                         const W = 210; const H = 297;
-                        const dark = [11, 15, 26]; const orange = [249, 115, 22]; const slate = [30, 41, 59];
+                        const dark = [11,15,26]; const orange = [249,115,22]; const slate = [30,41,59];
 
-                        // Load logo as base64 for PDF
-                        let logoBase64 = null;
-                        try {
-                            const logoRes = await fetch('/baggedup.logo.png');
-                            const logoBlob = await logoRes.blob();
-                            logoBase64 = await new Promise(res => {
-                                const fr = new FileReader();
-                                fr.onload = () => res(fr.result);
-                                fr.readAsDataURL(logoBlob);
-                            });
-                        } catch(e) { /* logo optional */ }
+                        const logoB64 = await loadLogo();
 
                         // ── PAGE 1: Summary ──
-                        doc.setFillColor(...dark); doc.rect(0, 0, W, H, 'F');
+                        doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
 
-                        // Logo + title
-                        if (logoBase64) {
-                            doc.addImage(logoBase64, 'PNG', 15, 12, 42, 42);
+                        if (logoB64) {
+                            doc.addImage(logoB64, 'PNG', 13, 12, 40, 40);
                         } else {
-                            doc.setFillColor(...orange); doc.roundedRect(15, 12, 42, 42, 6, 6, 'F');
-                            doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-                            doc.text('BAGGED', 36, 30, {align:'center'}); doc.text('UP', 36, 40, {align:'center'});
+                            doc.setFillColor(...orange); doc.roundedRect(13,12,40,40,5,5,'F');
+                            doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+                            doc.text('BAGGED',33,30,{align:'center'}); doc.text('UP',33,40,{align:'center'});
                         }
 
-                        doc.setTextColor(...orange); doc.setFontSize(28); doc.setFont('helvetica','bold');
-                        doc.text(activeBag?.name || 'My Bag', 62, 32);
-                        doc.setTextColor(148,163,184); doc.setFontSize(9); doc.setFont('helvetica','normal');
-                        doc.text('BaggedUp — Disc Golf Bag Export', 62, 40);
-                        doc.text(new Date().toLocaleDateString('en-NZ', {day:'numeric',month:'long',year:'numeric'}), 62, 47);
+                        doc.setTextColor(...orange); doc.setFontSize(26); doc.setFont('helvetica','bold');
+                        doc.text(activeBag?.name || 'My Bag', 60, 28);
+                        doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
+                        doc.text('BaggedUp — Disc Golf Bag Export', 60, 37);
+                        doc.text(new Date().toLocaleDateString('en-NZ',{day:'numeric',month:'long',year:'numeric'}), 60, 45);
 
-                        // Divider
-                        doc.setDrawColor(...orange); doc.setLineWidth(0.5); doc.line(15, 62, W-15, 62);
+                        doc.setDrawColor(...orange); doc.setLineWidth(0.5); doc.line(13,58,W-13,58);
 
-                        // Column headers
-                        const cols = [15, 65, 100, 122, 137, 152, 167, 182];
+                        const cols = [18, 65, 100, 122, 137, 152, 167, 182];
                         const headers = ['Disc','Brand','Plastic','Wt','Spd','Gld','Trn','Fde'];
                         doc.setFontSize(7); doc.setFont('helvetica','bold'); doc.setTextColor(...orange);
-                        headers.forEach((h, i) => doc.text(h, cols[i], 70));
-                        doc.setDrawColor(...slate); doc.setLineWidth(0.3); doc.line(15, 73, W-15, 73);
+                        headers.forEach((h,i) => doc.text(h, cols[i], 66));
+                        doc.setDrawColor(...slate); doc.setLineWidth(0.3); doc.line(13,69,W-13,69);
 
-                        // Disc rows
-                        let y = 80;
+                        let y = 77;
                         exportDiscs.forEach((d, idx) => {
-                            if (y > H - 20) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F'); y = 20; }
+                            if (y > H-20) { doc.addPage(); doc.setFillColor(...dark); doc.rect(0,0,W,H,'F'); y=20; }
                             const s = getStats(d);
-                            const rowBg = idx % 2 === 0;
-                            if (rowBg) { doc.setFillColor(15,23,42); doc.rect(13, y-5, W-26, 10, 'F'); }
-
-                            // Colour bar
-                            const hex = d.color || '#f97316';
-                            const r = parseInt(hex.slice(1,3),16)||249;
-                            const g = parseInt(hex.slice(3,5),16)||115;
-                            const b = parseInt(hex.slice(5,7),16)||22;
-                            doc.setFillColor(r,g,b); doc.rect(13, y-5, 2, 10, 'F');
-
+                            if (idx%2===0) { doc.setFillColor(15,23,42); doc.rect(13,y-5,W-26,10,'F'); }
+                            const hex = d.color||'#f97316';
+                            const cr=parseInt(hex.slice(1,3),16)||249, cg=parseInt(hex.slice(3,5),16)||115, cb=parseInt(hex.slice(5,7),16)||22;
+                            doc.setFillColor(cr,cg,cb); doc.rect(13,y-5,2.5,10,'F');
                             doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
-                            doc.text((d.name||'').slice(0,14), cols[0], y);
+                            doc.text((d.name||'').slice(0,16), cols[0]+2, y);
                             doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
                             doc.text((d.brand||'').slice(0,12), cols[1], y);
                             doc.text((d.plastic||'—').slice(0,8), cols[2], y);
@@ -1015,84 +1084,66 @@ export default function App() {
                             doc.setTextColor(255,255,255);
                             doc.text(String(d.speed||''), cols[4], y);
                             doc.text(String(d.glide||''), cols[5], y);
-                            if (s.turn < (parseFloat(d.turn)||0) - 0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
+                            if (s.turn < (parseFloat(d.turn)||0)-0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
                             doc.text(s.turn.toFixed(1), cols[6], y);
-                            if (s.fade < (parseFloat(d.fade)||0) - 0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
+                            if (s.fade < (parseFloat(d.fade)||0)-0.1) doc.setTextColor(251,146,60); else doc.setTextColor(255,255,255);
                             doc.text(s.fade.toFixed(1), cols[7], y);
                             y += 10;
                         });
 
                         doc.setTextColor(71,85,105); doc.setFontSize(7);
-                        doc.text('* Orange values indicate beat-in wear effect', 15, H-8);
+                        doc.text('* Orange values indicate beat-in wear effect', 13, H-12);
+                        doc.setTextColor(71,85,105);
+                        doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
-                        // ── PAGE 2: Flight Paths chart ──
+                        // ── PAGE 2: Flight Paths ──
+                        // Render chart at A4 proportional size: full width, natural aspect
+                        const pdfChartW = 800; const pdfChartH = 520;
+                        const pathImg = await renderChartToCanvas('path', pdfChartW, pdfChartH);
                         doc.addPage();
                         doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
                         doc.setTextColor(...orange); doc.setFontSize(18); doc.setFont('helvetica','bold');
-                        doc.text('Flight Paths', 15, 20);
+                        doc.text('Flight Paths', 13, 18);
                         doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
-                        doc.text(activeBag?.name || 'My Bag', 15, 28);
+                        doc.text(activeBag?.name||'My Bag', 13, 26);
+                        // Chart: full page width, natural aspect ratio
+                        const cw = W-26; const ch = cw * (pdfChartH/pdfChartW);
+                        doc.addImage(pathImg, 'PNG', 13, 32, cw, ch);
+                        doc.setTextColor(71,85,105); doc.setFontSize(7);
+                        doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
-                        const pathCanvas = document.getElementById('desktopPathChart') || document.getElementById('mainChart');
-                        if (pathCanvas) {
-                            const imgData = pathCanvas.toDataURL('image/png');
-                            doc.addImage(imgData, 'PNG', 15, 35, W-30, 130);
-                        }
-
-                        // Legend — no overlap, laid out in grid
-                        doc.setFontSize(7); let lx = 15; let ly = 175;
-                        exportDiscs.forEach((d, i) => {
-                            if (lx > W - 50) { lx = 15; ly += 8; }
-                            const hex = d.color || '#f97316';
-                            const r = parseInt(hex.slice(1,3),16)||249;
-                            const g = parseInt(hex.slice(3,5),16)||115;
-                            const b = parseInt(hex.slice(5,7),16)||22;
-                            doc.setFillColor(r,g,b); doc.rect(lx, ly-3.5, 4, 4, 'F');
-                            doc.setTextColor(255,255,255); doc.setFont('helvetica','normal');
-                            doc.text(d.name, lx+6, ly);
-                            lx += 45;
-                        });
-
-                        // ── PAGE 3: Stability Matrix chart ──
+                        // ── PAGE 3: Stability Matrix ──
+                        const stabChartW = 800; const stabChartH = 520;
+                        const stabImg = await renderChartToCanvas('matrix', stabChartW, stabChartH);
                         doc.addPage();
                         doc.setFillColor(...dark); doc.rect(0,0,W,H,'F');
                         doc.setTextColor(...orange); doc.setFontSize(18); doc.setFont('helvetica','bold');
-                        doc.text('Stability Matrix', 15, 20);
+                        doc.text('Stability Matrix', 13, 18);
                         doc.setTextColor(148,163,184); doc.setFontSize(8); doc.setFont('helvetica','normal');
-                        doc.text('Speed vs Stability (Turn + Fade) — higher = more overstable', 15, 28);
-
-                        const stabCanvas = document.getElementById('desktopStabChart') || document.getElementById('mainChart');
-                        if (stabCanvas) {
-                            const imgData = stabCanvas.toDataURL('image/png');
-                            doc.addImage(imgData, 'PNG', 15, 35, W-30, 140);
-                        }
-
-                        // Non-overlapping disc labels alongside the chart
-                        // Sort by stability so labels flow nicely
-                        const sorted = [...exportDiscs].sort((a,b) => getStats(b).stability - getStats(a).stability);
-                        doc.setFontSize(6.5); let labY = 185;
-                        sorted.forEach((d) => {
-                            const s = getStats(d);
-                            const hex = d.color || '#f97316';
-                            const r = parseInt(hex.slice(1,3),16)||249;
-                            const g = parseInt(hex.slice(3,5),16)||115;
-                            const b = parseInt(hex.slice(5,7),16)||22;
-                            doc.setFillColor(r,g,b); doc.rect(15, labY-3.5, 4, 4, 'F');
-                            doc.setTextColor(255,255,255);
-                            doc.text(`${d.name}  •  S${d.speed}  ${s.stability.toFixed(1)} stability`, 21, labY);
-                            labY += 7;
-                            if (labY > H-10) labY = H-10;
-                        });
+                        doc.text('Speed vs Stability (Turn + Fade) — higher = more overstable', 13, 26);
+                        const sw = W-26; const sh = sw * (stabChartH/stabChartW);
+                        doc.addImage(stabImg, 'PNG', 13, 32, sw, sh);
+                        doc.setTextColor(71,85,105); doc.setFontSize(7);
+                        doc.text('baggedup.vercel.app', W/2, H-6, {align:'center'});
 
                         doc.save(`BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}.pdf`);
 
                     } else if (format === 'png-story' || format === 'png-post') {
                         const isStory = format === 'png-story';
+                        // Match the app's natural chart aspect ratio, not forced square
+                        // Story: 1080×1920, Post: 1080×1350 (4:5 Instagram post ratio)
                         const CW = 1080;
-                        const CH = isStory ? 1920 : 1080;
-                        const PAD = 60;
+                        const CH = isStory ? 1920 : 1350;
+                        const PAD = 54;
+                        const HEADER_H = 130; // logo + title + divider
 
-                        // ── Helpers ──
+                        const logoImg = await loadLogoImg();
+
+                        function makeCanvas() {
+                            const c = document.createElement('canvas');
+                            c.width = CW; c.height = CH; return c;
+                        }
+
                         function rrPath(ctx, x, y, w, h, r) {
                             ctx.beginPath();
                             ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
@@ -1106,139 +1157,102 @@ export default function App() {
                             ctx.closePath();
                         }
 
-                        // Load logo
-                        let logoImg = null;
-                        try {
-                            logoImg = await new Promise(res => {
-                                const img = new Image();
-                                img.crossOrigin = 'anonymous';
-                                img.onload = () => res(img);
-                                img.onerror = () => res(null);
-                                img.src = '/baggedup.logo.png?' + Date.now();
-                            });
-                        } catch(e) {}
-
-                        function makeCanvas() {
-                            const c = document.createElement('canvas');
-                            c.width = CW; c.height = CH;
-                            return c;
-                        }
-
                         function drawHeader(ctx, title, subtitle) {
-                            // Logo
                             if (logoImg) {
-                                ctx.drawImage(logoImg, PAD, PAD, 100, 100);
+                                ctx.drawImage(logoImg, PAD, PAD, 90, 90);
                             } else {
-                                ctx.fillStyle = '#f97316';
-                                rrPath(ctx, PAD, PAD, 100, 100, 20); ctx.fill();
-                                ctx.fillStyle = '#fff';
-                                ctx.font = 'bold 20px system-ui,sans-serif';
-                                ctx.textAlign = 'center';
-                                ctx.fillText('BAGGED', PAD+50, PAD+50);
-                                ctx.fillText('UP', PAD+50, PAD+74);
+                                ctx.fillStyle='#f97316';
+                                rrPath(ctx,PAD,PAD,90,90,18); ctx.fill();
+                                ctx.fillStyle='#fff'; ctx.font='bold 18px system-ui,sans-serif'; ctx.textAlign='center';
+                                ctx.fillText('BAGGED',PAD+45,PAD+46); ctx.fillText('UP',PAD+45,PAD+68);
                             }
-                            ctx.textAlign = 'left';
-                            ctx.fillStyle = '#f97316';
-                            ctx.font = 'bold 58px system-ui,sans-serif';
-                            ctx.fillText(title, PAD+120, PAD+62);
-                            ctx.fillStyle = '#475569';
-                            ctx.font = 'bold 24px system-ui,sans-serif';
-                            ctx.fillText(subtitle, PAD+120, PAD+96);
-                            // divider
-                            ctx.strokeStyle = '#1e293b'; ctx.lineWidth = 3;
-                            ctx.beginPath();
-                            ctx.moveTo(PAD, PAD+118); ctx.lineTo(CW-PAD, PAD+118);
-                            ctx.stroke();
+                            ctx.textAlign='left';
+                            ctx.fillStyle='#f97316'; ctx.font='bold 54px system-ui,sans-serif';
+                            ctx.fillText(title, PAD+110, PAD+56);
+                            ctx.fillStyle='#475569'; ctx.font='bold 22px system-ui,sans-serif';
+                            ctx.fillText(subtitle, PAD+110, PAD+86);
+                            ctx.strokeStyle='#1e293b'; ctx.lineWidth=2;
+                            ctx.beginPath(); ctx.moveTo(PAD,PAD+110); ctx.lineTo(CW-PAD,PAD+110); ctx.stroke();
                         }
 
                         function drawFooter(ctx) {
-                            ctx.fillStyle = '#334155';
-                            ctx.font = 'bold 24px system-ui,sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.fillText('bagged-up.app', CW/2, CH-36);
+                            ctx.fillStyle='#334155'; ctx.font='bold 22px system-ui,sans-serif';
+                            ctx.textAlign='center';
+                            ctx.fillText('baggedup.vercel.app', CW/2, CH-32);
                         }
+
+                        const chartTop = PAD + HEADER_H;
+                        const chartAreaH = CH - chartTop - 70; // space for chart, leave room for footer
 
                         // ── SLIDE 1: Disc Overview ──
                         const s1 = makeCanvas();
                         const c1 = s1.getContext('2d');
-                        c1.fillStyle = '#0b0f1a'; c1.fillRect(0,0,CW,CH);
-                        drawHeader(c1, activeBag?.name || 'My Bag', 'BaggedUp • Disc Golf');
+                        c1.fillStyle='#0b0f1a'; c1.fillRect(0,0,CW,CH);
+                        drawHeader(c1, activeBag?.name||'My Bag', 'BaggedUp • Disc Golf');
 
-                        const rowH = isStory ? 92 : 82;
-                        let rowY = PAD + 138;
-                        const maxDiscs = isStory ? 17 : 10;
-                        exportDiscs.slice(0, maxDiscs).forEach(d => {
-                            c1.fillStyle = '#0f172a';
-                            rrPath(c1, PAD, rowY, CW-PAD*2, rowH-8, 18); c1.fill();
-                            c1.fillStyle = d.color || '#f97316';
-                            rrPath(c1, PAD, rowY, 10, rowH-8, 5); c1.fill();
-                            c1.fillStyle = '#fff';
-                            c1.font = 'bold 32px system-ui,sans-serif';
-                            c1.textAlign = 'left';
-                            c1.fillText(d.name.toUpperCase(), PAD+28, rowY+38);
-                            c1.fillStyle = '#64748b';
-                            c1.font = 'bold 20px system-ui,sans-serif';
-                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+28, rowY+64);
-                            const nums = [d.speed,d.glide,d.turn,d.fade];
-                            const lbls = ['S','G','T','F'];
-                            const bw=76, bh=rowH-18, gx=10;
-                            const sx = CW-PAD-(bw+gx)*4;
-                            nums.forEach((v,i) => {
-                                const bx = sx+i*(bw+gx);
-                                c1.fillStyle='#1e293b';
-                                rrPath(c1,bx,rowY+5,bw,bh,10); c1.fill();
-                                c1.fillStyle='#475569';
-                                c1.font='bold 15px system-ui,sans-serif';
-                                c1.textAlign='center';
-                                c1.fillText(lbls[i], bx+bw/2, rowY+26);
-                                c1.fillStyle='#fff';
-                                c1.font='bold 26px system-ui,sans-serif';
-                                c1.fillText(String(v), bx+bw/2, rowY+56);
+                        const rowH = Math.min(96, Math.floor(chartAreaH / Math.max(exportDiscs.length, 1)));
+                        let rowY = chartTop + 10;
+                        exportDiscs.forEach(d => {
+                            c1.fillStyle='#0f172a';
+                            rrPath(c1,PAD,rowY,CW-PAD*2,rowH-8,16); c1.fill();
+                            c1.fillStyle=d.color||'#f97316';
+                            rrPath(c1,PAD,rowY,10,rowH-8,4); c1.fill();
+                            c1.fillStyle='#fff'; c1.font=`bold ${Math.min(30,rowH*0.36)}px system-ui,sans-serif`;
+                            c1.textAlign='left';
+                            // text a bit more to the right of the colour bar
+                            c1.fillText(d.name.toUpperCase(), PAD+24, rowY+(rowH-8)*0.44);
+                            c1.fillStyle='#64748b'; c1.font=`bold ${Math.min(19,rowH*0.22)}px system-ui,sans-serif`;
+                            c1.fillText(`${d.brand} • ${d.plastic||'Premium'}`, PAD+24, rowY+(rowH-8)*0.72);
+                            const nums=[d.speed,d.glide,d.turn,d.fade], lbls=['S','G','T','F'];
+                            const bw=74,bh=rowH-20,gx=8;
+                            const sx=CW-PAD-(bw+gx)*4;
+                            nums.forEach((v,i)=>{
+                                const bx=sx+i*(bw+gx);
+                                c1.fillStyle='#1e293b'; rrPath(c1,bx,rowY+5,bw,bh,10); c1.fill();
+                                c1.fillStyle='#475569'; c1.font='bold 13px system-ui,sans-serif'; c1.textAlign='center';
+                                c1.fillText(lbls[i],bx+bw/2,rowY+22);
+                                c1.fillStyle='#fff'; c1.font=`bold ${Math.min(24,rowH*0.28)}px system-ui,sans-serif`;
+                                c1.fillText(String(v),bx+bw/2,rowY+bh*0.7+5);
                             });
                             rowY += rowH;
                         });
                         drawFooter(c1);
 
-                        // ── SLIDE 2: Flight Paths ──
+                        // ── SLIDE 2: Flight Paths — render chart at natural aspect matching app ──
+                        // App chart is roughly 16:9 landscape. Render off-screen at full quality.
+                        const chartPixW = CW - PAD*2;
+                        // Natural flight path aspect: wider than tall (similar to app)
+                        const flightAspect = 1.55; // width/height
+                        const chartPixH = Math.round(chartPixW / flightAspect);
+                        const pathDataUrl = await renderChartToCanvas('path', chartPixW, chartPixH);
+
                         const s2 = makeCanvas();
                         const c2 = s2.getContext('2d');
-                        c2.fillStyle = '#0b0f1a'; c2.fillRect(0,0,CW,CH);
-                        drawHeader(c2, 'Flight Paths', activeBag?.name || 'My Bag');
-
-                        const pathChartEl = document.getElementById('desktopPathChart') || document.getElementById('mainChart');
-                        const chartTop2 = PAD + 138;
-                        // Use almost full remaining height for the chart
-                        const chartH2 = CH - chartTop2 - 80;
-                        if (pathChartEl) {
-                            c2.drawImage(pathChartEl, PAD, chartTop2, CW-PAD*2, chartH2);
-                        } else {
-                            c2.fillStyle = '#475569';
-                            c2.font = 'bold 30px system-ui,sans-serif';
-                            c2.textAlign = 'center';
-                            c2.fillText('View on desktop to capture flight paths', CW/2, CH/2);
-                        }
+                        c2.fillStyle='#0b0f1a'; c2.fillRect(0,0,CW,CH);
+                        drawHeader(c2, 'Flight Paths', activeBag?.name||'My Bag');
+                        const pImg = new Image(); pImg.src = pathDataUrl;
+                        await new Promise(r => { pImg.onload = r; });
+                        // Center the chart vertically in remaining space
+                        const p2top = chartTop + Math.max(0, (chartAreaH - chartPixH) / 2);
+                        c2.drawImage(pImg, PAD, p2top, chartPixW, chartPixH);
                         drawFooter(c2);
 
                         // ── SLIDE 3: Stability Matrix ──
+                        const stabAspect = 1.3;
+                        const stabPixH = Math.round(chartPixW / stabAspect);
+                        const stabDataUrl = await renderChartToCanvas('matrix', chartPixW, stabPixH);
+
                         const s3 = makeCanvas();
                         const c3 = s3.getContext('2d');
-                        c3.fillStyle = '#0b0f1a'; c3.fillRect(0,0,CW,CH);
+                        c3.fillStyle='#0b0f1a'; c3.fillRect(0,0,CW,CH);
                         drawHeader(c3, 'Stability Matrix', 'Speed vs Turn+Fade');
-
-                        const stabChartEl = document.getElementById('desktopStabChart') || document.getElementById('mainChart');
-                        const chartTop3 = PAD + 138;
-                        const chartH3 = CH - chartTop3 - 80;
-                        if (stabChartEl) {
-                            c3.drawImage(stabChartEl, PAD, chartTop3, CW-PAD*2, chartH3);
-                        } else {
-                            c3.fillStyle = '#475569';
-                            c3.font = 'bold 30px system-ui,sans-serif';
-                            c3.textAlign = 'center';
-                            c3.fillText('View on desktop to capture stability matrix', CW/2, CH/2);
-                        }
+                        const sImg = new Image(); sImg.src = stabDataUrl;
+                        await new Promise(r => { sImg.onload = r; });
+                        const s3top = chartTop + Math.max(0, (chartAreaH - stabPixH) / 2);
+                        c3.drawImage(sImg, PAD, s3top, chartPixW, stabPixH);
                         drawFooter(c3);
 
-                        // ── Download / Share all 3 slides ──
+                        // ── Download / Share ──
                         const baseName = `BaggedUp-${(activeBag?.name||'bag').replace(/\s+/g,'-')}`;
                         const slides = [
                             { canvas: s1, suffix: 'overview' },
@@ -1246,21 +1260,18 @@ export default function App() {
                             { canvas: s3, suffix: 'stability' },
                         ];
 
-                        // Mobile: try Web Share API with all 3 files
                         if (isStory && navigator.share && navigator.canShare) {
                             const files = await Promise.all(slides.map(sl => new Promise(res =>
-                                sl.canvas.toBlob(blob => res(new File([blob], `${baseName}-${sl.suffix}.png`, { type: 'image/png' })))
+                                sl.canvas.toBlob(blob => res(new File([blob],`${baseName}-${sl.suffix}.png`,{type:'image/png'})))
                             )));
                             if (navigator.canShare({ files })) {
                                 try {
                                     await navigator.share({ files, title: `My ${activeBag?.name} — BaggedUp` });
-                                    setExportLoading(false);
-                                    return;
+                                    setExportLoading(false); return;
                                 } catch(e) { /* fall through */ }
                             }
                         }
 
-                        // Desktop/fallback: download all 3 with small delay between
                         for (const sl of slides) {
                             await new Promise(res => sl.canvas.toBlob(blob => {
                                 const a = document.createElement('a');
@@ -1331,7 +1342,7 @@ export default function App() {
                                     disabled={exportLoading}
                                     className="flex-1 bg-gradient-to-br from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-xs text-white transition"
                                 >
-                                    {exportLoading ? '⏳ Generating…' : '🖼 Post (1:1)'}
+                                    {exportLoading ? '⏳ Generating…' : '🖼 Post (4:5)'}
                                 </button>
                             </div>
                             <div className="flex items-start gap-2 bg-slate-800/50 rounded-2xl p-3">
@@ -1339,7 +1350,6 @@ export default function App() {
                                 <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">After saving: Instagram → + → Story/Post → select image. Facebook → Stories → Create → Photo.</p>
                             </div>
                         </div>
-
 
                         <button onClick={() => setShowExport(false)} className="w-full py-4 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Close</button>
                     </div>
