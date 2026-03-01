@@ -92,7 +92,15 @@ export default function App() {
     const [suggestionPool, setSuggestionPool] = useState(null);
     const [communitySuggestions, setCommunitySuggestions] = useState([]);
     const [showCommunityAdd, setShowCommunityAdd] = useState(false);
+    const [showPlayRound, setShowPlayRound] = useState(false);
+    const [roundChecked, setRoundChecked] = useState({});
+    const [lostComment, setLostComment] = useState({});
+    const [roundBagId, setRoundBagId] = useState('');
     const [communityFormData, setCommunityFormData] = useState({name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5});
+
+    // Wear slider — local state for smooth dragging, synced to DB on release
+    const [localWear, setLocalWear] = useState({});
+    const wearDebounce = useRef({});
 
     // Mobile: one toggled chart
     const chartRef = useRef(null);
@@ -379,7 +387,8 @@ export default function App() {
     const InventoryCards = () => (
         <div className="space-y-3">
             {filteredDiscs.map(d => {
-                const currentStats = getStats(d);
+                const effectiveWear = localWear[d.id] !== undefined ? localWear[d.id] : (parseFloat(d.wear) || 0);
+                const currentStats = getStats({ ...d, wear: effectiveWear });
                 return (
                     <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
@@ -387,8 +396,16 @@ export default function App() {
                             <div className="min-w-0 pr-4">
                                 <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
                                 <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
+                                {d.status === 'lost' && d.lost_note && (
+                                    <p className="text-[10px] font-bold text-red-400/70 mt-0.5 truncate">📍 {d.lost_note}</p>
+                                )}
                             </div>
                             <div className="flex gap-3 shrink-0">
+                                <button
+                                    onClick={() => updateDiscInDB({ ...d, favorite: !d.favorite })}
+                                    className={`transition text-lg leading-none ${d.favorite ? 'text-yellow-400' : 'text-slate-700 hover:text-yellow-400'}`}
+                                    title={d.favorite ? 'Remove from Favourites' : 'Add to Favourites'}
+                                >★</button>
                                 <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
                                 <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
                             </div>
@@ -401,7 +418,7 @@ export default function App() {
                                     { label: 'T', base: d.turn, live: currentStats.turn },
                                     { label: 'F', base: d.fade, live: currentStats.fade },
                                 ].map((val, i) => {
-                                    const worn = parseFloat(d.wear) > 0;
+                                    const worn = effectiveWear > 0;
                                     const changed = worn && val.live !== val.base;
                                     return (
                                         <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg">
@@ -418,9 +435,22 @@ export default function App() {
                                     <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1">
                                         <span>Fresh</span><span>Beat</span>
                                     </div>
-                                    <input type="range" min="0" max="1" step="0.05" value={d.wear}
-                                        onChange={(e) => updateDiscInDB({ ...d, wear: parseFloat(e.target.value) })}
-                                        className="w-full" />
+                                    <input
+                                        type="range" min="0" max="1" step="0.05"
+                                        value={localWear[d.id] !== undefined ? localWear[d.id] : d.wear}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            // Update local state instantly for smooth UI
+                                            setLocalWear(prev => ({ ...prev, [d.id]: val }));
+                                            // Debounce the DB write + chart update
+                                            if (wearDebounce.current[d.id]) clearTimeout(wearDebounce.current[d.id]);
+                                            wearDebounce.current[d.id] = setTimeout(() => {
+                                                updateDiscInDB({ ...d, wear: val });
+                                                setLocalWear(prev => { const n = {...prev}; delete n[d.id]; return n; });
+                                            }, 400);
+                                        }}
+                                        className="w-full"
+                                    />
                                 </div>
                             )}
                             {d.is_idea && (
@@ -466,13 +496,16 @@ export default function App() {
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
                     { id: 'storage', label: 'Storage', icon: '📦' },
-                    { id: 'favorites', label: 'Collection', icon: '⭐' },
-                    { id: 'graveyard', label: 'Lost & Found', icon: '🪦' }
+                    { id: 'favorites', label: 'Favourites', icon: '⭐' },
+                    { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
                 ].map(item => (
                     <button key={item.id} onClick={() => setView(item.id)} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
                         <span className="text-xl">{item.icon}</span> {item.label}
                     </button>
                 ))}
+                <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
+                    <span className="text-xl">🥏</span> Play Round
+                </button>
                 <button onClick={() => setShowSettings(true)} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
                 <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
             </div>
@@ -488,13 +521,16 @@ export default function App() {
                         {[
                             { id: 'active', label: 'My Bag', icon: '🎒' },
                             { id: 'storage', label: 'Storage', icon: '📦' },
-                            { id: 'favorites', label: 'Collection', icon: '⭐' },
-                            { id: 'graveyard', label: 'Lost & Found', icon: '🪦' }
+                            { id: 'favorites', label: 'Favourites', icon: '⭐' },
+                            { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
                         ].map(item => (
                             <button key={item.id} onClick={() => { setView(item.id); setSidebarOpen(false); }} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
                                 <span className="text-xl">{item.icon}</span> {item.label}
                             </button>
                         ))}
+                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
+                            <span className="text-xl">🥏</span> Play Round
+                        </button>
                         <button onClick={() => { setShowSettings(true); setSidebarOpen(false); }} className="mt-auto flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs">⚙️ Settings</button>
                         <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs">✕ Log Out</button>
                     </div>
@@ -829,6 +865,113 @@ export default function App() {
                     </div>
                 </div>
             )}
+
+        {/* =====================================================
+            PLAY ROUND MODAL
+        ===================================================== */}
+        {showPlayRound && (() => {
+            const roundDiscs = discs.filter(d => d.bag_id === roundBagId && d.status === 'active' && !d.is_idea);
+            const allChecked = roundDiscs.every(d => roundChecked[d.id]);
+            const missingDiscs = roundDiscs.filter(d => !roundChecked[d.id]);
+
+            return (
+                <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col p-6 overflow-y-auto">
+                    <div className="w-full max-w-lg mx-auto flex flex-col gap-6 my-auto">
+
+                        {/* Header */}
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-3xl font-black italic text-emerald-400 uppercase">🥏 Round Check</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Tick every disc you still have</p>
+                            </div>
+                            <button onClick={() => setShowPlayRound(false)} className="text-2xl text-slate-500 hover:text-white">✕</button>
+                        </div>
+
+                        {/* Bag selector */}
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-500">🎒</span>
+                            <select
+                                value={roundBagId}
+                                onChange={e => { setRoundBagId(e.target.value); setRoundChecked({}); setLostComment({}); }}
+                                className="w-full appearance-none bg-slate-800 border border-slate-700 text-orange-500 font-black text-sm uppercase pl-10 pr-8 py-4 rounded-2xl outline-none"
+                            >
+                                {bags.map(b => <option key={b.id} value={b.id} style={{background:'#1e293b'}}>{b.name}</option>)}
+                            </select>
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">▾</span>
+                        </div>
+
+                        {/* Disc checklist */}
+                        <div className="space-y-3">
+                            {roundDiscs.map(d => (
+                                <div key={d.id} className={`rounded-2xl border p-4 transition ${roundChecked[d.id] ? 'bg-emerald-900/20 border-emerald-600/40' : 'bg-slate-900 border-slate-800'}`}>
+                                    <div className="flex items-center gap-4">
+                                        <button
+                                            onClick={() => setRoundChecked(prev => ({ ...prev, [d.id]: !prev[d.id] }))}
+                                            className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center font-black text-sm transition shrink-0 ${roundChecked[d.id] ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-600 text-transparent'}`}
+                                        >✓</button>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-black uppercase italic text-sm truncate" style={{color: d.color}}>{d.name}</div>
+                                            <div className="text-[10px] font-bold text-slate-500 uppercase">{d.brand} • {d.plastic || 'Premium'}</div>
+                                        </div>
+                                        {roundChecked[d.id] && <span className="text-emerald-400 text-xs font-black uppercase shrink-0">✓ Safe</span>}
+                                        {!roundChecked[d.id] && <span className="text-red-400 text-xs font-black uppercase shrink-0 animate-pulse">? Missing</span>}
+                                    </div>
+                                    {/* Lost comment field — shows when NOT ticked */}
+                                    {!roundChecked[d.id] && (
+                                        <input
+                                            type="text"
+                                            placeholder="Where did you lose it? (optional)"
+                                            value={lostComment[d.id] || ''}
+                                            onChange={e => setLostComment(prev => ({ ...prev, [d.id]: e.target.value }))}
+                                            className="mt-3 w-full bg-slate-800 border border-red-500/20 rounded-xl px-4 py-2.5 text-[12px] font-bold text-slate-300 placeholder-slate-600 outline-none focus:border-red-500/50"
+                                        />
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Summary */}
+                        {missingDiscs.length > 0 && (
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-2xl p-4">
+                                <p className="text-red-400 font-black uppercase text-xs">⚠ {missingDiscs.length} disc{missingDiscs.length > 1 ? 's' : ''} missing — will be moved to Graveyard</p>
+                            </div>
+                        )}
+
+                        {allChecked && (
+                            <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-2xl p-4">
+                                <p className="text-emerald-400 font-black uppercase text-xs">✓ All discs accounted for — great round!</p>
+                            </div>
+                        )}
+
+                        {/* Action buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowPlayRound(false)}
+                                className="flex-1 py-4 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition"
+                            >Cancel</button>
+                            <button
+                                onClick={async () => {
+                                    // Move unchecked discs to graveyard with comment
+                                    for (const d of missingDiscs) {
+                                        const comment = lostComment[d.id] || '';
+                                        await updateDiscInDB({
+                                            ...d,
+                                            status: 'lost',
+                                            lost_note: comment,
+                                        });
+                                    }
+                                    setShowPlayRound(false);
+                                    if (missingDiscs.length > 0) setView('graveyard');
+                                }}
+                                className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-500 rounded-2xl font-black uppercase text-xs text-white shadow-lg transition"
+                            >
+                                {missingDiscs.length > 0 ? `Finish Round — Move ${missingDiscs.length} to Graveyard` : 'Finish Round ✓'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        })()}
 
         </div>
     );
