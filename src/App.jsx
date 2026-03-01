@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
-const LOGO_URL = '/baggedup.logo.png'; // Your logo file
+const LOGO_URL = '/baggedup.logo.png';
 
 const FACTORY_DB = [
     {Manufacturer:"Innova",Model:"Destroyer",Speed:12,Glide:5,Turn:-1,Fade:3},
@@ -89,7 +89,7 @@ export default function App() {
     // --- UI NAVIGATION ---
     const [view, setView] = useState('active'); 
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [chartMode, setChartMode] = useState('path'); // 'path' or 'matrix'
+    const [chartMode, setChartMode] = useState('path');
     const [editing, setEditing] = useState(null);
     const [showSearch, setShowSearch] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
@@ -138,12 +138,10 @@ export default function App() {
             }
             const { data: d } = await supabase.from('discs').select('*');
             if (d) setDiscs(d);
-            const { data: cs } = await supabase.from('community_suggestions').select('*');
-            if (cs) {
-                setCommunitySuggestions(cs);
-            } else {
-                console.warn('No community suggestions loaded. Check if table exists in Supabase.');
-            }
+
+            const { data: cs, error: csError } = await supabase.from('community_suggestions').select('*');
+            if (csError) console.error('Failed to load community suggestions:', csError);
+            else if (cs) setCommunitySuggestions(cs);
         };
         loadData();
     }, [session]);
@@ -166,18 +164,13 @@ export default function App() {
 
     const deleteBag = async (id) => {
         if (confirm('Are you sure you want to delete this bag? All discs in it will be moved to storage.')) {
-            // Move all discs from this bag to storage (set bag_id to null)
             await supabase.from('discs').update({ bag_id: null }).eq('bag_id', id);
-            // Delete the bag
             await supabase.from('bags').delete().eq('id', id);
-            // Update local state
             const updatedBags = bags.filter(b => b.id !== id);
             setBags(updatedBags);
-            // If deleted bag was active, switch to first available bag
             if (activeBagId === id && updatedBags.length > 0) {
                 setActiveBagId(updatedBags[0].id);
             } else if (updatedBags.length === 0) {
-                // Create default bag if none exist
                 const { data: nb } = await supabase.from('bags').insert({ user_id: session.user.id, name: 'Main Bag' }).select().single();
                 if (nb) { setBags([nb]); setActiveBagId(nb.id); }
             }
@@ -185,14 +178,13 @@ export default function App() {
     };
 
     const addDiscToDB = async (discObj) => {
-        console.log('addDiscToDB called with:', discObj);
         const isNotInFactory = !FACTORY_DB.some(d => d.Model.toLowerCase() === discObj.name.toLowerCase());
-        console.log('Is not in factory:', isNotInFactory);
         
-        // Save to community_suggestions if not in factory database
         if (isNotInFactory) {
-            const alreadyInCommunity = communitySuggestions.some(cs => cs.model.toLowerCase() === discObj.name.toLowerCase() && cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase());
-            console.log('Already in community:', alreadyInCommunity);
+            const alreadyInCommunity = communitySuggestions.some(cs => 
+                cs.model.toLowerCase() === discObj.name.toLowerCase() && 
+                cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase()
+            );
             
             if (!alreadyInCommunity) {
                 const communityPayload = {
@@ -203,35 +195,21 @@ export default function App() {
                     turn: parseFloat(discObj.turn),
                     fade: parseFloat(discObj.fade)
                 };
-                console.log('Inserting community payload:', communityPayload);
                 try {
                     const { data: csData, error: csError } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
-                    if (csError) {
-                        console.error('❌ Error saving to community_suggestions:', csError.message, csError.code, csError);
-                        alert(`Failed to add to directory: ${csError.message}`);
-                    } else if (csData) {
-                        setCommunitySuggestions([...communitySuggestions, csData]);
-                        console.log('✅ Community suggestion saved:', csData);
-                    }
+                    if (csError) console.error('Error saving to community_suggestions:', csError);
+                    else if (csData) setCommunitySuggestions([...communitySuggestions, csData]);
                 } catch (err) {
-                    console.error('❌ Community suggestion error:', err);
-                    alert(`Error: ${err.message}`);
+                    console.error('Community suggestion error:', err);
                 }
-            } else {
-                console.log('Disc already exists in community suggestions');
             }
         }
         
         const payload = { ...discObj, user_id: session.user.id };
         delete payload.id; 
-        console.log('Inserting disc payload:', payload);
         const { data, error } = await supabase.from('discs').insert(payload).select().single();
-        if (error) {
-            console.error('❌ Error saving to discs:', error);
-        } else if (data) {
-            console.log('✅ Disc saved:', data);
-            setDiscs([...discs, data]);
-        }
+        if (error) console.error('Error saving disc:', error);
+        else if (data) setDiscs([...discs, data]);
     };
 
     const updateDiscInDB = async (u) => {
@@ -245,22 +223,55 @@ export default function App() {
         await supabase.from('discs').delete().eq('id', id);
     };
 
-    // --- PHYSICS & GAP ANALYSIS ---
+    // --- IMPROVED WEAR / BEAT-IN PHYSICS ---
+    // Based on real-world disc golf wear behaviour:
+    // - All discs become less stable over time (more turn, less fade)
+    // - Overstable discs (high fade) resist flipping — a Zone will never get truly flippy
+    // - High speed drivers lose fade more slowly but can develop moderate turn
+    // - Already understable discs mostly just lose their remaining fade
+    // - No disc goes below -5 turn, ever
     const getStats = (d) => {
         const w = parseFloat(d.wear) || 0;
-        const turn = parseFloat(d.turn) - (w * 4.5);
-        const fade = Math.max(0, parseFloat(d.fade) * (1 - w * 1.3));
-        const dist = d.max_dist ? parseFloat(d.max_dist) : (parseFloat(settings.maxPower) * (0.4 + (parseFloat(d.speed)/12 * 0.6)));
+        const baseTurn = parseFloat(d.turn);
+        const baseFade = parseFloat(d.fade);
+        const baseSpeed = parseFloat(d.speed);
+
+        // Natural overstability: high fade = strong resistance to becoming flippy
+        // e.g. Zone = 3, Destroyer = 2, Mamba = -4
+        const overstability = baseFade + Math.max(0, baseTurn);
+
+        // Max additional turn a disc can develop from wear
+        // Very overstable discs (Zone, Firebird) cap at ~1.5 extra turn
+        // Neutral/understable discs barely change turn at all
+        const maxTurnShift = Math.max(0, Math.min(1.5, overstability * 0.5));
+
+        // Turn creeps negative with wear, floored at -5
+        const turn = Math.max(-5, baseTurn - (w * maxTurnShift));
+
+        // Fade reduces with wear
+        // Max 65% fade loss at full wear — a Zone 3 fade → ~1.05 at fully beat
+        const maxFadeReduction = baseFade * 0.65;
+        const fade = Math.max(0, baseFade - (w * maxFadeReduction));
+
+        // Distance: beat discs fly slightly farther up to ~70% worn (more glide phase)
+        // Very beat discs lose a touch of distance as they turn and burn
+        const distBoost = w < 0.7 ? 1 + (w * 0.05) : 1 + (0.035 - (w - 0.7) * 0.1);
+        const dist = d.max_dist
+            ? parseFloat(d.max_dist)
+            : parseFloat(settings.maxPower) * (0.4 + (baseSpeed / 12 * 0.6)) * distBoost;
+
         return { turn, fade, stability: turn + fade, dist };
     };
 
     const calculatePath = (d) => {
-        const s = getStats(d); const points = [];
+        const s = getStats(d);
+        const points = [];
         for (let i = 0; i <= 100; i++) {
             const p = i / 100; 
             const x = ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
             points.push({ x, y: settings.unit === 'm' ? p * s.dist * 0.3048 : p * s.dist });
-        } return points;
+        }
+        return points;
     };
 
     const gapAnalysis = useMemo(() => {
@@ -278,7 +289,7 @@ export default function App() {
 
     // --- CHART RENDERING ---
     useEffect(() => {
-        if(!session) return;
+        if (!session) return;
         const filtered = discs.filter(d => {
             if (view === 'graveyard') return d.status === 'lost';
             if (view === 'favorites') return d.favorite;
@@ -305,10 +316,7 @@ export default function App() {
                             min: 0, 
                             max: chartMode==='path'?(settings.unit==='m'?180:550):14, 
                             grid: { color: '#1e293b' },
-                            ticks: chartMode === 'path' ? {} : { 
-                                stepSize: 1,
-                                callback: function(value) { return value; }
-                            }
+                            ticks: chartMode === 'path' ? {} : { stepSize: 1, callback: function(value) { return value; } }
                         } 
                     }, 
                     plugins: { legend: { display: false } } 
@@ -349,7 +357,7 @@ export default function App() {
                 }
             `}</style>
 
-            {/* --- DESKTOP SIDEBAR (Always visible on desktop) --- */}
+            {/* --- DESKTOP SIDEBAR --- */}
             <div className="desktop-sidebar hidden lg:flex w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex-col gap-6 sticky top-0">
                 <img src={LOGO_URL} alt="BaggedUp Logo" className="h-16 w-16 object-contain" />
                 {[
@@ -437,41 +445,68 @@ export default function App() {
                                 if(view === 'favorites') return d.favorite;
                                 if(view === 'storage') return d.status === 'active' && !d.bag_id;
                                 return d.bag_id === activeBagId && d.status === 'active';
-                            }).map(d => (
-                                <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
-                                    <div className="flex justify-between items-start">
-                                        <div className="min-w-0 pr-4">
-                                            <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
-                                        </div>
-                                        <div className="flex gap-3 shrink-0">
-                                            <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
-                                            <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex justify-between items-end">
-                                        <div className="flex gap-2 text-center">
-                                            {[d.speed, d.glide, d.turn, d.fade].map((val, i) => (
-                                                <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg"><div className="text-[7px] font-black text-slate-600 uppercase">{['S','G','T','F'][i]}</div><div className="text-[10px] font-black text-slate-300">{val}</div></div>
-                                            ))}
-                                        </div>
-                                        {!d.is_idea && (
-                                            <div className="flex-grow ml-6">
-                                                <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1"><span>New</span><span>Beat</span></div>
-                                                <input type="range" min="0" max="1" step="0.05" value={d.wear} onChange={(e) => updateDiscInDB({...d, wear: parseFloat(e.target.value)})} className="w-full" />
+                            }).map(d => {
+                                const currentStats = getStats(d);
+                                return (
+                                    <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
+                                        <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
+                                        <div className="flex justify-between items-start">
+                                            <div className="min-w-0 pr-4">
+                                                <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">{d.name} {d.aces > 0 && `🏆 ${d.aces}`}</h4>
+                                                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
                                             </div>
-                                        )}
-                                        {d.is_idea && <button onClick={() => updateDiscInDB({...d, is_idea: false})} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>}
+                                            <div className="flex gap-3 shrink-0">
+                                                <button onClick={() => setEditing(d)} className="text-slate-500 hover:text-white transition">✎</button>
+                                                <button onClick={() => deleteDiscInDB(d.id)} className="text-slate-500 hover:text-red-500 transition">✕</button>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Flight numbers: show live worn values if worn, base if fresh */}
+                                        <div className="flex justify-between items-end">
+                                            <div className="flex gap-2 text-center">
+                                                {[
+                                                    { label: 'S', base: d.speed, live: d.speed },
+                                                    { label: 'G', base: d.glide, live: d.glide },
+                                                    { label: 'T', base: d.turn, live: currentStats.turn },
+                                                    { label: 'F', base: d.fade, live: currentStats.fade },
+                                                ].map((val, i) => {
+                                                    const worn = parseFloat(d.wear) > 0;
+                                                    const changed = worn && val.live !== val.base;
+                                                    return (
+                                                        <div key={i} className="bg-slate-800/50 px-2 py-1 rounded-lg">
+                                                            <div className="text-[7px] font-black text-slate-600 uppercase">{val.label}</div>
+                                                            <div className={`text-[10px] font-black ${changed ? 'text-orange-400' : 'text-slate-300'}`}>
+                                                                {val.live.toFixed(changed ? 1 : 0)}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {!d.is_idea && (
+                                                <div className="flex-grow ml-6">
+                                                    <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1">
+                                                        <span>Fresh</span>
+                                                        <span>Beat</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" min="0" max="1" step="0.05" 
+                                                        value={d.wear} 
+                                                        onChange={(e) => updateDiscInDB({...d, wear: parseFloat(e.target.value)})} 
+                                                        className="w-full" 
+                                                    />
+                                                </div>
+                                            )}
+                                            {d.is_idea && (
+                                                <button onClick={() => updateDiscInDB({...d, is_idea: false})} className="bg-emerald-600 text-[8px] font-black uppercase px-3 py-1.5 rounded-full ml-4">Bought</button>
+                                            )}
+                                        </div>
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </section>
                 </main>
             </div>
-        </div>
 
             {/* --- SEARCH DIRECTORY --- */}
             {showSearch && !showCommunityAdd && (
@@ -482,7 +517,6 @@ export default function App() {
                     </div>
                     <input autoFocus placeholder="DISC MODEL..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full bg-slate-900 p-6 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-6 outline-none focus:border-orange-500" />
                     <div className="flex-grow overflow-y-auto space-y-3 pb-10">
-                        {/* Factory Discs */}
                         {FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
                             <div key={d.Model} onClick={() => { addDiscToDB({name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setShowSearch(false); }} className="p-6 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
                                 <div><div className="font-black uppercase italic text-lg">{d.Model}</div><div className="text-[10px] font-bold text-slate-500 uppercase">{d.Manufacturer} • {d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</div></div>
@@ -490,7 +524,6 @@ export default function App() {
                             </div>
                         ))}
                         
-                        {/* Community Suggestions */}
                         {communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
                             <div key={d.id} onClick={() => { addDiscToDB({name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random()*360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true}); setShowSearch(false); }} className="p-6 bg-emerald-900/20 rounded-2xl border border-emerald-600/30 flex justify-between items-center cursor-pointer hover:border-emerald-500 transition">
                                 <div><div className="font-black uppercase italic text-lg text-emerald-400">{d.model}</div><div className="text-[10px] font-bold text-emerald-600 uppercase">{d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade} • Community</div></div>
@@ -498,7 +531,6 @@ export default function App() {
                             </div>
                         ))}
                         
-                        {/* Can't Find Button */}
                         {dbQuery && FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && (
                             <button onClick={() => { setCommunityFormData({name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5}); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
                                 Can't find your disc? Add to Global Directory
@@ -571,7 +603,7 @@ export default function App() {
                     <form onSubmit={e => {
                         e.preventDefault(); const fd = new FormData(e.target);
                         const distValue = parseFloat(fd.get('d'));
-                        const savedDist = settings.unit === 'm' ? distValue / 0.3048 : distValue; // Convert meters back to feet for storage
+                        const savedDist = settings.unit === 'm' ? distValue / 0.3048 : distValue;
                         updateDiscInDB({
                             ...editing, name: fd.get('n'), brand: fd.get('b'), plastic: fd.get('pl'), weight: fd.get('wt'), bag_id: fd.get('bag') || null, status: fd.get('lost') === 'on' ? 'lost' : 'active', 
                             speed: parseFloat(fd.get('s')), glide: parseFloat(fd.get('g')), turn: parseFloat(fd.get('t')), fade: parseFloat(fd.get('f')), color: fd.get('c'), 
@@ -588,8 +620,11 @@ export default function App() {
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <input name="pl" defaultValue={editing.plastic} placeholder="PLASTIC" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white"/>
-                            <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white"/>
+                            <input name="b" defaultValue={editing.brand} placeholder="BRAND" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none"/>
+                            <input name="pl" defaultValue={editing.plastic} placeholder="PLASTIC" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none"/>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT (g)" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white outline-none"/>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
                             {['s','g','t','f'].map((l, i) => {
@@ -605,8 +640,8 @@ export default function App() {
                             })}
                         </div>
                         <div className="bg-slate-800 p-4 rounded-xl">
-                             <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1"><span>Power Callibration</span><span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span></div>
-                             <input name="d" type="range" min={settings.unit === 'm' ? 15 : 50} max={settings.unit === 'm' ? 198 : 650} step="1" defaultValue={settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)} className="w-full" />
+                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-500 mb-1"><span>Power Calibration</span><span className="text-orange-500">{(settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)).toFixed(0)}{settings.unit}</span></div>
+                            <input name="d" type="range" min={settings.unit === 'm' ? 15 : 50} max={settings.unit === 'm' ? 198 : 650} step="1" defaultValue={settings.unit === 'm' ? (editing.max_dist || getStats(editing).dist) * 0.3048 : (editing.max_dist || getStats(editing).dist)} className="w-full" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Aces</span><input name="a" type="number" defaultValue={editing.aces || 0} className="bg-transparent font-black text-orange-500 w-full text-[16px]"/></div>
