@@ -212,7 +212,8 @@ export default function App() {
     const calculatePath = (d) => {
         const s = getStats(d); const points = [];
         for (let i = 0; i <= 100; i++) {
-            const p = i / 100; const x = ((Math.sin(p * Math.PI * 0.75) * (s.turn * -12)) + (Math.pow(p, 3) * (s.fade * -18))) * Math.pow(p, 2.5);
+            const p = i / 100; 
+            const x = ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
             points.push({ x, y: settings.unit === 'm' ? p * s.dist * 0.3048 : p * s.dist });
         } return points;
     };
@@ -267,8 +268,7 @@ export default function App() {
     if (!session) return (
         <div className="h-[100dvh] w-full flex items-center justify-center bg-[#0b0f1a] p-6">
             <div className="w-full max-w-md text-center">
-                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-24 w-24 mx-auto mb-4 object-contain" />
-                <h1 className="text-4xl font-black italic text-white uppercase mb-8">BaggedUp</h1>
+                <img src={LOGO_URL} alt="BaggedUp Logo" className="h-48 w-48 mx-auto mb-8 object-contain" />
                 {authMessage && <div className="p-4 mb-4 bg-emerald-500/20 text-emerald-400 rounded-2xl text-xs font-bold uppercase">{authMessage}</div>}
                 <form onSubmit={(e) => handleLogin(e, 'login')} className="space-y-4">
                     <input type="email" placeholder="EMAIL" value={authEmail} onChange={e=>setAuthEmail(e.target.value)} className="w-full bg-slate-900 p-5 rounded-2xl text-white font-bold text-[16px] outline-none border border-slate-800 focus:border-orange-500" />
@@ -312,7 +312,10 @@ export default function App() {
 
             {/* --- HEADER --- */}
             <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 glass sticky top-0">
-                <button onClick={() => setSidebarOpen(true)} className="text-2xl">☰</button>
+                <div className="flex items-center gap-4">
+                    <button onClick={() => setSidebarOpen(true)} className="text-2xl">☰</button>
+                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-10 w-10 object-contain" />
+                </div>
                 <div className="bg-slate-800 px-4 py-1.5 rounded-full border border-slate-700 flex items-center gap-2">
                     <select value={activeBagId} onChange={(e) => setActiveBagId(e.target.value)} className="bg-transparent text-[10px] font-black uppercase outline-none text-orange-500">
                         {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
