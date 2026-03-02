@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v46.00-AI';
+const APP_VERSION = 'v47.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -989,7 +989,7 @@ export default function App() {
     };
 
     const createBag = async (name, capacity = 18) => {
-        const { data, error } = await supabase.from('bags').insert({ user_id: session.user.id, name, capacity: capacity || 18 }).select().single();
+        const { data, error } = await supabase.from('bags').insert({ user_id: session.user.id, name }).select().single();
         if (error) { console.error('createBag error:', error); alert('Could not create bag: ' + error.message); return; }
         if (data) { setBags(prev => [...prev, data]); setActiveBagId(data.id); setView('active'); }
     };
@@ -1402,7 +1402,7 @@ Guidelines:
     const adminApproveDisc = async (disc) => {
         const { error } = await supabase
             .from('community_suggestions')
-            .update({ approved: true, verified: true })
+            .update({ approved: true })
             .eq('id', disc.id);
         if (error) {
             console.error('Approve disc error:', error);
@@ -1410,8 +1410,8 @@ Guidelines:
             return;
         }
         // Update both admin view and global community suggestions state
-        setAdminDiscs(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true, verified: true } : d));
-        setCommunitySuggestions(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true, verified: true } : d));
+        setAdminDiscs(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true } : d));
+        setCommunitySuggestions(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true } : d));
     };
 
     const adminRejectDisc = async (disc) => {
@@ -1433,7 +1433,7 @@ Guidelines:
     };
 
     const adminAddNewDisc = async (disc) => {
-        const payload = { model: disc.model, brand: disc.brand, speed: parseFloat(disc.speed), glide: parseFloat(disc.glide), turn: parseFloat(disc.turn), fade: parseFloat(disc.fade), added_by: session.user.id, approved: true, verified: true };
+        const payload = { model: disc.model, brand: disc.brand, speed: parseFloat(disc.speed), glide: parseFloat(disc.glide), turn: parseFloat(disc.turn), fade: parseFloat(disc.fade), added_by: session.user.id, approved: true };
         const { data } = await supabase.from('community_suggestions').insert(payload).select().single();
         if (data) {
             setAdminDiscs(prev => [data, ...prev]);
@@ -1494,13 +1494,11 @@ Guidelines:
                 // Persist lat/lng + maps URL to disc record
                 const disc = discs.find(d => d.id === discId);
                 if (disc) {
-                    await updateDiscInDB({
-                        ...disc,
-                        lost_lat: loc.lat,
-                        lost_lng: loc.lng,
-                        lost_maps_url: loc.mapsUrl,
-                        lost_at: new Date().toISOString(),
-                    });
+                    // Update disc with lat/lng — lost_maps_url and lost_at added if columns exist
+                    const update = { ...disc, lost_lat: loc.lat, lost_lng: loc.lng };
+                    try { update.lost_maps_url = loc.mapsUrl; } catch(_) {}
+                    try { update.lost_at = new Date().toISOString(); } catch(_) {}
+                    await updateDiscInDB(update);
                 }
 
                 // Also log to profile for account-level lost disc history
@@ -1534,13 +1532,11 @@ Guidelines:
         );
     };
 
-    const shareLostLocation = (disc) => {
+    const openLostLocation = (disc) => {
         const loc = lostGPS[disc.id] || (disc.lost_lat ? { lat: disc.lost_lat, lng: disc.lost_lng, mapsUrl: disc.lost_maps_url } : null);
         if (!loc) return;
         const mapsUrl = loc.mapsUrl || `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
-        const text = `🥏 Lost disc: ${disc.name} (${disc.brand})\n📍 Last seen: ${mapsUrl}\nFind it for me? 🙏`;
-        if (navigator.share) { navigator.share({ title: `Lost ${disc.name}`, text, url: mapsUrl }); }
-        else { navigator.clipboard?.writeText(text).then(() => alert('Location copied to clipboard!')).catch(() => alert('Maps link: ' + mapsUrl)); }
+        window.open(mapsUrl, '_blank');
     };
 
     // --- DISC PHOTO ---
@@ -2375,7 +2371,7 @@ Guidelines:
                                         📍 Pin Location
                                     </button>
                                 ) : (
-                                    <button onClick={() => shareLostLocation(d)} className="text-[9px] font-black text-red-400 uppercase hover:text-red-300 transition">📍 Share Location →</button>
+                                    <button onClick={() => openLostLocation(d)} className="flex items-center gap-1.5 text-[9px] font-black text-red-400 uppercase hover:text-red-300 transition bg-red-900/20 border border-red-500/20 px-3 py-1.5 rounded-full">📍 Open Location →</button>
                                 )}
                             </div>
                         )}
