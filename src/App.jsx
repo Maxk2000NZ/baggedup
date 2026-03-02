@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v32';
+const APP_VERSION = 'v32-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -638,7 +638,7 @@ export default function App() {
     const [myProfile, setMyProfile] = useState(null); // { username, pdga_number, icon, colour }
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [heatmapData, setHeatmapData] = useState(null);
-    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both', currency: 'USD' });
+    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both', currency: 'USD', geminiKey: 'AIzaSyAjPAPTEdYQv2o8vfwvyVLiR11Pfk_R7b8' });
     // windConfig: { type: 'calm'|'headwind'|'tailwind'|'crosswind', speed: number (mph or km/h in display), direction: 'ltr'|'rtl' }
     const [windConfig, setWindConfig] = useState({ type: 'calm', speed: 0, direction: 'ltr' });
     const [showWindPanel, setShowWindPanel] = useState(false);
@@ -795,7 +795,7 @@ export default function App() {
         if (!session?.user) return;
         const loadData = async () => {
             let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
-            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both', currency: set.currency || 'USD' });
+            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both', currency: set.currency || 'USD', geminiKey: set.gemini_key || 'AIzaSyAjPAPTEdYQv2o8vfwvyVLiR11Pfk_R7b8' });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
             const { data: b } = await supabase.from('bags').select('*');
@@ -851,6 +851,7 @@ export default function App() {
             skill_level: newS.skillLevel,
             throw_style: newS.throwStyle,
             currency: newS.currency || 'USD',
+            gemini_key: newS.geminiKey || '',
         }).eq('user_id', session.user.id);
     };
 
@@ -997,57 +998,71 @@ export default function App() {
         await supabase.from('discs').delete().eq('id', id);
     };
 
-    // --- AI BAG BUILDER ---
+    // --- BAG BUILDER (Google Gemini) ---
     const runAIBagBuilder = async () => {
         if (!aiPrompt.trim()) return;
         setAILoading(true);
         setAIResult(null);
-        const ownedDiscs = discs.filter(d => d.status === 'active' && !d.is_idea);
-        const discList = ownedDiscs.map(d => `${d.name} (${d.brand}, ${d.speed}/${d.glide}/${d.turn}/${d.fade}, wear: ${Math.round((parseFloat(d.wear)||0)*100)}%)`).join('\n');
+
+        const owned = discs.filter(d => d.status === 'active' && !d.is_idea);
+        if (!owned.length) {
+            setAIResult({ error: 'Add some discs to your collection first, then come back to build your bag.' });
+            setAILoading(false);
+            return;
+        }
+
+        const discList = owned.map(d => `${d.name} (${d.brand}, ${d.speed}/${d.glide}/${d.turn}/${d.fade})`).join('\n');
         const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
         const currentBag = bagDiscs.map(d => d.name).join(', ') || 'Empty';
-        const systemPrompt = `You are an expert disc golf bag coach. A player describes their game and you recommend the BEST discs from THEIR OWNED COLLECTION to build their bag. You ONLY recommend discs the player actually owns — never suggest discs they don't have. Be specific about why each disc suits their style. Return a JSON object with this exact structure:
+
+        const prompt = `You are an expert disc golf bag coach. A player describes their game and you recommend the BEST discs from THEIR OWNED COLLECTION only.
+
+Player details:
+- Handedness: ${settings.handedness}-handed
+- Skill level: ${settings.skillLevel}
+- Backhand distance: ~${settings.bhPower || 350}ft, Forehand: ~${settings.fhPower || 250}ft
+- Throw style: ${settings.throwStyle}
+- Current bag: ${currentBag}
+
+Their owned discs:
+${discList}
+
+Their game description: "${aiPrompt}"
+
+Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
 {
-  "summary": "2-3 sentence analysis of their game based on what they described",
+  "summary": "2-3 sentence analysis of their game",
   "recommended": [
-    { "name": "disc name", "reason": "why this disc suits them", "role": "what role it fills e.g. overstable driver" }
+    { "name": "exact disc name from their list", "reason": "why this suits them", "role": "role e.g. overstable fairway driver" }
   ],
   "tips": ["tip 1", "tip 2", "tip 3"],
-  "missing": "one sentence about any key gap in their owned discs that would help their described game"
-}
-Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
+  "missing": "one sentence about a key gap in their collection, or null"
+}`;
 
         try {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'anthropic-version': '2023-06-01',
-                    'anthropic-dangerous-direct-browser-access': 'true',
-                    'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY || '',
-                },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 1000,
-                    system: systemPrompt,
-                    messages: [{
-                        role: 'user',
-                        content: `My owned discs:\n${discList || 'No discs yet'}\n\nMy current bag: ${currentBag}\n\nMy game: ${aiPrompt}\n\nSettings: ${settings.handedness}-handed, ${settings.throwStyle} throws, ${settings.skillLevel} level, arm speed ~${settings.bhPower || 350}ft BH / ${settings.fhPower || 250}ft FH`
-                    }]
-                })
-            });
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData?.error?.message || `API error ${response.status}`);
+            const res = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${settings.geminiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.4, maxOutputTokens: 1000 },
+                    }),
+                }
+            );
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.error?.message || `API error ${res.status}`);
             }
-            const data = await response.json();
-            const text = data.content?.map(i => i.text || '').join('') || '';
-            const clean = text.replace(/```json|```/g, '').trim();
+            const data = await res.json();
+            const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const clean = raw.replace(/```json|```/g, '').trim();
             const parsed = JSON.parse(clean);
             setAIResult(parsed);
         } catch (err) {
-            console.error('AI builder error:', err);
-            setAIResult({ error: `${err.message || 'Could not connect to AI. Check your API key is set.'}` });
+            console.error('Bag builder error:', err);
+            setAIResult({ error: `${err.message || 'Something went wrong. Check your API key in Settings.'}` });
         }
         setAILoading(false);
     };
@@ -1955,7 +1970,7 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                     <span className="text-base">🔥</span> Heatmap
                 </button>
                 <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-slate-800 transition">
-                    <span className="text-base">🤖</span> AI Bag Builder
+                    <span className="text-base">🎯</span> Bag Builder
                 </button>
                 <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-yellow-400 hover:bg-slate-800 transition">
                     <span className="text-base">🏆</span> Leaderboard
@@ -1995,7 +2010,7 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                             <span className="text-xl">🥏</span> Play Round
                         </button>
                         <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-xl">🔥</span> Mold Heatmap</button>
-                        <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-pink-400 hover:bg-slate-800 transition"><span className="text-xl">🤖</span> AI Bag Builder</button>
+                        <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-pink-400 hover:bg-slate-800 transition"><span className="text-xl">🎯</span> Bag Builder</button>
                         <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-xl">🏆</span> Leaderboard</button>
                         <button onClick={() => { setShowCardMates(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🤝</span> Card Mates
@@ -2784,6 +2799,19 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                                         ))}
                                     </div>
                                     <p className="text-[8px] text-slate-600 font-bold">Used for disc values and bag totals</p>
+                                </div>
+
+                                {/* Gemini API Key for Bag Builder */}
+                                <div className="bg-slate-800 p-4 rounded-2xl space-y-2">
+                                    <div className="text-[9px] font-black uppercase text-slate-500">🎯 Bag Builder — Google AI Key</div>
+                                    <input
+                                        type="password"
+                                        value={settings.geminiKey || ''}
+                                        onChange={e => setSettings({...settings, geminiKey: e.target.value})}
+                                        placeholder="AIza..."
+                                        className="w-full bg-slate-700 px-3 py-2.5 rounded-xl font-mono text-[11px] text-emerald-400 outline-none border border-slate-600 focus:border-pink-500 transition placeholder-slate-600"
+                                    />
+                                    <p className="text-[8px] text-slate-600 font-bold">Free at aistudio.google.com — stored privately in your account</p>
                                 </div>
 
                                 {/* Handedness + Skill Level — 2 col */}
@@ -4169,7 +4197,7 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                 <div className="w-full max-w-2xl mx-auto space-y-5 py-6">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h2 className="text-3xl font-black italic uppercase text-pink-400">🤖 AI Bag Builder</h2>
+                            <h2 className="text-3xl font-black italic uppercase text-pink-400">🎯 Bag Builder</h2>
                             <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Describe your game — get a custom bag from YOUR discs</p>
                         </div>
                         <button onClick={() => setShowAIBuilder(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
@@ -4200,15 +4228,22 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
 
                     <button
                         onClick={runAIBagBuilder}
-                        disabled={aiLoading || !aiPrompt.trim()}
+                        disabled={aiLoading || !aiPrompt.trim() || !settings.geminiKey}
                         className="w-full bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition"
                     >
-                        {aiLoading ? '🤖 Analysing your bag...' : '🚀 Build My Perfect Bag'}
+                        {aiLoading ? '⚙️ Building your bag...' : '🚀 Build My Perfect Bag'}
                     </button>
+
+                    {!settings.geminiKey && (
+                        <div className="bg-yellow-900/20 border border-yellow-500/30 rounded-2xl px-5 py-4">
+                            <p className="text-[10px] font-black uppercase text-yellow-400 mb-1">⚠️ API Key Required</p>
+                            <p className="text-sm font-bold text-yellow-200">Add your free Google AI key in <button onClick={() => { setShowAIBuilder(false); setShowSettings(true); setSettingsTab('bag'); }} className="underline hover:text-yellow-100">Settings → Bag Builder Key</button>. Get one free at <span className="text-yellow-300">aistudio.google.com</span></p>
+                        </div>
+                    )}
 
                     {aiLoading && (
                         <div className="text-center py-8">
-                            <div className="text-4xl mb-3 animate-bounce">🤖</div>
+                            <div className="text-4xl mb-3 animate-spin">🥏</div>
                             <p className="text-slate-400 font-bold text-sm uppercase">Analysing your {discs.filter(d=>d.status==='active'&&!d.is_idea).length} discs...</p>
                         </div>
                     )}
