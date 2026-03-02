@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v39.00-AI';
+const APP_VERSION = 'v40.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -665,6 +665,7 @@ export default function App() {
     const [roundBagId, setRoundBagId] = useState('');
     const [communityFormData, setCommunityFormData] = useState({name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5});
     const [tutorialStep, setTutorialStep] = useState(0);
+    const [showTutorial, setShowTutorial] = useState(false);
     const [showVerifyDisc, setShowVerifyDisc] = useState(null); // holds community disc to verify
     const [verifyName, setVerifyName] = useState('');
     const [verifyBrand, setVerifyBrand] = useState('');
@@ -848,6 +849,7 @@ export default function App() {
 
             // Show tutorial for new users (no discs yet)
             const isNewUser = !set || (!d || d.length === 0);
+            if (isNewUser) { setTutorialStep(0); setShowTutorial(true); }
 
             const { data: cs, error: csError } = await supabase.from('community_suggestions').select('*');
             if (csError) console.error('Failed to load community suggestions:', csError);
@@ -1279,7 +1281,7 @@ ${responseFormat}`;
         setAILoading(false);
     };
 
-    // --- MY COACH (Anthropic-powered) ---
+    // --- MY COACH (Gemini-powered, same API as Bag Builder) ---
     const sendCoachMessage = async () => {
         if (!coachInput.trim()) return;
         const userMsg = { role: 'user', content: coachInput.trim() };
@@ -1288,6 +1290,12 @@ ${responseFormat}`;
         setCoachInput('');
         setCoachLoading(true);
         setTimeout(() => coachEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
+        if (!settings.geminiKey) {
+            setCoachMessages(prev => [...prev, { role: 'assistant', content: '⚠️ To use My Coach, please add your free Google AI (Gemini) key in Settings → Bag Builder Key. Get one free at aistudio.google.com — it takes 30 seconds!' }]);
+            setCoachLoading(false);
+            return;
+        }
 
         const systemPrompt = `You are "My Coach" — an expert disc golf coach and biomechanics advisor inside the BaggedUp app. 
 You help players improve form, fix errors, build training plans, and recommend YouTube videos.
@@ -1306,27 +1314,37 @@ Guidelines:
 - Give specific, actionable advice
 - For form issues, describe the fix step-by-step
 - For training plans, structure day-by-day or week-by-week
-- When recommending YouTube videos, suggest REAL disc golf instructors: Brodie Smith, Simon Lizotte, Dynamic Discs, Throw Pink, Jerm Disc Golf, Eagle McMahon, GK Pro. Format as: 🎥 **[Video Title idea]** — search: "channel name + topic" on YouTube
+- When recommending YouTube videos, suggest REAL disc golf instructors: Brodie Smith, Simon Lizotte, Dynamic Discs, Throw Pink, Jerm Disc Golf, Eagle McMahon, GK Pro. Format as: 🎥 search "channel name + topic" on YouTube
 - Be encouraging but honest
 - Keep responses concise but thorough
-- Use emojis sparingly for readability`;
+- Use emojis sparingly for readability
+- Do NOT return JSON — return plain conversational text`;
+
+        // Build conversation history for Gemini
+        const historyText = updated.slice(0, -1).map(m => `${m.role === 'user' ? 'Player' : 'Coach'}: ${m.content}`).join('\n\n');
+        const fullPrompt = `${systemPrompt}\n\n${historyText ? 'Conversation so far:\n' + historyText + '\n\n' : ''}Player: ${userMsg.content}\n\nCoach:`;
 
         try {
-            const response = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
-                    max_tokens: 1000,
-                    system: systemPrompt,
-                    messages: updated.map(m => ({ role: m.role, content: m.content })),
-                })
-            });
-            const data = await response.json();
-            const reply = data.content?.map(b => b.text || '').join('') || 'Sorry, I had trouble responding. Please try again.';
-            setCoachMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+            const res = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${settings.geminiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: fullPrompt }] }],
+                        generationConfig: { temperature: 0.7, maxOutputTokens: 1200 },
+                    }),
+                }
+            );
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err?.error?.message || `API error ${res.status}`);
+            }
+            const data = await res.json();
+            const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I had trouble responding. Please try again.';
+            setCoachMessages(prev => [...prev, { role: 'assistant', content: reply.trim() }]);
         } catch (err) {
-            setCoachMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting right now. Please try again in a moment." }]);
+            setCoachMessages(prev => [...prev, { role: 'assistant', content: `Sorry, something went wrong: ${err.message || 'Please try again.'}` }]);
         }
         setCoachLoading(false);
         setTimeout(() => coachEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -2208,48 +2226,49 @@ Guidelines:
             {/* =====================================================
                 DESKTOP SIDEBAR (lg+)
             ===================================================== */}
-            <div className="hidden lg:flex w-52 h-full bg-slate-900 border-r border-slate-800 px-3 py-4 flex-col gap-1 shrink-0 overflow-y-auto">
-                {/* Logo + username compact */}
-                <div className="flex items-center gap-2 px-2 pb-3 border-b border-slate-800 mb-1">
+            <div className="hidden lg:flex w-56 h-full bg-slate-900 border-r border-slate-800 px-3 py-4 flex-col gap-0.5 shrink-0 overflow-y-auto">
+                {/* Logo + username */}
+                <div className="flex items-center gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
                     <img src={LOGO_URL} alt="BaggedUp Logo" className="h-8 w-8 object-contain shrink-0" />
                     <div className="min-w-0">
                         <div className="font-black uppercase text-white text-[10px] tracking-wide leading-tight">Bagged<span className="text-orange-500">Up</span></div>
                         {myProfile?.username && <div className="text-[9px] font-bold text-slate-500 truncate">@{myProfile.username}</div>}
                     </div>
                 </div>
+                {/* MY DISCS group */}
+                <div className="px-2 pt-1 pb-1"><span className="text-[8px] font-black uppercase tracking-widest text-slate-600">My Discs</span></div>
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
                     { id: 'collection', label: 'Collection', icon: '📦' },
-                    { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
+                    { id: 'graveyard', label: 'Lost Discs', icon: '🪦' },
                 ].map(item => (
                     <button key={item.id} onClick={() => setView(item.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
                         <span className="text-base">{item.icon}</span> {item.label}
                     </button>
                 ))}
-                <div className="border-t border-slate-800 my-1" />
-                <button onClick={() => setShowExport(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-purple-400 hover:bg-slate-800 transition">
-                    <span className="text-base">📤</span> Export
+                <div className="border-t border-slate-800 my-2" />
+                {/* OTHER TOOLS group */}
+                <div className="px-2 pb-1"><span className="text-[8px] font-black uppercase tracking-widest text-slate-600">Other Tools</span></div>
+                <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🎯</span> AI Bag Builder
                 </button>
-                <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-emerald-400 hover:bg-slate-800 transition">
-                    <span className="text-base">🥏</span> Play Round
+                <button onClick={() => setShowMyCoach(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-emerald-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🧑‍🏫</span> My Coach
                 </button>
-                <button onClick={() => setShowCardMates(true)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] transition ${showCardMates ? 'bg-cyan-600 text-white' : 'text-cyan-400 hover:bg-slate-800'}`}>
+                <button onClick={() => { setShowCardMates(true); setCardMatesTab('mates'); }} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] transition ${showCardMates ? 'bg-cyan-600 text-white' : 'text-cyan-400 hover:bg-slate-800'}`}>
                     <span className="text-base">🤝</span> Card Mates
                     {cardMates.length > 0 && <span className="ml-auto bg-cyan-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                 </button>
                 <button onClick={() => setShowHeatmap(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-violet-400 hover:bg-slate-800 transition">
                     <span className="text-base">🔥</span> Heatmap
                 </button>
-                <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-slate-800 transition">
-                    <span className="text-base">🎯</span> Bag Builder
+                <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-yellow-400 hover:bg-slate-800 transition">
+                    <span className="text-base">✅</span> Bag Check
                 </button>
-                <button onClick={() => setShowMyCoach(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-emerald-400 hover:bg-slate-800 transition">
-                    <span className="text-base">🧑‍🏫</span> My Coach
+                <button onClick={() => setShowExport(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-purple-400 hover:bg-slate-800 transition">
+                    <span className="text-base">📤</span> Export / Share
                 </button>
-                <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-yellow-400 hover:bg-slate-800 transition">
-                    <span className="text-base">🏆</span> Leaderboard
-                </button>
-                <div className="mt-auto border-t border-slate-800 pt-1">
+                <div className="mt-auto border-t border-slate-800 pt-2">
                     <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-slate-500 hover:text-slate-300 hover:bg-slate-800 w-full transition">
                         <span className="text-base">⚙️</span> Settings
                     </button>
@@ -2267,32 +2286,41 @@ Guidelines:
                 <div className="lg:hidden fixed inset-0 z-[100] flex">
                     <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} />
                     <div className="relative w-72 h-full bg-slate-900 border-r border-slate-800 p-8 flex flex-col gap-4 overflow-y-auto">
-                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-20 w-20 object-contain shrink-0" />
+                        {/* Logo */}
+                        <div className="flex items-center gap-3 pb-4 border-b border-slate-800 mb-2">
+                            <img src={LOGO_URL} alt="BaggedUp Logo" className="h-12 w-12 object-contain shrink-0" />
+                            <div>
+                                <div className="font-black uppercase text-white text-sm tracking-wide">Bagged<span className="text-orange-500">Up</span></div>
+                                {myProfile?.username && <div className="text-[10px] font-bold text-slate-500">@{myProfile.username}</div>}
+                            </div>
+                        </div>
+                        {/* MY DISCS */}
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-600 px-1 pb-1">My Discs</div>
                         {[
                             { id: 'active', label: 'My Bag', icon: '🎒' },
                             { id: 'collection', label: 'Collection', icon: '📦' },
-                            { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
+                            { id: 'graveyard', label: 'Lost Discs', icon: '🪦' },
                         ].map(item => (
-                            <button key={item.id} onClick={() => { setView(item.id); setSidebarOpen(false); }} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
-                                <span className="text-xl">{item.icon}</span> {item.label}
+                            <button key={item.id} onClick={() => { setView(item.id); setSidebarOpen(false); }} className={`flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
+                                <span className="text-lg">{item.icon}</span> {item.label}
                             </button>
                         ))}
-                        <button onClick={() => { setShowExport(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition">
-                            <span className="text-xl">📤</span> Export Bag
-                        </button>
-                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition">
-                            <span className="text-xl">🥏</span> Play Round
-                        </button>
-                        <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-xl">🔥</span> Mold Heatmap</button>
-                        <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-pink-400 hover:bg-slate-800 transition"><span className="text-xl">🎯</span> Bag Builder</button>
-                        <button onClick={() => { setShowMyCoach(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition"><span className="text-xl">🧑‍🏫</span> My Coach</button>
-                        <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-xl">🏆</span> Leaderboard</button>
-                        <button onClick={() => { setShowCardMates(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
-                            <span className="text-xl">🤝</span> Card Mates
+                        <div className="border-t border-slate-800 my-3" />
+                        {/* OTHER TOOLS */}
+                        <div className="text-[9px] font-black uppercase tracking-widest text-slate-600 px-1 pb-1">Other Tools</div>
+                        <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-pink-400 hover:bg-slate-800 transition"><span className="text-lg">🎯</span> AI Bag Builder</button>
+                        <button onClick={() => { setShowMyCoach(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition"><span className="text-lg">🧑‍🏫</span> My Coach</button>
+                        <button onClick={() => { setShowCardMates(true); setCardMatesTab('mates'); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
+                            <span className="text-lg">🤝</span> Card Mates
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                         </button>
-                        <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
-                        <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">🚫 Out of Bounds</button>
+                        <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-lg">🔥</span> Heatmap</button>
+                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-lg">✅</span> Bag Check</button>
+                        <button onClick={() => { setShowExport(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition"><span className="text-lg">📤</span> Export / Share</button>
+                        <div className="border-t border-slate-800 mt-3 pt-3">
+                            <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 text-slate-500 font-black uppercase text-xs hover:text-slate-300 w-full">⚙️ Settings</button>
+                            <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-3.5 text-red-500 font-black uppercase text-xs hover:text-red-400 w-full">🚫 Out of Bounds</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -3012,7 +3040,7 @@ Guidelines:
                         <div className="px-8 pt-8 pb-0 shrink-0">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-2xl font-black italic uppercase text-orange-500">Settings</h2>
-                                <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="px-3 py-1.5 bg-orange-600/20 border border-orange-500/30 rounded-xl font-black uppercase text-[9px] text-orange-400 hover:bg-orange-600/30 transition mr-2">🎓 Tour</button><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
                             </div>
                             <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
                                 <button
@@ -3711,7 +3739,7 @@ Guidelines:
             );
         })()}
         {/* =====================================================
-            PLAY ROUND MODAL
+            BAG CHECK MODAL
         ===================================================== */}
         {showPlayRound && (() => {
             const roundDiscs = discs.filter(d => d.bag_id === roundBagId && d.status === 'active' && !d.is_idea);
@@ -3725,7 +3753,7 @@ Guidelines:
                         {/* Header */}
                         <div className="flex justify-between items-center">
                             <div>
-                                <h2 className="text-3xl font-black italic text-emerald-400 uppercase">🥏 Round Check</h2>
+                                <h2 className="text-3xl font-black italic text-emerald-400 uppercase">✅ Bag Check</h2>
                                 <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Tick every disc you still have</p>
                             </div>
                             <button onClick={() => setShowPlayRound(false)} className="text-2xl text-slate-500 hover:text-white">✕</button>
@@ -3908,6 +3936,166 @@ Guidelines:
         {/* =====================================================
             TUTORIAL MODAL
         ===================================================== */}
+        {showTutorial && (() => {
+            const steps = [
+                {
+                    emoji: '👋',
+                    title: 'Welcome to BaggedUp!',
+                    color: 'text-orange-400',
+                    bg: 'bg-orange-500/10 border-orange-500/20',
+                    body: "The ultimate disc golf bag tracker. Let's take a 60-second tour so you know exactly what this app can do for your game.",
+                    hint: null,
+                },
+                {
+                    emoji: '🎒',
+                    title: 'My Bag',
+                    color: 'text-orange-400',
+                    bg: 'bg-orange-500/10 border-orange-500/20',
+                    body: "Your active bag lives here. Add discs, mark favourites, track wear & condition, and see exactly what's in the bag you're throwing with today.",
+                    hint: '📦 Tip: You can have multiple bags — Main Bag, Tournament Bag, Casual Bag — and switch between them anytime.',
+                },
+                {
+                    emoji: '📦',
+                    title: 'Collection',
+                    color: 'text-amber-400',
+                    bg: 'bg-amber-500/10 border-amber-500/20',
+                    body: "Every disc you own — in the bag or on the shelf. Track what you've got, what you've retired, and what you want to try next with the wishlist (Idea Discs).",
+                    hint: null,
+                },
+                {
+                    emoji: '🪦',
+                    title: 'Lost Discs',
+                    color: 'text-slate-400',
+                    bg: 'bg-slate-700/30 border-slate-600/20',
+                    body: "Mark discs as lost and pin their GPS location. Share that location with your card mates so they can help search. No more mystery disappearances.",
+                    hint: null,
+                },
+                {
+                    emoji: '🎯',
+                    title: 'AI Bag Builder',
+                    color: 'text-pink-400',
+                    bg: 'bg-pink-500/10 border-pink-500/20',
+                    body: "Describe your game in plain English — \"I need a stable distance driver for hyzer lines\" — and AI builds you a tailored disc recommendation list with flight paths.",
+                    hint: '🔑 Requires a free Gemini API key (add it in Settings). Takes 30 seconds at aistudio.google.com',
+                },
+                {
+                    emoji: '🧑‍🏫',
+                    title: 'My Coach',
+                    color: 'text-emerald-400',
+                    bg: 'bg-emerald-500/10 border-emerald-500/20',
+                    body: "Your personal AI disc golf coach. Ask it anything — fixing grip lock, reading wind, building a training plan, or YouTube video recommendations for your skill level.",
+                    hint: '🔑 Also uses your Gemini key from Settings.',
+                },
+                {
+                    emoji: '🤝',
+                    title: 'Card Mates',
+                    color: 'text-cyan-400',
+                    bg: 'bg-cyan-500/10 border-cyan-500/20',
+                    body: "Add the people you play with. View their bags, see what discs they're throwing, and compete on the leaderboard (bag scores ranked by completeness and balance).",
+                    hint: null,
+                },
+                {
+                    emoji: '🔥',
+                    title: 'Heatmap',
+                    color: 'text-violet-400',
+                    bg: 'bg-violet-500/10 border-violet-500/20',
+                    body: "A visual breakdown of your disc collection by mould type — see at a glance if you're heavy on drivers and missing mid-range, or perfectly balanced.",
+                    hint: null,
+                },
+                {
+                    emoji: '✅',
+                    title: 'Bag Check',
+                    color: 'text-yellow-400',
+                    bg: 'bg-yellow-500/10 border-yellow-500/20',
+                    body: "Pre-round checklist. Walk through every disc in your bag, check it off, flag anything damaged, and confirm you're game-ready before you step to the tee.",
+                    hint: null,
+                },
+                {
+                    emoji: '📤',
+                    title: 'Export & Share',
+                    color: 'text-purple-400',
+                    bg: 'bg-purple-500/10 border-purple-500/20',
+                    body: "Export your full bag as a PDF or image — clean, shareable layout. Post it on Instagram, send it to your club, or just keep it as a backup record.",
+                    hint: null,
+                },
+                {
+                    emoji: '⚙️',
+                    title: "Now let's set you up!",
+                    color: 'text-orange-400',
+                    bg: 'bg-orange-500/10 border-orange-500/20',
+                    body: "Last step — head into Settings to set your skill level, throwing distances, handedness, and optionally your Gemini key for AI features. It takes 2 minutes and makes everything smarter.",
+                    hint: null,
+                    isFinal: true,
+                },
+            ];
+            const step = steps[tutorialStep];
+            const isLast = tutorialStep === steps.length - 1;
+            const progress = ((tutorialStep + 1) / steps.length) * 100;
+            return (
+                <div className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
+                    <div className="w-full max-w-lg mx-auto">
+                        {/* Progress bar */}
+                        <div className="mb-4 px-1">
+                            <div className="flex justify-between items-center mb-1.5">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">App Tour</span>
+                                <span className="text-[9px] font-black text-slate-600">{tutorialStep + 1} / {steps.length}</span>
+                            </div>
+                            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                <div className="h-full bg-orange-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                            </div>
+                        </div>
+
+                        {/* Card */}
+                        <div className={`rounded-3xl border p-8 ${step.bg}`}>
+                            {/* Emoji */}
+                            <div className="text-6xl mb-5 text-center">{step.emoji}</div>
+
+                            {/* Title */}
+                            <h2 className={`text-2xl font-black uppercase italic text-center mb-3 ${step.color}`}>{step.title}</h2>
+
+                            {/* Body */}
+                            <p className="text-slate-300 text-sm font-semibold text-center leading-relaxed mb-4">{step.body}</p>
+
+                            {/* Hint */}
+                            {step.hint && (
+                                <div className="bg-slate-900/60 rounded-2xl px-4 py-3 mb-4 border border-slate-700/40">
+                                    <p className="text-slate-400 text-xs font-bold text-center">{step.hint}</p>
+                                </div>
+                            )}
+
+                            {/* Buttons */}
+                            <div className="flex gap-3 mt-6">
+                                {tutorialStep > 0 && (
+                                    <button onClick={() => setTutorialStep(t => t - 1)} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">← Back</button>
+                                )}
+                                {!isLast && (
+                                    <>
+                                        <button onClick={() => { setShowTutorial(false); }} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-500 transition">Skip Tour</button>
+                                        <button onClick={() => setTutorialStep(t => t + 1)} className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
+                                            Next →
+                                        </button>
+                                    </>
+                                )}
+                                {isLast && (
+                                    <button onClick={() => { setShowTutorial(false); setSettingsTab('account'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
+                                        ⚙️ Open Settings →
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Dot indicators */}
+                        <div className="flex justify-center gap-1.5 mt-4">
+                            {steps.map((_, i) => (
+                                <button key={i} onClick={() => setTutorialStep(i)} className={`rounded-full transition-all ${i === tutorialStep ? 'w-4 h-2 bg-orange-500' : 'w-2 h-2 bg-slate-700 hover:bg-slate-600'}`} />
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        })()}
+
+        {/* Tutorial replay button - shown in Settings header */}
 
         {/* =====================================================
             CARD MATES MODAL
