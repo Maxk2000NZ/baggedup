@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v31';
+const APP_VERSION = 'v32';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -795,7 +795,7 @@ export default function App() {
         if (!session?.user) return;
         const loadData = async () => {
             let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
-            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both' });
+            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both', currency: set.currency || 'USD' });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
             const { data: b } = await supabase.from('bags').select('*');
@@ -850,6 +850,7 @@ export default function App() {
             handedness: newS.handedness,
             skill_level: newS.skillLevel,
             throw_style: newS.throwStyle,
+            currency: newS.currency || 'USD',
         }).eq('user_id', session.user.id);
     };
 
@@ -983,8 +984,12 @@ export default function App() {
         // Auto-favourite any disc that has at least one ace
         const updated = (u.aces > 0) ? { ...u, favorite: true } : u;
         setDiscs(discs.map(d => d.id === updated.id ? updated : d));
-        const p = { ...updated }; delete p.id; delete p.user_id; delete p.created_at;
-        await supabase.from('discs').update(p).eq('id', updated.id);
+        const p = { ...updated };
+        delete p.id; delete p.user_id; delete p.created_at;
+        // Explicitly include value (null if not set) so it always writes to DB
+        p.value = updated.value != null ? parseFloat(updated.value) : null;
+        const { error } = await supabase.from('discs').update(p).eq('id', updated.id);
+        if (error) console.error('updateDiscInDB error:', error);
     };
 
     const deleteDiscInDB = async (id) => {
@@ -2766,15 +2771,19 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                                 {/* Currency */}
                                 <div className="bg-slate-800 p-4 rounded-2xl space-y-2">
                                     <div className="text-[9px] font-black uppercase text-slate-500">Currency</div>
-                                    <div className="grid grid-cols-4 gap-1">
-                                        {[['USD','$ USD'],['EUR','€ EUR'],['GBP','£ GBP'],['NZD','NZ$'],['AUD','A$'],['CAD','C$'],['SEK','SEK'],['DKK','DKK']].map(([c,l]) => (
-                                            <button key={c} onClick={() => setSettings({...settings, currency: c})}
-                                                className={`py-2 rounded-xl text-[8px] font-black uppercase transition ${settings.currency === c ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {[['USD','$ USD'],['NZD','$ NZD'],['EUR','€ EUR']].map(([c,l]) => (
+                                            <button key={c} onClick={async () => {
+                                                const newS = {...settings, currency: c};
+                                                setSettings(newS);
+                                                await supabase.from('settings').update({ currency: c }).eq('user_id', session.user.id);
+                                            }}
+                                                className={`py-3 rounded-xl text-[10px] font-black uppercase transition ${settings.currency === c ? 'bg-emerald-600 text-white shadow-lg' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'}`}>
                                                 {l}
                                             </button>
                                         ))}
                                     </div>
-                                    <p className="text-[8px] text-slate-600 font-bold">Used when recording disc purchase value</p>
+                                    <p className="text-[8px] text-slate-600 font-bold">Used for disc values and bag totals</p>
                                 </div>
 
                                 {/* Handedness + Skill Level — 2 col */}
