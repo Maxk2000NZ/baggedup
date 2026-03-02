@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v45.00-AI';
+const APP_VERSION = 'v46.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -857,13 +857,16 @@ export default function App() {
             if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both', currency: set.currency || 'USD', geminiKey: set.gemini_key || import.meta.env.VITE_GEMINI_API_KEY || '' });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
-            const { data: b } = await supabase.from('bags').select('*');
+            const { data: b, error: bErr } = await supabase.from('bags').select('*').eq('user_id', session.user.id).order('created_at', { ascending: true });
+            if (bErr) console.error('Bags load error:', bErr);
             if (b?.length) { setBags(b); setActiveBagId(b[0].id); }
             else {
-                const { data: nb } = await supabase.from('bags').insert({ user_id: session.user.id, name: 'Main Bag' }).select().single();
-                setBags([nb]); setActiveBagId(nb.id);
+                const { data: nb, error: nbErr } = await supabase.from('bags').insert({ user_id: session.user.id, name: 'Main Bag' }).select().single();
+                if (nbErr) console.error('Create default bag error:', nbErr);
+                if (nb) { setBags([nb]); setActiveBagId(nb.id); }
             }
-            const { data: d } = await supabase.from('discs').select('*');
+            const { data: d, error: dErr } = await supabase.from('discs').select('*').eq('user_id', session.user.id);
+            if (dErr) console.error('Discs load error:', dErr);
             if (d) setDiscs(d);
 
             // Show tutorial for new users (no discs yet)
@@ -986,7 +989,8 @@ export default function App() {
     };
 
     const createBag = async (name, capacity = 18) => {
-        const { data } = await supabase.from('bags').insert({ user_id: session.user.id, name, capacity: capacity || 18 }).select().single();
+        const { data, error } = await supabase.from('bags').insert({ user_id: session.user.id, name, capacity: capacity || 18 }).select().single();
+        if (error) { console.error('createBag error:', error); alert('Could not create bag: ' + error.message); return; }
         if (data) { setBags(prev => [...prev, data]); setActiveBagId(data.id); setView('active'); }
     };
 
@@ -1396,8 +1400,18 @@ Guidelines:
     };
 
     const adminApproveDisc = async (disc) => {
-        await supabase.from('community_suggestions').update({ approved: true, verified: true }).eq('id', disc.id);
+        const { error } = await supabase
+            .from('community_suggestions')
+            .update({ approved: true, verified: true })
+            .eq('id', disc.id);
+        if (error) {
+            console.error('Approve disc error:', error);
+            alert('Failed to approve: ' + error.message);
+            return;
+        }
+        // Update both admin view and global community suggestions state
         setAdminDiscs(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true, verified: true } : d));
+        setCommunitySuggestions(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true, verified: true } : d));
     };
 
     const adminRejectDisc = async (disc) => {
@@ -1435,6 +1449,7 @@ Guidelines:
     };
 
     const adminDeleteInboxItem = async (item) => {
+        if (!confirm('Permanently delete this submission? This cannot be undone.')) return;
         await supabase.from('help_submissions').delete().eq('id', item.id);
         setAdminInbox(prev => prev.filter(i => i.id !== item.id));
     };
@@ -1467,24 +1482,65 @@ Guidelines:
     const captureGPS = (discId) => {
         if (!navigator.geolocation) { alert('GPS not available on this device'); return; }
         navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
+            async (pos) => {
+                const loc = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude,
+                    timestamp: Date.now(),
+                    mapsUrl: `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`,
+                };
                 setLostGPS(prev => ({ ...prev, [discId]: loc }));
-                // Persist to disc record
+
+                // Persist lat/lng + maps URL to disc record
                 const disc = discs.find(d => d.id === discId);
-                if (disc) updateDiscInDB({ ...disc, lost_lat: loc.lat, lost_lng: loc.lng });
+                if (disc) {
+                    await updateDiscInDB({
+                        ...disc,
+                        lost_lat: loc.lat,
+                        lost_lng: loc.lng,
+                        lost_maps_url: loc.mapsUrl,
+                        lost_at: new Date().toISOString(),
+                    });
+                }
+
+                // Also log to profile for account-level lost disc history
+                try {
+                    const discObj = discs.find(d => d.id === discId);
+                    const logEntry = {
+                        disc_id: discId,
+                        disc_name: discObj?.name || 'Unknown',
+                        brand: discObj?.brand || '',
+                        lat: loc.lat,
+                        lng: loc.lng,
+                        maps_url: loc.mapsUrl,
+                        lost_at: new Date().toISOString(),
+                    };
+                    // Store in profiles table as JSONB array (appends to existing log)
+                    const { data: prof } = await supabase.from('profiles').select('lost_disc_log').eq('user_id', session.user.id).single();
+                    const existingLog = prof?.lost_disc_log || [];
+                    await supabase.from('profiles').update({
+                        lost_disc_log: [...existingLog, logEntry]
+                    }).eq('user_id', session.user.id);
+                } catch (logErr) {
+                    console.warn('Could not save lost disc log to profile:', logErr);
+                    // Non-critical — disc record already updated
+                }
             },
-            () => alert('Could not get location. Please allow location access.')
+            (err) => {
+                console.error('GPS error:', err);
+                alert('Could not get location. Please allow location access in your browser settings.');
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
         );
     };
 
     const shareLostLocation = (disc) => {
-        const loc = lostGPS[disc.id] || (disc.lost_lat ? { lat: disc.lost_lat, lng: disc.lost_lng } : null);
+        const loc = lostGPS[disc.id] || (disc.lost_lat ? { lat: disc.lost_lat, lng: disc.lost_lng, mapsUrl: disc.lost_maps_url } : null);
         if (!loc) return;
-        const mapsUrl = `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
+        const mapsUrl = loc.mapsUrl || `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
         const text = `🥏 Lost disc: ${disc.name} (${disc.brand})\n📍 Last seen: ${mapsUrl}\nFind it for me? 🙏`;
         if (navigator.share) { navigator.share({ title: `Lost ${disc.name}`, text, url: mapsUrl }); }
-        else { navigator.clipboard.writeText(text); alert('Location copied to clipboard!'); }
+        else { navigator.clipboard?.writeText(text).then(() => alert('Location copied to clipboard!')).catch(() => alert('Maps link: ' + mapsUrl)); }
     };
 
     // --- DISC PHOTO ---
