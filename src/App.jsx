@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v29';
+const APP_VERSION = 'v30';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -638,7 +638,7 @@ export default function App() {
     const [myProfile, setMyProfile] = useState(null); // { username, pdga_number, icon, colour }
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [heatmapData, setHeatmapData] = useState(null);
-    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both' });
+    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both', currency: 'USD' });
     // windConfig: { type: 'calm'|'headwind'|'tailwind'|'crosswind', speed: number (mph or km/h in display), direction: 'ltr'|'rtl' }
     const [windConfig, setWindConfig] = useState({ type: 'calm', speed: 0, direction: 'ltr' });
     const [showWindPanel, setShowWindPanel] = useState(false);
@@ -694,6 +694,8 @@ export default function App() {
     // Wear slider — local state for smooth dragging, synced to DB on release
     const [localWear, setLocalWear] = useState({});
     const [favSubView, setFavSubView] = useState('all'); // 'all' | 'aces'
+    const [collectionSubView, setCollectionSubView] = useState('all'); // 'all' | 'unused' | 'favorites' | 'aces'
+    const [searchFilter, setSearchFilter] = useState('all'); // 'all' | 'putter' | 'mid' | 'fairway' | 'distance' | 'os' | 'st' | 'us'
     const wearDebounce = useRef({});
 
     // Mobile: one toggled chart
@@ -1348,12 +1350,7 @@ export default function App() {
         if (!session) return;
         const filtered = discs.filter(d => {
             if (view === 'graveyard') return d.status === 'lost';
-            if (view === 'favorites') {
-                if (!d.favorite) return false;
-                if (favSubView === 'aces') return d.aces > 0;
-                return true;
-            }
-            if (view === 'storage') return d.status === 'active' && !d.bag_id;
+            if (view === 'collection') return d.status === 'active';
             return d.bag_id === activeBagId && d.status === 'active';
         });
 
@@ -1600,12 +1597,14 @@ export default function App() {
     // --- FILTERED DISCS (used in both layouts) ---
     const filteredDiscs = discs.filter(d => {
         if (view === 'graveyard') return d.status === 'lost';
-        if (view === 'favorites') {
-            if (!d.favorite) return false;
-            if (favSubView === 'aces') return d.aces > 0;
+        if (view === 'collection') {
+            if (d.status !== 'active') return false;
+            if (collectionSubView === 'favorites') return d.favorite;
+            if (collectionSubView === 'aces') return d.aces > 0;
+            if (collectionSubView === 'unused') return !d.bag_id;
+            // 'all' — all active discs across all bags and storage
             return true;
         }
-        if (view === 'storage') return d.status === 'active' && !d.bag_id;
         return d.bag_id === activeBagId && d.status === 'active';
     });
 
@@ -1631,7 +1630,7 @@ export default function App() {
                                         </span>
                                     )}
                                 </h4>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g</p>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g{d.value ? ` • ${settings.currency || 'USD'} ${parseFloat(d.value).toFixed(2)}` : ''}</p>
                                 {d.status === 'lost' && d.lost_note && (
                                     <p className="text-[10px] font-bold text-red-400/70 mt-0.5 truncate">📍 {d.lost_note}</p>
                                 )}
@@ -1739,8 +1738,7 @@ export default function App() {
                 </div>
                 {[
                     { id: 'active', label: 'My Bag', icon: '🎒' },
-                    { id: 'storage', label: 'Storage', icon: '📦' },
-                    { id: 'favorites', label: 'Favourites', icon: '⭐' },
+                    { id: 'collection', label: 'Collection', icon: '📦' },
                     { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
                 ].map(item => (
                     <button key={item.id} onClick={() => setView(item.id)} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
@@ -1766,7 +1764,7 @@ export default function App() {
                         <span className="text-base">⚙️</span> Settings
                     </button>
                     <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-red-500 hover:bg-red-900/20 w-full transition">
-                        <span className="text-base">✕</span> Log Out
+                        <span className="text-base">🚫</span> Out of Bounds
                     </button>
                     <div className="text-[8px] font-bold text-slate-700 uppercase text-center pt-1">{APP_VERSION}</div>
                 </div>
@@ -1782,8 +1780,7 @@ export default function App() {
                         <img src={LOGO_URL} alt="BaggedUp Logo" className="h-20 w-20 object-contain shrink-0" />
                         {[
                             { id: 'active', label: 'My Bag', icon: '🎒' },
-                            { id: 'storage', label: 'Storage', icon: '📦' },
-                            { id: 'favorites', label: 'Favourites', icon: '⭐' },
+                            { id: 'collection', label: 'Collection', icon: '📦' },
                             { id: 'graveyard', label: 'Graveyard', icon: '🪦' }
                         ].map(item => (
                             <button key={item.id} onClick={() => { setView(item.id); setSidebarOpen(false); }} className={`flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs transition ${view === item.id ? 'bg-orange-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-800'}`}>
@@ -1802,7 +1799,7 @@ export default function App() {
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                         </button>
                         <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 text-slate-500 font-black uppercase text-xs hover:text-slate-300">⚙️ Settings</button>
-                        <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">✕ Log Out</button>
+                        <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-4 text-red-500 font-black uppercase text-xs hover:text-red-400">🚫 Out of Bounds</button>
                     </div>
                 </div>
             )}
@@ -1813,10 +1810,11 @@ export default function App() {
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
                 {/* HEADER */}
-                <header className="h-16 border-b border-slate-800 flex items-center justify-between px-6 shrink-0 z-50 glass sticky top-0">
-                    <div className="flex items-center gap-4">
+                <header className="h-16 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 z-50 glass sticky top-0">
+                    <div className="flex items-center gap-3">
                         <button onClick={() => setSidebarOpen(true)} className="text-2xl lg:hidden">☰</button>
-                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-10 w-10 object-contain lg:hidden" />
+                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-8 w-8 object-contain lg:hidden" />
+                        <span className="lg:hidden font-black uppercase text-white text-sm">Bagged<span className="text-orange-500">Up</span></span>
                     </div>
                     <div className="flex items-center gap-2">
                         <div className="relative flex items-center">
@@ -1837,10 +1835,6 @@ export default function App() {
                         >✎</button>
                     </div>
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }}
-                            className="lg:hidden w-9 h-9 rounded-2xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition flex items-center justify-center text-sm"
-                        >⚙️</button>
                         <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
                     </div>
                 </header>
@@ -1963,10 +1957,11 @@ export default function App() {
                     <section className="px-4 pb-24">
                         <div className="flex items-center justify-between px-2 mb-4">
                             <h2 className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</h2>
-                            {view === 'favorites' && (
+                            {view === 'collection' && (
                                 <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
-                                    <button onClick={() => setFavSubView('all')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'all' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>All</button>
-                                    <button onClick={() => setFavSubView('aces')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'aces' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>🏆 Aces</button>
+                                    {[['all','All'],['unused','📦 Unused'],['favorites','⭐ Fav'],['aces','🏆 Aces']].map(([k,l]) => (
+                                        <button key={k} onClick={() => setCollectionSubView(k)} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${collectionSubView === k ? 'bg-orange-500 text-white' : 'text-slate-500'}`}>{l}</button>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -2088,10 +2083,11 @@ export default function App() {
                     <div className="w-[380px] shrink-0 h-full border-l border-slate-800 bg-slate-950/50 flex flex-col">
                         <div className="px-5 py-4 border-b border-slate-800 shrink-0 flex items-center justify-between">
                             <span className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</span>
-                            {view === 'favorites' && (
+                            {view === 'collection' && (
                                 <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
-                                    <button onClick={() => setFavSubView('all')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'all' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>All</button>
-                                    <button onClick={() => setFavSubView('aces')} className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase transition ${favSubView === 'aces' ? 'bg-yellow-500 text-black' : 'text-slate-500'}`}>🏆 Aces</button>
+                                    {[['all','All'],['unused','📦'],['favorites','⭐'],['aces','🏆']].map(([k,l]) => (
+                                        <button key={k} onClick={() => setCollectionSubView(k)} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${collectionSubView === k ? 'bg-orange-500 text-white' : 'text-slate-500'}`}>{l}</button>
+                                    ))}
                                 </div>
                             )}
                         </div>
@@ -2113,57 +2109,113 @@ export default function App() {
             {/* SEARCH DIRECTORY */}
             {showSearch && !showCommunityAdd && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex justify-between items-center mb-4">
                         <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
-                        <button onClick={() => { setShowSearch(false); setDbQuery(''); }} className="text-2xl">✕</button>
+                        <button onClick={() => { setShowSearch(false); setDbQuery(''); setSearchFilter('all'); }} className="text-2xl">✕</button>
                     </div>
-                    <input autoFocus placeholder="DISC MODEL..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full max-w-2xl mx-auto bg-slate-900 p-6 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-6 outline-none focus:border-orange-500" />
-                    <div className="flex-grow overflow-y-auto space-y-3 pb-10 max-w-2xl w-full mx-auto">
-                        {FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => (
-                            <div key={d.Model} onClick={() => { addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setShowSearch(false); }} className="p-6 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
-                                <div><div className="font-black uppercase italic text-lg">{d.Model}</div><div className="text-[10px] font-bold text-slate-500 uppercase">{d.Manufacturer} • {d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</div></div>
-                                <div className="text-orange-500 font-black text-xl">+</div>
-                            </div>
-                        ))}
-                        {communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).map(d => {
-                            const isMyDisc = d.added_by === session?.user?.id;
-                            return (
-                            <div key={d.id}
-                                onClick={() => {
-                                    if (!isMyDisc && !d.verified) {
-                                        // Another user added this — prompt to verify
-                                        setVerifyName(d.model);
-                                        setVerifyBrand(d.brand);
-                                        setVerifySpeed(d.speed);
-                                        setVerifyGlide(d.glide);
-                                        setVerifyTurn(d.turn);
-                                        setVerifyFade(d.fade);
-                                        setVerifyCorrecting(false);
-                                        setShowVerifyDisc({ ...d, _fromSearch: true });
-                                        setShowSearch(false);
-                                    } else {
-                                        // My own disc, or already verified — just add it
-                                        addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
-                                        setShowSearch(false);
-                                    }
-                                }}
-                                className={`p-6 rounded-2xl border flex justify-between items-center cursor-pointer hover:border-emerald-500 transition ${d.verified ? 'bg-slate-900 border-slate-800' : 'bg-emerald-900/20 border-emerald-600/30'}`}>
-                                <div>
-                                    <div className={`font-black uppercase italic text-lg ${d.verified ? 'text-white' : 'text-emerald-400'}`}>{d.model}</div>
-                                    <div className={`text-[10px] font-bold uppercase ${d.verified ? 'text-slate-500' : 'text-emerald-600'}`}>
-                                        {d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade}
-                                        {d.verified ? ' • ✓ Verified' : ' • Community — Tap to Verify & Add'}
-                                    </div>
-                                </div>
-                                <div className={`font-black text-xl ${d.verified ? 'text-orange-500' : 'text-emerald-500'}`}>+</div>
-                            </div>
-                            );
-                        })}
-                        {dbQuery && FACTORY_DB.filter(d => d.Model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && communitySuggestions.filter(d => d.model.toLowerCase().includes(dbQuery.toLowerCase())).length === 0 && (
-                            <button onClick={() => { setCommunityFormData({ name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5 }); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
-                                Can't find your disc? Add to Global Directory
+                    <input autoFocus placeholder="DISC MODEL, SPEED (e.g. 12), OR BRAND..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full max-w-2xl mx-auto bg-slate-900 p-5 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-3 outline-none focus:border-orange-500" />
+                    {/* Filter chips */}
+                    <div className="flex gap-1.5 flex-wrap max-w-2xl mx-auto w-full mb-4">
+                        {[
+                            ['all','All'],
+                            ['putter','Putters'],
+                            ['mid','Mids'],
+                            ['fairway','Fairways'],
+                            ['distance','Distance'],
+                            ['os','🔵 OS'],
+                            ['st','⚪ ST'],
+                            ['us','🔴 US'],
+                        ].map(([k,l]) => (
+                            <button key={k} onClick={() => setSearchFilter(k)}
+                                className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${searchFilter === k ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                                {l}
                             </button>
-                        )}
+                        ))}
+                    </div>
+                    <div className="flex-grow overflow-y-auto space-y-3 pb-10 max-w-2xl w-full mx-auto">
+                        {(() => {
+                            const stabBucketSearch = (t, f) => { const s = parseFloat(t) + parseFloat(f); return s >= 2 ? 'os' : s <= -1 ? 'us' : 'st'; };
+                            const typeFilter = (spd) => {
+                                const s = parseFloat(spd);
+                                if (searchFilter === 'putter') return s <= 3;
+                                if (searchFilter === 'mid') return s >= 4 && s <= 6;
+                                if (searchFilter === 'fairway') return s >= 7 && s <= 8;
+                                if (searchFilter === 'distance') return s >= 9;
+                                return true;
+                            };
+                            const stabFilter = (t, f) => {
+                                if (searchFilter === 'os' || searchFilter === 'st' || searchFilter === 'us') return stabBucketSearch(t, f) === searchFilter;
+                                return true;
+                            };
+                            const query = dbQuery.toLowerCase().trim();
+                            const isNumeric = !isNaN(parseFloat(query)) && query !== '';
+
+                            const factoryFiltered = FACTORY_DB.filter(d => {
+                                if (!typeFilter(d.Speed)) return false;
+                                if (!stabFilter(d.Turn, d.Fade)) return false;
+                                if (!query) return true;
+                                if (isNumeric) return parseFloat(d.Speed) === parseFloat(query) || parseFloat(d.Glide) === parseFloat(query);
+                                return d.Model.toLowerCase().includes(query) || d.Manufacturer.toLowerCase().includes(query);
+                            });
+
+                            const communityFiltered = communitySuggestions.filter(d => {
+                                if (!typeFilter(d.speed)) return false;
+                                if (!stabFilter(d.turn, d.fade)) return false;
+                                if (!query) return true;
+                                if (isNumeric) return parseFloat(d.speed) === parseFloat(query);
+                                return d.model.toLowerCase().includes(query) || d.brand.toLowerCase().includes(query);
+                            });
+
+                            return <>
+                                {factoryFiltered.map(d => (
+                                    <div key={d.Model} onClick={() => { addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setShowSearch(false); setSearchFilter('all'); }} className="p-5 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
+                                        <div>
+                                            <div className="font-black uppercase italic text-lg">{d.Model}</div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <span className="text-[10px] font-bold text-slate-500 uppercase">{d.Manufacturer}</span>
+                                                <span className="text-[9px] font-black text-slate-700 uppercase">{d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</span>
+                                                <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${stabBucketSearch(d.Turn, d.Fade) === 'os' ? 'bg-blue-900/40 text-blue-400' : stabBucketSearch(d.Turn, d.Fade) === 'us' ? 'bg-red-900/40 text-red-400' : 'bg-slate-800 text-slate-400'}`}>
+                                                    {stabBucketSearch(d.Turn, d.Fade) === 'os' ? '🔵 OS' : stabBucketSearch(d.Turn, d.Fade) === 'us' ? '🔴 US' : '⚪ ST'}
+                                                </span>
+                                                <span className="text-[8px] font-black text-slate-600 uppercase">
+                                                    {parseFloat(d.Speed) <= 3 ? 'Putter' : parseFloat(d.Speed) <= 6 ? 'Mid' : parseFloat(d.Speed) <= 8 ? 'Fairway' : 'Distance'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-orange-500 font-black text-xl">+</div>
+                                    </div>
+                                ))}
+                                {communityFiltered.map(d => {
+                                    const isMyDisc = d.added_by === session?.user?.id;
+                                    return (
+                                        <div key={d.id}
+                                            onClick={() => {
+                                                if (!isMyDisc && !d.verified) {
+                                                    setVerifyName(d.model); setVerifyBrand(d.brand); setVerifySpeed(d.speed); setVerifyGlide(d.glide); setVerifyTurn(d.turn); setVerifyFade(d.fade); setVerifyCorrecting(false); setShowVerifyDisc({ ...d, _fromSearch: true }); setShowSearch(false);
+                                                } else {
+                                                    addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
+                                                    setShowSearch(false); setSearchFilter('all');
+                                                }
+                                            }}
+                                            className={`p-5 rounded-2xl border flex justify-between items-center cursor-pointer hover:border-emerald-500 transition ${d.verified ? 'bg-slate-900 border-slate-800' : 'bg-emerald-900/20 border-emerald-600/30'}`}>
+                                            <div>
+                                                <div className={`font-black uppercase italic text-lg ${d.verified ? 'text-white' : 'text-emerald-400'}`}>{d.model}</div>
+                                                <div className={`text-[10px] font-bold uppercase ${d.verified ? 'text-slate-500' : 'text-emerald-600'}`}>
+                                                    {d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade}
+                                                    {d.verified ? ' • ✓ Verified' : ' • Community — Tap to Verify & Add'}
+                                                </div>
+                                            </div>
+                                            <div className={`font-black text-xl ${d.verified ? 'text-orange-500' : 'text-emerald-500'}`}>+</div>
+                                        </div>
+                                    );
+                                })}
+                                {query && factoryFiltered.length === 0 && communityFiltered.length === 0 && (
+                                    <button onClick={() => { setCommunityFormData({ name: dbQuery, brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5 }); setShowCommunityAdd(true); }} className="w-full p-6 bg-blue-600/10 border border-blue-500/30 rounded-2xl text-blue-400 font-black uppercase text-sm hover:border-blue-500 transition">
+                                        Can't find your disc? Add to Global Directory
+                                    </button>
+                                )}
+                            </>;
+                        })()}
                     </div>
                 </div>
             )}
@@ -2277,7 +2329,8 @@ export default function App() {
                             ...editing, name: fd.get('n'), brand: fd.get('b'), plastic: fd.get('pl'), weight: fd.get('wt'),
                             bag_id: fd.get('bag') || null, status: fd.get('lost') === 'on' ? 'lost' : 'active',
                             speed: parseFloat(fd.get('s')), glide: parseFloat(fd.get('g')), turn: parseFloat(fd.get('t')), fade: parseFloat(fd.get('f')),
-                            color: fd.get('c'), max_dist: savedDist, aces: parseInt(fd.get('a')), favorite: fd.get('fav') === 'on', is_idea: false
+                            color: fd.get('c'), max_dist: savedDist, aces: parseInt(fd.get('a')), favorite: fd.get('fav') === 'on', is_idea: false,
+                            value: fd.get('val') ? parseFloat(fd.get('val')) : null,
                         });
                         setEditing(null);
                     }} className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-lg space-y-4 my-auto">
@@ -2295,6 +2348,10 @@ export default function App() {
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT (g)" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white outline-none" />
+                            <div className="bg-slate-800 p-4 rounded-xl flex items-center gap-2">
+                                <span className="text-slate-500 font-black text-sm shrink-0">{settings.currency || 'USD'}</span>
+                                <input name="val" type="number" min="0" step="0.01" defaultValue={editing.value || ''} placeholder="Value" className="bg-transparent font-black text-emerald-400 w-full text-[16px] outline-none" />
+                            </div>
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
                             {['s', 'g', 't', 'f'].map((l, i) => {
@@ -2363,6 +2420,20 @@ export default function App() {
                                     <span>Unit System</span><span className="text-blue-500">{settings.unit === 'ft' ? 'Feet' : 'Meters'}</span>
                                 </button>
 
+                                {/* Currency */}
+                                <div className="bg-slate-800 p-4 rounded-2xl space-y-2">
+                                    <div className="text-[9px] font-black uppercase text-slate-500">Currency</div>
+                                    <div className="grid grid-cols-4 gap-1">
+                                        {[['USD','$ USD'],['EUR','€ EUR'],['GBP','£ GBP'],['NZD','NZ$'],['AUD','A$'],['CAD','C$'],['SEK','SEK'],['DKK','DKK']].map(([c,l]) => (
+                                            <button key={c} onClick={() => setSettings({...settings, currency: c})}
+                                                className={`py-2 rounded-xl text-[8px] font-black uppercase transition ${settings.currency === c ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                                {l}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[8px] text-slate-600 font-bold">Used when recording disc purchase value</p>
+                                </div>
+
                                 {/* Handedness + Skill Level — 2 col */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
@@ -2394,8 +2465,8 @@ export default function App() {
                                 {/* Throw Style */}
                                 <div className="bg-slate-800 p-3 rounded-2xl space-y-2">
                                     <div className="text-[9px] font-black uppercase text-slate-500">Throw Style</div>
-                                    <div className="grid grid-cols-4 gap-1">
-                                        {[['both','↕ Both'],['backhand','↩ BH'],['forehand','↪ FH'],['roller','🌀 Roll']].map(([s,l]) => (
+                                    <div className="grid grid-cols-3 gap-1">
+                                        {[['both','↕ Both'],['backhand','↩ BH'],['forehand','↪ FH']].map(([s,l]) => (
                                             <button key={s} onClick={() => setSettings({...settings, throwStyle: s})}
                                                 className={`py-2 rounded-xl text-[8px] font-black uppercase transition ${settings.throwStyle === s ? 'bg-orange-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
                                                 {l}
@@ -2605,7 +2676,7 @@ export default function App() {
                                     <button
                                         onClick={() => { if (confirm('Are you sure you want to sign out?')) supabase.auth.signOut(); }}
                                         className="w-full py-3 bg-red-900/20 border border-red-500/20 rounded-2xl font-black uppercase text-xs text-red-400 hover:bg-red-900/40 transition"
-                                    >Sign Out</button>
+                                    >🚫 Out of Bounds</button>
                                 </div>
 
                             </>)}
