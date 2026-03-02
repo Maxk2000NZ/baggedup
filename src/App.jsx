@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v40.00-AI';
+const APP_VERSION = 'v41.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -2263,7 +2263,7 @@ Guidelines:
                     <span className="text-base">🔥</span> Heatmap
                 </button>
                 <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-yellow-400 hover:bg-slate-800 transition">
-                    <span className="text-base">✅</span> Bag Check
+                    <span className="text-base">📋</span> Bag Check
                 </button>
                 <button onClick={() => setShowExport(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-purple-400 hover:bg-slate-800 transition">
                     <span className="text-base">📤</span> Export / Share
@@ -2315,7 +2315,7 @@ Guidelines:
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                         </button>
                         <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-lg">🔥</span> Heatmap</button>
-                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-lg">✅</span> Bag Check</button>
+                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-lg">📋</span> Bag Check</button>
                         <button onClick={() => { setShowExport(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition"><span className="text-lg">📤</span> Export / Share</button>
                         <div className="border-t border-slate-800 mt-3 pt-3">
                             <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 text-slate-500 font-black uppercase text-xs hover:text-slate-300 w-full">⚙️ Settings</button>
@@ -2331,51 +2331,56 @@ Guidelines:
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
                 {/* HEADER */}
-                <header className="h-14 border-b border-slate-800 flex items-center justify-between px-3 shrink-0 z-50 glass sticky top-0">
-                    {/* Left: menu + logo (mobile) / bag selector (desktop) */}
-                    <div className="flex items-center gap-2 min-w-0">
-                        <button onClick={() => setSidebarOpen(true)} className="text-xl text-slate-400 hover:text-white lg:hidden transition p-1">☰</button>
-                        <div className="hidden lg:flex items-center gap-2">
-                            <img src={LOGO_URL} alt="BaggedUp" className="h-6 w-6 object-contain" />
-                            <span className="font-black uppercase text-white text-xs tracking-wide">Bagged<span className="text-orange-500">Up</span></span>
-                        </div>
-                        <div className="flex items-center gap-1.5 ml-1">
-                            <div className="relative flex items-center">
-                                <span className="absolute left-2.5 text-orange-500 text-xs pointer-events-none">🎒</span>
-                                <select
-                                    value={activeBagId}
-                                    onChange={(e) => setActiveBagId(e.target.value)}
-                                    className="appearance-none bg-slate-800 border border-slate-700 text-orange-500 font-black text-[11px] uppercase pl-7 pr-6 py-2 rounded-xl outline-none cursor-pointer hover:border-orange-500 transition focus:border-orange-500 max-w-[130px] lg:max-w-[180px]"
-                                >
-                                    {bags.map(b => <option key={b.id} value={b.id} style={{background:'#1e293b'}}>{b.name}</option>)}
-                                </select>
-                                <span className="absolute right-2 text-slate-500 text-[9px] pointer-events-none">▾</span>
-                            </div>
-                            <button
-                                onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }}
-                                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition flex items-center justify-center text-xs"
-                                title="Rename bag"
-                            >✎</button>
-                        </div>
+                <header className="h-14 border-b border-slate-800 flex items-center px-3 gap-2 shrink-0 z-50 glass sticky top-0 w-full">
+                    {/* Mobile: hamburger + logo */}
+                    <button onClick={() => setSidebarOpen(true)} className="text-xl text-slate-400 hover:text-white lg:hidden transition p-1 shrink-0">☰</button>
+                    <div className="lg:hidden flex items-center gap-1.5 shrink-0">
+                        <img src={LOGO_URL} alt="BaggedUp" className="h-6 w-6 object-contain" />
+                        <span className="font-black uppercase text-white text-xs tracking-wide">Bagged<span className="text-orange-500">Up</span></span>
                     </div>
-                    {/* Center: app name (mobile only) */}
-                    <div className="lg:hidden absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none">
-                        <img src={LOGO_URL} alt="" className="h-5 w-5 object-contain opacity-80" />
-                        <span className="font-black uppercase text-white text-xs">Bagged<span className="text-orange-500">Up</span></span>
+
+                    {/* Bag selector — grows to fill space */}
+                    <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        <div className="relative flex items-center min-w-0">
+                            <span className="absolute left-2.5 text-orange-500 text-xs pointer-events-none">🎒</span>
+                            <select
+                                value={activeBagId}
+                                onChange={(e) => setActiveBagId(e.target.value)}
+                                className="appearance-none bg-slate-800 border border-slate-700 text-orange-500 font-black text-[11px] uppercase pl-7 pr-6 py-2 rounded-xl outline-none cursor-pointer hover:border-orange-500 transition focus:border-orange-500 w-full max-w-[220px]"
+                            >
+                                {bags.map(b => <option key={b.id} value={b.id} style={{background:'#1e293b'}}>{b.name}</option>)}
+                            </select>
+                            <span className="absolute right-2 text-slate-500 text-[9px] pointer-events-none">▾</span>
+                        </div>
+                        <button
+                            onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }}
+                            className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition flex items-center justify-center text-xs shrink-0"
+                            title="Rename bag"
+                        >✎</button>
                     </div>
-                    {/* Right: quick actions */}
-                    <div className="flex items-center gap-1.5">
+
+                    {/* Right: Coach + Add Disc */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* My Coach — bigger, always visible text on sm+ */}
                         <button
-                            onClick={() => { setShowMyCoach(true); }}
-                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/80 to-cyan-600/80 hover:from-emerald-500 hover:to-cyan-500 transition text-white font-black text-[9px] uppercase border border-emerald-500/40"
-                            title="My Coach"
-                        >🧑‍🏫 Coach</button>
+                            onClick={() => setShowMyCoach(true)}
+                            className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 transition text-white font-black text-[11px] uppercase shadow-lg shadow-emerald-900/40 border border-emerald-500/30"
+                        >🧑‍🏫 My Coach</button>
                         <button
-                            onClick={() => { setShowMyCoach(true); }}
-                            className="sm:hidden w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600/80 to-cyan-600/80 border border-emerald-500/40 flex items-center justify-center text-sm"
+                            onClick={() => setShowMyCoach(true)}
+                            className="sm:hidden w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-cyan-600 border border-emerald-500/30 flex items-center justify-center text-lg shadow-lg shadow-emerald-900/30"
                             title="My Coach"
                         >🧑‍🏫</button>
-                        <button onClick={() => setShowSearch(true)} className="bg-orange-600 hover:bg-orange-500 w-9 h-9 rounded-xl font-black text-lg flex items-center justify-center shadow-lg transition">+</button>
+
+                        {/* Add disc — desktop: pill with text, mobile: square */}
+                        <button
+                            onClick={() => setShowSearch(true)}
+                            className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-black text-[11px] uppercase shadow-lg shadow-orange-900/40 transition"
+                        >+ Add Disc</button>
+                        <button
+                            onClick={() => setShowSearch(true)}
+                            className="sm:hidden w-10 h-10 rounded-xl bg-orange-600 hover:bg-orange-500 font-black text-xl flex items-center justify-center shadow-lg shadow-orange-900/40 transition text-white"
+                        >+</button>
                     </div>
                 </header>
 
@@ -3040,7 +3045,7 @@ Guidelines:
                         <div className="px-8 pt-8 pb-0 shrink-0">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-2xl font-black italic uppercase text-orange-500">Settings</h2>
-                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="px-3 py-1.5 bg-orange-600/20 border border-orange-500/30 rounded-xl font-black uppercase text-[9px] text-orange-400 hover:bg-orange-600/30 transition mr-2">🎓 Tour</button><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 border border-orange-500/40 rounded-xl font-black uppercase text-[10px] text-orange-300 hover:bg-orange-600/40 hover:border-orange-400/60 transition mr-2 shadow-sm">🎓 App Tour</button><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
                             </div>
                             <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
                                 <button
@@ -3934,160 +3939,141 @@ Guidelines:
         })()}
 
         {/* =====================================================
-            TUTORIAL MODAL
+            TUTORIAL / WALKTHROUGH
         ===================================================== */}
         {showTutorial && (() => {
             const steps = [
                 {
-                    emoji: '👋',
-                    title: 'Welcome to BaggedUp!',
-                    color: 'text-orange-400',
-                    bg: 'bg-orange-500/10 border-orange-500/20',
-                    body: "The ultimate disc golf bag tracker. Let's take a 60-second tour so you know exactly what this app can do for your game.",
-                    hint: null,
+                    emoji: '👋', title: 'Welcome to BaggedUp!', color: 'text-orange-400',
+                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
+                    body: "The ultimate disc golf bag tracker. This quick tour shows every feature — and opens them so you can see them live. Hit Next or use the action buttons.",
+                    action: null, actionLabel: null, isFinal: false,
                 },
                 {
-                    emoji: '🎒',
-                    title: 'My Bag',
-                    color: 'text-orange-400',
-                    bg: 'bg-orange-500/10 border-orange-500/20',
-                    body: "Your active bag lives here. Add discs, mark favourites, track wear & condition, and see exactly what's in the bag you're throwing with today.",
-                    hint: '📦 Tip: You can have multiple bags — Main Bag, Tournament Bag, Casual Bag — and switch between them anytime.',
+                    emoji: '➕', title: 'Adding Discs', color: 'text-orange-400',
+                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
+                    body: "Tap '+ Add Disc' in the header to search our full disc database. Search any mould name, manufacturer, or flight numbers — then add it straight to your bag.",
+                    action: () => setShowSearch(true), actionLabel: '➕ Open Add Disc', isFinal: false,
                 },
                 {
-                    emoji: '📦',
-                    title: 'Collection',
-                    color: 'text-amber-400',
-                    bg: 'bg-amber-500/10 border-amber-500/20',
-                    body: "Every disc you own — in the bag or on the shelf. Track what you've got, what you've retired, and what you want to try next with the wishlist (Idea Discs).",
-                    hint: null,
+                    emoji: '🎒', title: 'My Bag', color: 'text-orange-400',
+                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
+                    body: "Your active bag with a live flight path chart. Every disc plots its S-curve so you can see your full bag spread at a glance. Tap any disc to edit, rate condition, or remove it.",
+                    action: () => setView('active'), actionLabel: '🎒 Go to My Bag', isFinal: false,
                 },
                 {
-                    emoji: '🪦',
-                    title: 'Lost Discs',
-                    color: 'text-slate-400',
-                    bg: 'bg-slate-700/30 border-slate-600/20',
-                    body: "Mark discs as lost and pin their GPS location. Share that location with your card mates so they can help search. No more mystery disappearances.",
-                    hint: null,
+                    emoji: '📦', title: 'Collection', color: 'text-amber-400',
+                    bg: 'from-amber-950/98 to-slate-950/99', border: 'border-amber-500/30',
+                    body: "Every disc you own — in-bag, retired, or on the wishlist. 'Idea Discs' are discs you're thinking about buying. Manage your full inventory here.",
+                    action: () => setView('collection'), actionLabel: '📦 Open Collection', isFinal: false,
                 },
                 {
-                    emoji: '🎯',
-                    title: 'AI Bag Builder',
-                    color: 'text-pink-400',
-                    bg: 'bg-pink-500/10 border-pink-500/20',
-                    body: "Describe your game in plain English — \"I need a stable distance driver for hyzer lines\" — and AI builds you a tailored disc recommendation list with flight paths.",
-                    hint: '🔑 Requires a free Gemini API key (add it in Settings). Takes 30 seconds at aistudio.google.com',
+                    emoji: '🪦', title: 'Lost Discs', color: 'text-slate-300',
+                    bg: 'from-slate-800/98 to-slate-950/99', border: 'border-slate-600/30',
+                    body: "Mark a disc as lost, pin its GPS location on a map, and share the exact coordinates with your card mates so they can help you find it.",
+                    action: () => setView('graveyard'), actionLabel: '🪦 Open Lost Discs', isFinal: false,
                 },
                 {
-                    emoji: '🧑‍🏫',
-                    title: 'My Coach',
-                    color: 'text-emerald-400',
-                    bg: 'bg-emerald-500/10 border-emerald-500/20',
-                    body: "Your personal AI disc golf coach. Ask it anything — fixing grip lock, reading wind, building a training plan, or YouTube video recommendations for your skill level.",
-                    hint: '🔑 Also uses your Gemini key from Settings.',
+                    emoji: '🎯', title: 'AI Bag Builder', color: 'text-pink-400',
+                    bg: 'from-pink-950/98 to-slate-950/99', border: 'border-pink-500/30',
+                    body: "Describe your game in plain English and AI recommends the perfect discs. Try: \"I need a beginner-friendly fairway driver that goes straight\". Needs a free Gemini key in Settings.",
+                    action: () => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }, actionLabel: '🎯 Open AI Bag Builder', isFinal: false,
                 },
                 {
-                    emoji: '🤝',
-                    title: 'Card Mates',
-                    color: 'text-cyan-400',
-                    bg: 'bg-cyan-500/10 border-cyan-500/20',
-                    body: "Add the people you play with. View their bags, see what discs they're throwing, and compete on the leaderboard (bag scores ranked by completeness and balance).",
-                    hint: null,
+                    emoji: '🧑‍🏫', title: 'My Coach', color: 'text-emerald-400',
+                    bg: 'from-emerald-950/98 to-slate-950/99', border: 'border-emerald-500/30',
+                    body: "Your personal AI disc golf coach. Ask it to fix your grip lock, recommend YouTube drills, build a 4-week training plan, or explain how to read wind. It knows your skill level and bag.",
+                    action: () => setShowMyCoach(true), actionLabel: '🧑‍🏫 Open My Coach', isFinal: false,
                 },
                 {
-                    emoji: '🔥',
-                    title: 'Heatmap',
-                    color: 'text-violet-400',
-                    bg: 'bg-violet-500/10 border-violet-500/20',
-                    body: "A visual breakdown of your disc collection by mould type — see at a glance if you're heavy on drivers and missing mid-range, or perfectly balanced.",
-                    hint: null,
+                    emoji: '🤝', title: 'Card Mates & Leaderboard', color: 'text-cyan-400',
+                    bg: 'from-cyan-950/98 to-slate-950/99', border: 'border-cyan-500/30',
+                    body: "Add your playing partners by email. See their bags, compare discs, and compete on the Leaderboard ranked by bag score. Try adding your first card mate now.",
+                    action: () => { setShowCardMates(true); setCardMatesTab('mates'); }, actionLabel: '🤝 Open Card Mates', isFinal: false,
                 },
                 {
-                    emoji: '✅',
-                    title: 'Bag Check',
-                    color: 'text-yellow-400',
-                    bg: 'bg-yellow-500/10 border-yellow-500/20',
-                    body: "Pre-round checklist. Walk through every disc in your bag, check it off, flag anything damaged, and confirm you're game-ready before you step to the tee.",
-                    hint: null,
+                    emoji: '🔥', title: 'Disc Heatmap', color: 'text-violet-400',
+                    bg: 'from-violet-950/98 to-slate-950/99', border: 'border-violet-500/30',
+                    body: "A visual grid of your collection by disc type. See instantly if you're stacked with drivers and missing mid-range, or perfectly balanced across all four categories.",
+                    action: () => setShowHeatmap(true), actionLabel: '🔥 Open Heatmap', isFinal: false,
                 },
                 {
-                    emoji: '📤',
-                    title: 'Export & Share',
-                    color: 'text-purple-400',
-                    bg: 'bg-purple-500/10 border-purple-500/20',
-                    body: "Export your full bag as a PDF or image — clean, shareable layout. Post it on Instagram, send it to your club, or just keep it as a backup record.",
-                    hint: null,
+                    emoji: '📋', title: 'Bag Check', color: 'text-yellow-400',
+                    bg: 'from-yellow-950/98 to-slate-950/99', border: 'border-yellow-500/30',
+                    body: "Pre-round checklist. Tick off every disc, flag anything damaged. Run this before every round and you'll never show up to the course missing a disc again.",
+                    action: () => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }, actionLabel: '📋 Open Bag Check', isFinal: false,
                 },
                 {
-                    emoji: '⚙️',
-                    title: "Now let's set you up!",
-                    color: 'text-orange-400',
-                    bg: 'bg-orange-500/10 border-orange-500/20',
-                    body: "Last step — head into Settings to set your skill level, throwing distances, handedness, and optionally your Gemini key for AI features. It takes 2 minutes and makes everything smarter.",
-                    hint: null,
-                    isFinal: true,
+                    emoji: '📤', title: 'Export & Share', color: 'text-purple-400',
+                    bg: 'from-purple-950/98 to-slate-950/99', border: 'border-purple-500/30',
+                    body: "Export your full bag as a clean PDF or image. Post it on Instagram, share with your club, or archive it before a bag change. Looks great on any device.",
+                    action: () => setShowExport(true), actionLabel: '📤 Open Export', isFinal: false,
+                },
+                {
+                    emoji: '⚙️', title: "Set Yourself Up", color: 'text-orange-400',
+                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
+                    body: "Open Settings to enter your skill level, throwing distances, and handedness. This personalises every recommendation. Add a free Gemini key (aistudio.google.com) to unlock AI features.",
+                    action: () => { setSettingsTab('account'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); },
+                    actionLabel: '⚙️ Open Settings', isFinal: true,
                 },
             ];
+
             const step = steps[tutorialStep];
+            const isFirst = tutorialStep === 0;
             const isLast = tutorialStep === steps.length - 1;
             const progress = ((tutorialStep + 1) / steps.length) * 100;
+
             return (
-                <div className="fixed inset-0 z-[500] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
-                    <div className="w-full max-w-lg mx-auto">
-                        {/* Progress bar */}
-                        <div className="mb-4 px-1">
-                            <div className="flex justify-between items-center mb-1.5">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-600">App Tour</span>
-                                <span className="text-[9px] font-black text-slate-600">{tutorialStep + 1} / {steps.length}</span>
-                            </div>
-                            <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4" style={{ background: 'rgba(2,6,23,0.80)', backdropFilter: 'blur(6px)' }}>
+                    <div className="w-full max-w-md mx-auto flex flex-col gap-3">
+
+                        {/* Progress */}
+                        <div className="flex items-center gap-3 px-1">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 shrink-0">App Tour {tutorialStep + 1}/{steps.length}</span>
+                            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                 <div className="h-full bg-orange-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
                             </div>
+                            <button onClick={() => setShowTutorial(false)} className="text-slate-600 hover:text-slate-400 text-[10px] font-black uppercase shrink-0 transition">Skip ✕</button>
                         </div>
 
                         {/* Card */}
-                        <div className={`rounded-3xl border p-8 ${step.bg}`}>
-                            {/* Emoji */}
-                            <div className="text-6xl mb-5 text-center">{step.emoji}</div>
+                        <div className={`rounded-3xl border bg-gradient-to-br ${step.bg} ${step.border} p-6 shadow-2xl`}>
+                            <div className="flex items-center gap-3 mb-3">
+                                <div className="text-4xl shrink-0">{step.emoji}</div>
+                                <h2 className={`text-xl font-black uppercase italic leading-tight ${step.color}`}>{step.title}</h2>
+                            </div>
+                            <p className="text-slate-300 text-sm font-medium leading-relaxed mb-5">{step.body}</p>
 
-                            {/* Title */}
-                            <h2 className={`text-2xl font-black uppercase italic text-center mb-3 ${step.color}`}>{step.title}</h2>
-
-                            {/* Body */}
-                            <p className="text-slate-300 text-sm font-semibold text-center leading-relaxed mb-4">{step.body}</p>
-
-                            {/* Hint */}
-                            {step.hint && (
-                                <div className="bg-slate-900/60 rounded-2xl px-4 py-3 mb-4 border border-slate-700/40">
-                                    <p className="text-slate-400 text-xs font-bold text-center">{step.hint}</p>
-                                </div>
+                            {/* Feature action button — closes tour, opens the real thing, then re-opens tour */}
+                            {step.action && (
+                                <button
+                                    onClick={() => { setShowTutorial(false); step.action(); setTimeout(() => setShowTutorial(true), 250); }}
+                                    className={`w-full py-3 rounded-2xl font-black uppercase text-sm border mb-4 transition hover:scale-[1.01] active:scale-[0.99] shadow-lg ${step.border} bg-white/5 hover:bg-white/10 ${step.color}`}
+                                >
+                                    {step.actionLabel} ↗
+                                </button>
                             )}
 
-                            {/* Buttons */}
-                            <div className="flex gap-3 mt-6">
-                                {tutorialStep > 0 && (
-                                    <button onClick={() => setTutorialStep(t => t - 1)} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">← Back</button>
+                            <div className="flex gap-2">
+                                {!isFirst && (
+                                    <button onClick={() => setTutorialStep(t => t - 1)} className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition shrink-0">← Back</button>
                                 )}
-                                {!isLast && (
-                                    <>
-                                        <button onClick={() => { setShowTutorial(false); }} className="px-4 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-500 transition">Skip Tour</button>
-                                        <button onClick={() => setTutorialStep(t => t + 1)} className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
-                                            Next →
-                                        </button>
-                                    </>
-                                )}
-                                {isLast && (
-                                    <button onClick={() => { setShowTutorial(false); setSettingsTab('account'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
-                                        ⚙️ Open Settings →
+                                {!isLast ? (
+                                    <button onClick={() => setTutorialStep(t => t + 1)} className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
+                                        Next Feature →
+                                    </button>
+                                ) : (
+                                    <button onClick={() => { setShowTutorial(false); if (step.action) step.action(); }} className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
+                                        ⚙️ Finish & Open Settings
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Dot indicators */}
-                        <div className="flex justify-center gap-1.5 mt-4">
+                        {/* Dot nav */}
+                        <div className="flex justify-center gap-1.5">
                             {steps.map((_, i) => (
-                                <button key={i} onClick={() => setTutorialStep(i)} className={`rounded-full transition-all ${i === tutorialStep ? 'w-4 h-2 bg-orange-500' : 'w-2 h-2 bg-slate-700 hover:bg-slate-600'}`} />
+                                <button key={i} onClick={() => setTutorialStep(i)} className={`rounded-full transition-all duration-300 ${i === tutorialStep ? 'w-5 h-2 bg-orange-500' : i < tutorialStep ? 'w-2 h-2 bg-orange-700' : 'w-2 h-2 bg-slate-700 hover:bg-slate-600'}`} />
                             ))}
                         </div>
                     </div>
