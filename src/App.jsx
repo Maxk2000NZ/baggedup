@@ -642,6 +642,9 @@ export default function App() {
     // windConfig: { type: 'calm'|'headwind'|'tailwind'|'crosswind', speed: number (mph or km/h in display), direction: 'ltr'|'rtl' }
     const [windConfig, setWindConfig] = useState({ type: 'calm', speed: 0, direction: 'ltr' });
     const [showWindPanel, setShowWindPanel] = useState(false);
+    const [releaseAngle, setReleaseAngle] = useState('flat'); // 'flat' | 'hyzer' | 'anhyzer'
+    const [chartZoom, setChartZoom] = useState(1); // 1 | 1.5 | 2
+    const [discDetailId, setDiscDetailId] = useState(null); // id of disc being spotlighted
     const [showCoach, setShowCoach] = useState(false);
     const [activeBagId, setActiveBagId] = useState('');
     const [bags, setBags] = useState([]);
@@ -1754,15 +1757,18 @@ Guidelines:
 
     const calculatePath = (d) => {
         const s = getStats(d);
+        // Release angle modifiers: hyzer increases effective fade, reduces turn; anhyzer does opposite
+        const relTurnMod  = releaseAngle === 'hyzer' ? 1.5 : releaseAngle === 'anhyzer' ? -2.0 : 0;
+        const relFadeMod  = releaseAngle === 'hyzer' ? 1.4 : releaseAngle === 'anhyzer' ? -0.6 : 0;
+        const adjTurn = Math.max(-5, Math.min(3, s.turn + relTurnMod));
+        const adjFade = Math.max(0, Math.min(6, s.fade + relFadeMod));
         const points = [];
         for (let i = 0; i <= 100; i++) {
             const p = i / 100;
-            // BH RH and FH LH curve the same way; FH mirrors BH (opposite hand effect)
             const isRH = settings.handedness === 'right';
             const isBH = throwView === 'bh';
-            // Mirror when: FH+RH or BH+LH (one flip = mirror, two flips = same)
             const handMult = (isRH === isBH) ? 1 : -1;
-            const x = handMult * ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
+            const x = handMult * ((Math.sin(p * Math.PI * 0.75) * (adjTurn * -10)) + (Math.pow(p, 2.5) * (adjFade * -8))) * Math.pow(p, 1.8);
             points.push({ x, y: settings.unit === 'm' ? p * s.dist * 0.3048 : p * s.dist });
         }
         return points;
@@ -2022,32 +2028,46 @@ Guidelines:
     // --- CHART RENDERING ---
     useEffect(() => {
         if (!session) return;
-        const filtered = discs.filter(d => {
+        const allFiltered = discs.filter(d => {
             if (view === 'graveyard') return d.status === 'lost';
             if (view === 'collection') return d.status === 'active';
             return d.bag_id === activeBagId && d.status === 'active';
         });
+        // If a disc is spotlighted, show only that disc on path chart
+        const filtered = discDetailId
+            ? allFiltered.filter(d => d.id === discDetailId)
+            : allFiltered;
+
+        // Build config with zoom applied to y-axis max
+        const buildZoomed = (discs, mode) => {
+            const cfg = buildChartConfig(discs, mode);
+            if (mode === 'path' && chartZoom > 1 && cfg.options?.scales?.y) {
+                const baseMax = cfg.options.scales.y.max || 600;
+                cfg.options.scales.y.max = Math.round(baseMax / chartZoom);
+            }
+            return cfg;
+        };
 
         // Mobile: single toggled chart
         const mobileCanvas = document.getElementById('mainChart');
         if (mobileCanvas) {
             if (chartRef.current) chartRef.current.destroy();
-            chartRef.current = new Chart(mobileCanvas.getContext('2d'), buildChartConfig(filtered, chartMode));
+            chartRef.current = new Chart(mobileCanvas.getContext('2d'), buildZoomed(filtered, chartMode));
         }
 
         // Desktop: both charts always visible
         const pathCanvas = document.getElementById('desktopPathChart');
         if (pathCanvas) {
             if (desktopPathRef.current) desktopPathRef.current.destroy();
-            desktopPathRef.current = new Chart(pathCanvas.getContext('2d'), buildChartConfig(filtered, 'path'));
+            desktopPathRef.current = new Chart(pathCanvas.getContext('2d'), buildZoomed(filtered, 'path'));
         }
 
         const stabCanvas = document.getElementById('desktopStabChart');
         if (stabCanvas) {
             if (desktopStabRef.current) desktopStabRef.current.destroy();
-            desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildChartConfig(filtered, 'matrix'));
+            desktopStabRef.current = new Chart(stabCanvas.getContext('2d'), buildZoomed(allFiltered, 'matrix'));
         }
-    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windConfig, throwView]);
+    }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windConfig, throwView, releaseAngle, chartZoom, discDetailId]);
 
     // --- AUTH RENDER ---
     if (!session || authMode === 'profile_setup') return (
@@ -2309,7 +2329,13 @@ Guidelines:
                                 )}
                                 <div className="min-w-0">
                                     <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">
+                                        <button
+                                            onClick={() => setDiscDetailId(discDetailId === d.id ? null : d.id)}
+                                            className={`hover:text-orange-400 transition text-left ${discDetailId === d.id ? 'text-orange-400' : ''}`}
+                                            title="Spotlight this disc on the chart"
+                                        >
                                         {d.name}
+                                        </button>
                                         {d.aces > 0 && (
                                             <span className="ml-2 inline-flex gap-0.5">
                                                 {Array.from({length: Math.min(d.aces, 5)}).map((_, i) => (
@@ -2434,11 +2460,14 @@ Guidelines:
             <div className="hidden lg:flex w-56 h-full bg-slate-900 border-r border-slate-800 px-3 py-4 flex-col gap-0.5 shrink-0 overflow-y-auto">
                 {/* Logo + username */}
                 <div className="flex items-center gap-2 px-2 pb-3 border-b border-slate-800 mb-2">
-                    <img src={LOGO_URL} alt="BaggedUp Logo" className="h-8 w-8 object-contain shrink-0" />
-                    <div className="min-w-0">
+                    <a href="/" title="Back to Homepage" className="shrink-0">
+                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-8 w-8 object-contain hover:opacity-80 transition" />
+                    </a>
+                    <div className="min-w-0 flex-1">
                         <div className="font-black uppercase text-white text-[10px] tracking-wide leading-tight">Bagged<span className="text-orange-500">Up</span></div>
                         {myProfile?.username && <div className="text-[9px] font-bold text-slate-500 truncate">@{myProfile.username}</div>}
                     </div>
+                    <a href="/" title="Homepage" className="text-slate-600 hover:text-slate-300 transition text-[9px] font-black uppercase tracking-wide">🏠</a>
                 </div>
                 {/* MY DISCS group */}
                 <div className="px-2 pt-1 pb-1"><span className="text-[8px] font-black uppercase tracking-widest text-slate-600">My Discs</span></div>
@@ -2523,6 +2552,7 @@ Guidelines:
                         <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-lg">📋</span> Post-Round Check</button>
                         <button onClick={() => { setShowExport(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition"><span className="text-lg">📤</span> Export / Share</button>
                         <div className="border-t border-slate-800 mt-3 pt-3">
+                            <a href="/" className="flex items-center gap-4 p-3.5 text-slate-500 font-black uppercase text-xs hover:text-slate-300 w-full">🏠 Homepage</a>
                             <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 text-slate-500 font-black uppercase text-xs hover:text-slate-300 w-full">⚙️ Settings</button>
                             <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-4 p-3.5 text-red-500 font-black uppercase text-xs hover:text-red-400 w-full">🚫 Out of Bounds</button>
                         </div>
@@ -2683,6 +2713,29 @@ Guidelines:
                     )}
 
                     <section className="p-4">
+                        {/* Disc spotlight nav */}
+                        {discDetailId && (() => {
+                            const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+                            const idx = bagDiscs.findIndex(d => d.id === discDetailId);
+                            const disc = bagDiscs[idx];
+                            const prev = bagDiscs[idx - 1];
+                            const next = bagDiscs[idx + 1];
+                            if (!disc) return null;
+                            return (
+                                <div className="flex items-center gap-2 mb-3 bg-slate-900/80 border border-orange-500/30 rounded-2xl px-3 py-2">
+                                    <button onClick={() => setDiscDetailId(prev?.id || null)} disabled={!prev}
+                                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm transition ${prev ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-900 text-slate-700 cursor-not-allowed'}`}>‹</button>
+                                    <div className="flex-1 text-center">
+                                        <div className="text-[10px] font-black uppercase text-orange-400">👁 Spotlighting</div>
+                                        <div className="font-black text-sm uppercase text-white">{disc.name} <span className="text-slate-500 font-bold text-xs">{disc.brand}</span></div>
+                                        <div className="text-[9px] text-slate-500 font-bold">{disc.speed}/{disc.glide}/{disc.turn}/{disc.fade}</div>
+                                    </div>
+                                    <button onClick={() => setDiscDetailId(next?.id || null)} disabled={!next}
+                                        className={`w-8 h-8 rounded-xl flex items-center justify-center font-black text-sm transition ${next ? 'bg-slate-800 text-white hover:bg-slate-700' : 'bg-slate-900 text-slate-700 cursor-not-allowed'}`}>›</button>
+                                    <button onClick={() => setDiscDetailId(null)} className="w-8 h-8 rounded-xl bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs font-black transition">✕</button>
+                                </div>
+                            );
+                        })()}
                         <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl">
                             <div className="flex gap-2 mb-4 max-w-xs mx-auto w-full">
                                 <div className="flex bg-slate-800/50 p-1 rounded-2xl flex-1">
@@ -2696,6 +2749,23 @@ Guidelines:
                                     </div>
                                 )}
                             </div>
+                            {/* Release angle + zoom row */}
+                            {chartMode === 'path' && (
+                                <div className="flex gap-2 mb-3 max-w-xs mx-auto w-full">
+                                    <div className="flex bg-slate-800/50 p-1 rounded-2xl flex-1">
+                                        {[['flat','—'],['hyzer','↙HYZ'],['anhyzer','↗ANH']].map(([v,l]) => (
+                                            <button key={v} onClick={() => setReleaseAngle(v)}
+                                                className={`flex-1 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${releaseAngle === v ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>{l}</button>
+                                        ))}
+                                    </div>
+                                    <div className="flex bg-slate-800/50 p-1 rounded-2xl">
+                                        {[[1,'1×'],[1.5,'1.5×'],[2,'2×']].map(([v,l]) => (
+                                            <button key={v} onClick={() => setChartZoom(v)}
+                                                className={`px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${chartZoom === v ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>{l}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div className="h-[400px] w-full"><canvas id="mainChart"></canvas></div>
                         </div>
                     </section>
@@ -2841,6 +2911,20 @@ Guidelines:
                                 <div className="flex items-center justify-between mb-3 shrink-0">
                                     <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">✈ Flight Path</div>
                                     <div className="flex items-center gap-2">
+                                        {/* Release angle */}
+                                        <div className="flex bg-slate-800 p-0.5 rounded-xl">
+                                            {[['flat','—'],['hyzer','↙HYZ'],['anhyzer','↗ANH']].map(([v,l]) => (
+                                                <button key={v} onClick={() => setReleaseAngle(v)}
+                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${releaseAngle === v ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{l}</button>
+                                            ))}
+                                        </div>
+                                        {/* Zoom */}
+                                        <div className="flex bg-slate-800 p-0.5 rounded-xl">
+                                            {[[1,'1×'],[1.5,'1.5×'],[2,'2×']].map(([v,l]) => (
+                                                <button key={v} onClick={() => setChartZoom(v)}
+                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${chartZoom === v ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{l}</button>
+                                            ))}
+                                        </div>
                                         <span className="text-[9px] font-bold text-slate-600 uppercase">
                                             {throwView === 'bh'
                                                 ? `${settings.unit === 'm' ? Math.round((settings.bhPower || 350) * 0.3048) : (settings.bhPower || 350)}${settings.unit}`
@@ -2991,7 +3075,18 @@ Guidelines:
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
                     <div className="flex justify-between items-center mb-4">
                         <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
-                        <button onClick={() => { setShowSearch(false); setDbQuery(''); setSearchFilter('all'); }} className="text-2xl">✕</button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const allDiscs = [...FACTORY_DB, ...communitySuggestions.filter(d => d.approved !== false)];
+                                    const rand = allDiscs[Math.floor(Math.random() * allDiscs.length)];
+                                    if (rand) setDbQuery(rand.Model || rand.model || '');
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-pink-600/20 border border-pink-500/40 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-pink-600/30 transition"
+                                title="Disc Tinder — random disc"
+                            >🔀 Disc Tinder</button>
+                            <button onClick={() => { setShowSearch(false); setDbQuery(''); setSearchFilter('all'); }} className="text-2xl">✕</button>
+                        </div>
                     </div>
                     <input autoFocus placeholder="DISC MODEL, BRAND, SPEED, OR FLIGHT NUMBERS (e.g. 7/5/-1/2)..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full max-w-2xl mx-auto bg-slate-900 p-5 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-3 outline-none focus:border-orange-500" />
                     {/* Filter chips */}
