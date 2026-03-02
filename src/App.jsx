@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v44.00-AI';
+const APP_VERSION = 'v45.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -2232,9 +2232,6 @@ Guidelines:
                                         )}
                                     </h4>
                                     <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g{d.value ? ` • ${settings.currency || 'USD'} ${parseFloat(d.value).toFixed(2)}` : ''}</p>
-                                    {d.status === 'lost' && (d.lost_lat || lostGPS[d.id]) && (
-                                        <button onClick={() => shareLostLocation(d)} className="text-[9px] font-black text-red-400 uppercase mt-0.5 hover:text-red-300 transition">📍 Share Location →</button>
-                                    )}
                                     {d.status === 'lost' && d.lost_note && (
                                         <p className="text-[10px] font-bold text-red-400/70 mt-0.5 truncate">📍 {d.lost_note}</p>
                                     )}
@@ -2270,7 +2267,7 @@ Guidelines:
                                     );
                                 })}
                             </div>
-                            {!d.is_idea && (
+                            {!d.is_idea && d.status !== 'lost' && (
                                 <div className="flex-grow ml-6">
                                     <div className="flex justify-between text-[8px] font-black text-slate-700 uppercase mb-1">
                                         <span>Fresh</span><span>Beat</span>
@@ -2296,7 +2293,7 @@ Guidelines:
                             {d.is_idea && (
                                 <div className="flex flex-col gap-1.5 ml-4 shrink-0">
                                     <button
-                                        onClick={() => updateDiscInDB({ ...d, is_idea: false })}
+                                        onClick={() => { updateDiscInDB({ ...d, is_idea: false }); setEditing({ ...d, is_idea: false }); }}
                                         className="bg-emerald-600 hover:bg-emerald-500 text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition whitespace-nowrap"
                                     >
                                         ✓ Bought
@@ -2313,12 +2310,19 @@ Guidelines:
                                     </button>
                                 </div>
                             )}
-                            {d.status === 'lost' && !d.lost_lat && !lostGPS[d.id] && (
-                                <button onClick={() => captureGPS(d.id)} className="ml-4 shrink-0 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition whitespace-nowrap">
-                                    📍 Pin Location
-                                </button>
-                            )}
                         </div>
+                        {/* Lost disc GPS row — always below flight numbers */}
+                        {d.status === 'lost' && (
+                            <div className="mt-2">
+                                {(!d.lost_lat && !lostGPS[d.id]) ? (
+                                    <button onClick={() => captureGPS(d.id)} className="bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition whitespace-nowrap">
+                                        📍 Pin Location
+                                    </button>
+                                ) : (
+                                    <button onClick={() => shareLostLocation(d)} className="text-[9px] font-black text-red-400 uppercase hover:text-red-300 transition">📍 Share Location →</button>
+                                )}
+                            </div>
+                        )}
                     </div>
                 );
             })}
@@ -2388,7 +2392,7 @@ Guidelines:
                     <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-red-500 hover:bg-red-900/20 w-full transition">
                         <span className="text-base">🚫</span> Out of Bounds
                     </button>
-                    <div className="text-[8px] font-bold text-slate-700 uppercase text-center pt-1">{APP_VERSION}</div>
+                    <div className="text-[8px] font-bold text-slate-700 uppercase text-center pt-1">{APP_VERSION} • © {new Date().getFullYear()} BaggedUp</div>
                 </div>
             </div>
 
@@ -2447,10 +2451,7 @@ Guidelines:
                 <header className="h-14 border-b border-slate-800 flex items-center px-3 gap-2 shrink-0 z-50 glass sticky top-0 w-full">
                     {/* Mobile: hamburger + logo */}
                     <button onClick={() => setSidebarOpen(true)} className="text-xl text-slate-400 hover:text-white lg:hidden transition p-1 shrink-0">☰</button>
-                    <div className="lg:hidden flex items-center gap-1.5 shrink-0">
-                        <img src={LOGO_URL} alt="BaggedUp" className="h-6 w-6 object-contain" />
-                        <span className="font-black uppercase text-white text-xs tracking-wide">Bagged<span className="text-orange-500">Up</span></span>
-                    </div>
+                    {/* Mobile logo hidden — save header space */}
 
                     {/* Bag selector — grows to fill space */}
                     <div className="flex items-center gap-1.5 flex-1 min-w-0">
@@ -3001,7 +3002,17 @@ Guidelines:
 
                             return <>
                                 {factoryFiltered.map(d => (
-                                    <div key={d.Model} onClick={() => { addDiscToDB({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true }); setShowSearch(false); setSearchFilter('all'); }} className="p-5 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
+                                    <div key={d.Model} onClick={async () => {
+                                        const discObj = { name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.round(Math.random() * 360)},70%,60%)`, max_dist: 0, aces: 0, is_idea: false };
+                                        const payload = { ...discObj, user_id: session.user.id };
+                                        const { data, error } = await supabase.from('discs').insert(payload).select().single();
+                                        if (!error && data) {
+                                            setDiscs(prev => [...prev, data]);
+                                            recordDiscEvent(supabase, discObj.name, discObj.brand, discObj.speed, discObj.turn, discObj.fade, session.user.id);
+                                            setShowSearch(false); setSearchFilter('all');
+                                            setEditing(data); // ← open edit modal immediately
+                                        }
+                                    }} className="p-5 bg-slate-900 rounded-2xl border border-slate-800 flex justify-between items-center cursor-pointer hover:border-orange-500 transition">
                                         <div>
                                             <div className="font-black uppercase italic text-lg">{d.Model}</div>
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -3023,10 +3034,16 @@ Guidelines:
                                     const isPending = !d.approved;
                                     return (
                                         <div key={d.id}
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 // Add directly — no more user verification. Admin handles approval.
-                                                addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: false });
-                                                setShowSearch(false); setSearchFilter('all');
+                                                const discObj = { name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.round(Math.random() * 360)},70%,60%)`, max_dist: 0, aces: 0, is_idea: false };
+                                                const payload = { ...discObj, user_id: session.user.id };
+                                                const { data, error } = await supabase.from('discs').insert(payload).select().single();
+                                                if (!error && data) {
+                                                    setDiscs(prev => [...prev, data]);
+                                                    setShowSearch(false); setSearchFilter('all');
+                                                    setEditing(data);
+                                                }
                                             }}
                                             className={`p-5 rounded-2xl border flex justify-between items-center cursor-pointer hover:border-orange-500 transition ${isPending ? 'bg-slate-900/60 border-slate-700/60' : 'bg-emerald-900/10 border-emerald-600/20'}`}>
                                             <div>
@@ -3362,6 +3379,35 @@ Guidelines:
                                         </div>
                                     ))}
                                     <p className="text-[8px] font-bold text-slate-700 px-1">👁 Public = visible to Card Mates. 🔒 Private = only you.</p>
+                                </div>
+
+                                {/* Terms & Copyright */}
+                                <div className="border-t border-slate-800 pt-4 space-y-3">
+                                    <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Legal</p>
+
+                                    {/* Terms of Use */}
+                                    <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-2">
+                                        <p className="text-[9px] font-black uppercase text-slate-400">📋 Terms of Use</p>
+                                        <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                                            BaggedUp is provided for personal, non-commercial use. By using this app you agree not to reverse-engineer, redistribute, or commercially exploit any part of the service. All disc flight data is provided for informational purposes — real-world performance varies by thrower, conditions, and disc wear.
+                                        </p>
+                                        <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                                            Community-submitted disc data is user-generated and subject to admin review. BaggedUp reserves the right to remove inaccurate or inappropriate submissions. Your data is stored securely via Supabase and is not sold to third parties.
+                                        </p>
+                                        <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                                            AI features (Bag Builder & My Coach) use third-party APIs with your own API key. BaggedUp is not responsible for AI-generated recommendations — always apply your own judgement on the course.
+                                        </p>
+                                    </div>
+
+                                    {/* Copyright */}
+                                    <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 space-y-1">
+                                        <p className="text-[9px] font-black uppercase text-slate-400">© Copyright</p>
+                                        <p className="text-[10px] font-bold text-slate-400">© {new Date().getFullYear()} BaggedUp. All rights reserved.</p>
+                                        <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
+                                            The BaggedUp name, logo, and app design are proprietary. Disc manufacturer names, model names, and flight numbers belong to their respective owners and are referenced for informational purposes only. BaggedUp is not affiliated with Innova, Discraft, or any disc manufacturer.
+                                        </p>
+                                        <p className="text-[10px] font-bold text-slate-600 mt-1">{APP_VERSION}</p>
+                                    </div>
                                 </div>
                             </>)}
 
@@ -4171,10 +4217,9 @@ Guidelines:
 
             return (
                 // Semi-transparent overlay — user can see the real app behind it
-                <div className="fixed inset-0 z-[490] pointer-events-none" style={{ background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(2px)' }}>
-                    {/* Tooltip card — positioned bottom, pointer-events active */}
-                    <div className="absolute bottom-0 left-0 right-0 p-3 pb-4 sm:p-5 sm:pb-6 pointer-events-auto">
-                        <div className="max-w-lg mx-auto flex flex-col gap-2.5">
+                <div className="fixed inset-0 z-[490] pointer-events-none flex items-center justify-center" style={{ background: 'rgba(2,6,23,0.70)', backdropFilter: 'blur(2px)' }}>
+                    {/* Tooltip card — centred, pointer-events active */}
+                    <div className="w-full max-w-lg px-4 pointer-events-auto flex flex-col gap-2.5">
 
                             {/* Progress row */}
                             <div className="flex items-center gap-3 px-0.5">
@@ -4230,7 +4275,6 @@ Guidelines:
                                 </div>
                             </div>
                         </div>
-                    </div>
                 </div>
             );
         })()}
@@ -5616,6 +5660,37 @@ Guidelines:
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="text-sm font-black uppercase text-slate-400">All Users ({adminUsers.length})</h3>
                         </div>
+
+                        {/* API Key Assignment section */}
+                        <div className="bg-slate-900 border border-violet-500/30 rounded-2xl p-4 mb-4 space-y-3">
+                            <p className="text-[9px] font-black uppercase text-violet-400 tracking-widest">🔑 Assign Gemini API Key to User</p>
+                            <p className="text-[10px] font-bold text-slate-500">Paste a key and assign it to a specific user's settings. The user must exist in the system.</p>
+                            <div className="space-y-2">
+                                <input
+                                    id="adminKeyUserId"
+                                    placeholder="User ID (from profiles table)"
+                                    className="w-full bg-slate-800 border border-slate-700 focus:border-violet-500 px-3 py-2.5 rounded-xl text-white font-mono text-[11px] outline-none transition placeholder-slate-600"
+                                />
+                                <input
+                                    id="adminKeyValue"
+                                    type="password"
+                                    placeholder="AIza... (Gemini API key)"
+                                    className="w-full bg-slate-800 border border-slate-700 focus:border-violet-500 px-3 py-2.5 rounded-xl text-white font-mono text-[11px] outline-none transition placeholder-slate-600"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        const userId = document.getElementById('adminKeyUserId')?.value?.trim();
+                                        const key = document.getElementById('adminKeyValue')?.value?.trim();
+                                        if (!userId || !key) { alert('Enter both user ID and API key'); return; }
+                                        const { error } = await supabase.from('settings').update({ gemini_key: key }).eq('user_id', userId);
+                                        if (error) { alert('Error: ' + error.message); }
+                                        else { alert('✅ API key assigned to user!'); document.getElementById('adminKeyUserId').value = ''; document.getElementById('adminKeyValue').value = ''; }
+                                    }}
+                                    className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 rounded-xl font-black uppercase text-xs text-white transition"
+                                >🔑 Assign Key</button>
+                            </div>
+                        </div>
+
                         {adminUsers.length === 0 && <div className="text-center py-12 text-slate-600 font-bold text-sm">No users found — check profiles table</div>}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {adminUsers.map(user => (
@@ -5628,6 +5703,8 @@ Guidelines:
                                         {user.email && <div className="text-[9px] font-bold text-slate-500 truncate">{user.email}</div>}
                                         {user.pdga_number && <div className="text-[9px] font-bold text-cyan-500">PDGA #{user.pdga_number}</div>}
                                         <div className="text-[8px] text-slate-700 font-bold mt-0.5">{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
+                                        {/* Copy user ID for key assignment */}
+                                        <button onClick={() => { navigator.clipboard?.writeText(user.user_id || user.id); alert('User ID copied!'); }} className="text-[7px] font-black uppercase text-slate-700 hover:text-violet-400 transition mt-0.5">📋 Copy ID</button>
                                     </div>
                                     <div className="flex flex-col gap-1 shrink-0">
                                         {user.banned
