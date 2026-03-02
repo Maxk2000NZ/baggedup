@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v42.00-AI';
+const APP_VERSION = 'v43.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -968,7 +968,7 @@ export default function App() {
 
     const createBag = async (name, capacity = 18) => {
         const { data } = await supabase.from('bags').insert({ user_id: session.user.id, name, capacity: capacity || 18 }).select().single();
-        if (data) { setBags([...bags, data]); setActiveBagId(data.id); setView('active'); }
+        if (data) { setBags(prev => [...prev, data]); setActiveBagId(data.id); setView('active'); }
     };
 
     const updateBagName = async (id, name) => {
@@ -2315,7 +2315,7 @@ Guidelines:
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
                         </button>
                         <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-lg">🔥</span> Heatmap</button>
-                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-lg">📋</span> Bag Check</button>
+                        <button onClick={() => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-lg">📋</span> Post-Round Check</button>
                         <button onClick={() => { setShowExport(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 rounded-2xl font-black uppercase text-xs text-purple-400 hover:bg-slate-800 transition"><span className="text-lg">📤</span> Export / Share</button>
                         <div className="border-t border-slate-800 mt-3 pt-3">
                             <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-3.5 text-slate-500 font-black uppercase text-xs hover:text-slate-300 w-full">⚙️ Settings</button>
@@ -3045,7 +3045,7 @@ Guidelines:
                         <div className="px-8 pt-8 pb-0 shrink-0">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-2xl font-black italic uppercase text-orange-500">Settings</h2>
-                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 border border-orange-500/40 rounded-xl font-black uppercase text-[10px] text-orange-300 hover:bg-orange-600/40 hover:border-orange-400/60 transition mr-2 shadow-sm">🎓 App Tour</button><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 border border-orange-500/40 rounded-xl font-black uppercase text-[10px] text-orange-300 hover:bg-orange-600/40 hover:border-orange-400/60 transition mr-2 shadow-sm">🎓 Teach me BaggedUp</button><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
                             </div>
                             <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
                                 <button
@@ -3209,36 +3209,36 @@ Guidelines:
                                     className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition">
                                     Save & Close
                                 </button>
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <h3 className="text-[10px] font-black uppercase text-slate-500">Your Bags</h3>
-                                        <span className="text-[9px] font-bold text-slate-600 uppercase">👁 = Visible to Card Mates</span>
+                                {/* Bags compact row */}
+                                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2">
+                                    <div className="flex items-center justify-between px-1">
+                                        <span className="text-[9px] font-black uppercase text-slate-500">Your Bags</span>
+                                        <button onClick={() => { setNewBagName(''); setNewBagCapacity(18); setShowCreateBag(true); setShowSettings(false); }}
+                                            className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-500 rounded-xl text-[9px] font-black uppercase text-white transition shadow-lg">
+                                            + New Bag
+                                        </button>
                                     </div>
-                                    <div className="space-y-2">
-                                        {bags.map(bag => (
-                                            <div key={bag.id} className="flex items-center justify-between bg-slate-800 px-4 py-3 rounded-2xl gap-3">
-                                                <span className={`text-sm font-black uppercase flex-1 truncate ${bag.id === activeBagId ? 'text-orange-500' : 'text-slate-300'}`}>{bag.name}</span>
-                                                {/* Public toggle */}
-                                                <button
-                                                    onClick={async () => {
-                                                        const newVal = !bag.is_public;
-                                                        setBags(prev => prev.map(b => b.id === bag.id ? { ...b, is_public: newVal } : b));
-                                                        await supabase.from('bags').update({ is_public: newVal }).eq('id', bag.id);
-                                                    }}
-                                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition shrink-0 ${bag.is_public ? 'bg-cyan-600/30 border border-cyan-500/40 text-cyan-400' : 'bg-slate-700 border border-slate-600 text-slate-500'}`}
-                                                >
-                                                    {bag.is_public ? '👁 Public' : '🔒 Private'}
-                                                </button>
-                                                {bags.length > 1 && <button onClick={() => deleteBag(bag.id)} className="text-red-500 hover:text-red-400 transition text-xs font-black shrink-0">✕</button>}
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <p className="text-[9px] font-bold text-slate-700 uppercase">Public bags are visible to your Card Mates. Private bags are only visible to you.</p>
+                                    {bags.map(bag => (
+                                        <div key={bag.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition ${bag.id === activeBagId ? 'bg-orange-900/20 border-orange-500/30' : 'bg-slate-800/60 border-slate-700/40'}`}>
+                                            <button onClick={() => setActiveBagId(bag.id)} className={`flex-1 text-left text-[11px] font-black uppercase truncate ${bag.id === activeBagId ? 'text-orange-400' : 'text-slate-300 hover:text-white'} transition`}>
+                                                {bag.id === activeBagId ? '🎒 ' : ''}{bag.name}
+                                                {bag.capacity && <span className="text-[9px] font-bold text-slate-600 ml-1.5">{bag.capacity} slots</span>}
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    const newVal = !bag.is_public;
+                                                    setBags(prev => prev.map(b => b.id === bag.id ? { ...b, is_public: newVal } : b));
+                                                    await supabase.from('bags').update({ is_public: newVal }).eq('id', bag.id);
+                                                }}
+                                                className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg shrink-0 transition ${bag.is_public ? 'bg-cyan-600/20 text-cyan-400 border border-cyan-500/30' : 'bg-slate-700/60 text-slate-600 border border-slate-600/40'}`}
+                                            >
+                                                {bag.is_public ? '👁' : '🔒'}
+                                            </button>
+                                            {bags.length > 1 && <button onClick={() => deleteBag(bag.id)} className="text-red-600 hover:text-red-400 text-xs font-black shrink-0 transition">✕</button>}
+                                        </div>
+                                    ))}
+                                    <p className="text-[8px] font-bold text-slate-700 px-1">👁 Public = visible to Card Mates. 🔒 Private = only you.</p>
                                 </div>
-                                <button onClick={() => { setNewBagName(''); setNewBagCapacity(18); setShowCreateBag(true); setShowSettings(false); }}
-                                    className="w-full py-4 text-xs font-black uppercase text-slate-500 hover:text-slate-300 transition">
-                                    + Create New Bag
-                                </button>
                             </>)}
 
                             {/* ── MY ACCOUNT TAB ── */}
@@ -3758,8 +3758,8 @@ Guidelines:
                         {/* Header */}
                         <div className="flex justify-between items-center">
                             <div>
-                                <h2 className="text-3xl font-black italic text-emerald-400 uppercase">✅ Bag Check</h2>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Tick every disc you still have</p>
+                                <h2 className="text-3xl font-black italic text-emerald-400 uppercase">📋 Post-Round Check</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">After your round — tick every disc, flag damage, note losses</p>
                             </div>
                             <button onClick={() => setShowPlayRound(false)} className="text-2xl text-slate-500 hover:text-white">✕</button>
                         </div>
@@ -4017,11 +4017,11 @@ Guidelines:
                     open: () => setShowHeatmap(true), openLabel: '🔥 Open Heatmap',
                 },
                 {
-                    emoji: '📋', title: 'Bag Check — Pre-Round Checklist',
+                    emoji: '📋', title: 'Post-Round Check',
                     color: 'text-yellow-400', border: 'border-yellow-500/40',
                     glow: 'shadow-yellow-900/60',
                     body: "Run this before every round. Walk through your bag, tick each disc, flag anything damaged. You'll never arrive at the course missing a mid-range again.",
-                    open: () => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }, openLabel: '📋 Open Bag Check',
+                    open: () => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }, openLabel: '📋 Open Post-Round Check',
                 },
                 {
                     emoji: '📤', title: 'Export & Share Your Bag',
@@ -4035,8 +4035,8 @@ Guidelines:
                     color: 'text-orange-400', border: 'border-orange-500/40',
                     glow: 'shadow-orange-900/60',
                     body: "Open Settings to enter your skill level, throwing distances, and handedness. This personalises every AI recommendation and the Smart Bag Coach. Add a free Gemini key (aistudio.google.com) to unlock AI features.",
-                    open: () => { setSettingsTab('account'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); },
-                    openLabel: '⚙️ Open Settings', isFinal: true,
+                    open: () => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); },
+                    openLabel: '⚙️ Open Bag Settings', isFinal: true,
                 },
             ];
 
@@ -4099,8 +4099,8 @@ Guidelines:
                                             Next →
                                         </button>
                                     ) : (
-                                        <button onClick={() => { setShowTutorial(false); if (step.open) step.open(); }} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 rounded-xl font-black uppercase text-sm text-white shadow-lg transition">
-                                            ⚙️ Finish & Open Settings
+                                        <button onClick={() => { setShowTutorial(false); setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 rounded-xl font-black uppercase text-sm text-white shadow-lg transition">
+                                            ⚙️ Finish & Set Up →
                                         </button>
                                     )}
                                 </div>
@@ -5130,6 +5130,8 @@ Guidelines:
                             if (!newBagName.trim()) return;
                             createBag(newBagName.trim(), newBagCapacity);
                             setShowCreateBag(false);
+                            // Re-open settings bag tab so user can see their new bag
+                            setTimeout(() => { setSettingsTab('bag'); setShowSettings(true); }, 150);
                         }}
                         disabled={!newBagName.trim()}
                         className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 py-5 rounded-2xl font-black uppercase text-white shadow-xl transition"
@@ -5163,7 +5165,7 @@ Guidelines:
                                 <div className="text-center">
                                     <div className="text-4xl mb-2">🧑‍🏫</div>
                                     <p className="text-sm font-bold text-slate-300">I'm your personal disc golf coach. Ask me anything about form, technique, training, or equipment.</p>
-                                    <p className="text-[10px] font-bold text-slate-600 uppercase mt-2">Powered by Claude AI — no API key needed</p>
+                                    <p className="text-[10px] font-bold text-slate-600 uppercase mt-2">Powered by Gemini AI — requires free API key in Settings</p>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2">
                                     {[
@@ -5193,12 +5195,63 @@ Guidelines:
                                         {msg.role === 'user' ? (myProfile?.icon || '👤') : '🧑‍🏫'}
                                     </div>
                                     <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
-                                        <div className={`px-4 py-3 rounded-2xl text-sm font-bold leading-relaxed whitespace-pre-wrap ${
+                                        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
                                             msg.role === 'user'
-                                                ? 'bg-orange-600/20 border border-orange-500/30 text-white rounded-tr-sm'
+                                                ? 'bg-orange-600/20 border border-orange-500/30 text-white font-bold rounded-tr-sm'
                                                 : 'bg-slate-900 border border-emerald-600/20 text-slate-200 rounded-tl-sm'
                                         }`}>
-                                            {msg.content}
+                                            {msg.role === 'user' ? msg.content : (() => {
+                                                // Rich rendering for coach responses
+                                                const lines = msg.content.split('\n');
+                                                const rendered = [];
+                                                let listItems = [];
+                                                const flushList = () => {
+                                                    if (listItems.length > 0) {
+                                                        rendered.push(<ul key={`ul-${rendered.length}`} className="space-y-1 my-2 pl-1">{listItems}</ul>);
+                                                        listItems = [];
+                                                    }
+                                                };
+                                                lines.forEach((line, li) => {
+                                                    const trimmed = line.trim();
+                                                    if (!trimmed) { flushList(); rendered.push(<div key={li} className="h-2" />); return; }
+                                                    // ## heading
+                                                    if (trimmed.startsWith('## ') || trimmed.startsWith('### ')) {
+                                                        flushList();
+                                                        const txt = trimmed.replace(/^#+\s*/, '');
+                                                        rendered.push(<p key={li} className="text-emerald-400 font-black uppercase text-[11px] tracking-wide mt-3 mb-1">{txt}</p>);
+                                                        return;
+                                                    }
+                                                    // Bullet or numbered list
+                                                    const bulletMatch = trimmed.match(/^[-*•]\s+(.+)/);
+                                                    const numberedMatch = trimmed.match(/^(\d+)[.)]\s+(.+)/);
+                                                    if (bulletMatch || numberedMatch) {
+                                                        const txt = bulletMatch ? bulletMatch[1] : numberedMatch[2];
+                                                        const num = numberedMatch ? numberedMatch[1] : null;
+                                                        // Process **bold** within list item
+                                                        const parts = txt.split(/\*\*([^*]+)\*\*/g);
+                                                        const rich = parts.map((p, pi) => pi % 2 === 1 ? <strong key={pi} className="text-white font-black">{p}</strong> : p);
+                                                        listItems.push(<li key={li} className="flex gap-2 text-[13px] text-slate-300"><span className="text-emerald-500 shrink-0 font-black">{num ? `${num}.` : '▸'}</span><span>{rich}</span></li>);
+                                                        return;
+                                                    }
+                                                    flushList();
+                                                    // 🎥 YouTube rec line — special style
+                                                    if (trimmed.startsWith('🎥')) {
+                                                        rendered.push(<p key={li} className="bg-slate-800/60 border border-slate-700/40 rounded-xl px-3 py-2 text-[12px] text-cyan-300 font-bold my-1.5">{trimmed}</p>);
+                                                        return;
+                                                    }
+                                                    // ⚠️ warning line
+                                                    if (trimmed.startsWith('⚠️') || trimmed.startsWith('💡')) {
+                                                        rendered.push(<p key={li} className="bg-amber-900/20 border border-amber-500/20 rounded-xl px-3 py-2 text-[12px] text-amber-300 font-bold my-1.5">{trimmed}</p>);
+                                                        return;
+                                                    }
+                                                    // Regular paragraph with **bold** support
+                                                    const parts = trimmed.split(/\*\*([^*]+)\*\*/g);
+                                                    const rich = parts.map((p, pi) => pi % 2 === 1 ? <strong key={pi} className="text-white font-black">{p}</strong> : p);
+                                                    rendered.push(<p key={li} className="text-[13px] text-slate-300 font-medium">{rich}</p>);
+                                                });
+                                                flushList();
+                                                return <div className="space-y-0.5">{rendered}</div>;
+                                            })()}
                                         </div>
                                     </div>
                                 </div>
