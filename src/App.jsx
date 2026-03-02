@@ -702,6 +702,9 @@ export default function App() {
     const [aiPrompt, setAIPrompt] = useState('');
     const [aiLoading, setAILoading] = useState(false);
     const [aiResult, setAIResult] = useState(null);
+    const [aiMode, setAIMode] = useState('both'); // 'collection', 'new', 'both'
+    const [aiCreateBag, setAICreateBag] = useState(false); // If true, create new bag from results
+    const [aiBagName, setAIBagName] = useState('');
 
     // Lost disc GPS
     const [lostGPS, setLostGPS] = useState({}); // { discId: { lat, lng, timestamp } }
@@ -1104,31 +1107,74 @@ export default function App() {
 
         const discList = owned.map(d => `${d.name} (${d.brand}, ${d.speed}/${d.glide}/${d.turn}/${d.fade})`).join('\n');
         const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
-        const currentBag = bagDiscs.map(d => d.name).join(', ') || 'Empty';
+        const currentBag = bagDiscs.map(d => `${d.name} (${d.brand}, ${d.speed}/${d.glide}/${d.turn}/${d.fade})`).join(', ') || 'Empty';
+        
+        // Get missing slots for context
+        const missingSlots = gapAnalysis?.gaps?.map(g => g.label).join(', ') || 'None';
 
-        const prompt = `You are an expert disc golf bag coach. A player describes their game and you recommend the BEST discs from THEIR OWNED COLLECTION only.
+        // Build prompt based on mode
+        let recommendationType = '';
+        let responseFormat = '';
+        
+        if (aiMode === 'collection') {
+            recommendationType = 'Recommend ONLY from their current collection - which discs they already own should they bag.';
+            responseFormat = `{
+  "summary": "2-3 sentence analysis",
+  "from_collection": [
+    { "name": "exact disc name", "reason": "why bag this", "role": "putter/mid/fairway/driver" }
+  ],
+  "tips": ["tip 1", "tip 2"]
+}`;
+        } else if (aiMode === 'new') {
+            recommendationType = 'Recommend ONLY new discs they should BUY to fill gaps and improve (prioritize discs within their arm speed).';
+            responseFormat = `{
+  "summary": "2-3 sentence analysis",
+  "new_to_buy": [
+    { "name": "disc model", "brand": "manufacturer", "flight_numbers": "speed/glide/turn/fade", "reason": "why they need this", "priority": "high/medium/low" }
+  ],
+  "tips": ["tip 1", "tip 2"]
+}`;
+        } else { // both
+            recommendationType = 'Provide BOTH: (1) Which discs from their collection to bag, AND (2) New discs to buy to fill gaps.';
+            responseFormat = `{
+  "summary": "2-3 sentence analysis",
+  "from_collection": [
+    { "name": "exact disc name", "reason": "why bag this", "role": "putter/mid/fairway/driver" }
+  ],
+  "new_to_buy": [
+    { "name": "disc model", "brand": "manufacturer", "flight_numbers": "speed/glide/turn/fade", "reason": "why they need this", "priority": "high/medium/low" }
+  ],
+  "tips": ["tip 1", "tip 2"]
+}`;
+        }
 
-Player details:
+        const prompt = `You are an expert disc golf bag coach. ${recommendationType}
+
+Player Profile:
 - Handedness: ${settings.handedness}-handed
 - Skill level: ${settings.skillLevel}
-- Backhand distance: ~${settings.bhPower || 350}ft, Forehand: ~${settings.fhPower || 250}ft
+- Backhand max: ~${settings.bhPower || 350}ft
+- Forehand max: ~${settings.fhPower || 250}ft
 - Throw style: ${settings.throwStyle}
-- Current bag: ${currentBag}
 
-Their owned discs:
-${discList}
+Current Collection (${owned.length} discs):
+${discList || 'No discs yet'}
 
-Their game description: "${aiPrompt}"
+Current Active Bag (${bagDiscs.length} discs):
+${currentBag}
 
-Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
-{
-  "summary": "2-3 sentence analysis of their game",
-  "recommended": [
-    { "name": "exact disc name from their list", "reason": "why this suits them", "role": "role e.g. overstable fairway driver" }
-  ],
-  "tips": ["tip 1", "tip 2", "tip 3"],
-  "missing": "one sentence about a key gap in their collection, or null"
-}`;
+Missing Slots: ${missingSlots}
+
+Player's Goal/Course Info: "${aiPrompt}"
+
+For ${settings.skillLevel} with ${settings.bhPower}ft backhand:
+- Beginner: Speed ≤7, understable/straight
+- Intermediate: Speed 5-9, mixed stability  
+- Advanced: Speed 5-11, full range
+- Pro: Any speed (note if high arm speed needed)
+
+Respond ONLY with valid JSON, no markdown:
+${responseFormat}`;
 
         try {
             const res = await fetch(
@@ -4124,19 +4170,37 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                 <div className="w-full max-w-2xl mx-auto space-y-5 py-6">
                     <div className="flex justify-between items-start">
                         <div>
-                            <h2 className="text-3xl font-black italic uppercase text-pink-400">🎯 Bag Builder</h2>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Describe your game — get a custom bag from YOUR discs</p>
+                            <h2 className="text-3xl font-black italic uppercase text-pink-400">🎯 AI Bag Builder</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Build your perfect bag with AI recommendations</p>
                         </div>
                         <button onClick={() => setShowAIBuilder(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
+                    </div>
+
+                    {/* Mode selection */}
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+                        <p className="text-[9px] font-black uppercase text-slate-500 mb-2">Recommendation Mode</p>
+                        <div className="flex gap-2">
+                            {[
+                                ['collection', '📦 My Discs Only'],
+                                ['new', '🆕 Buy New Discs'],
+                                ['both', '📦+🆕 Both']
+                            ].map(([mode, label]) => (
+                                <button key={mode} onClick={() => setAIMode(mode)}
+                                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${aiMode === mode ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
                     </div>
 
                     {/* Prompt examples */}
                     <div className="flex gap-2 flex-wrap">
                         {[
-                            "I miss left a lot and want more distance",
-                            "I play wooded courses and need control",
-                            "I struggle with headwinds",
-                            "I'm a beginner wanting to improve",
+                            "I need more distance off the tee",
+                            "Playing a wooded course, need control",
+                            "20mph headwinds expected tomorrow",
+                            "Build bag for Maple Hill - technical, elevation changes",
+                            "Hot humid day, open bomber course",
                         ].map(eg => (
                             <button key={eg} onClick={() => setAIPrompt(eg)}
                                 className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-[9px] font-bold text-slate-400 hover:text-white transition border border-slate-700">
@@ -4148,8 +4212,13 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                     <textarea
                         value={aiPrompt}
                         onChange={e => setAIPrompt(e.target.value)}
-                        placeholder="Describe your game, weaknesses, course types, what you want to improve..."
-                        rows={4}
+                        placeholder="Examples:
+• 'I miss left and want more distance'
+• 'Playing a wooded course tomorrow'  
+• 'Build bag for windy coastal course - 20mph winds'
+• 'Course: Heavily wooded, tight fairways, weather: rainy'
+• 'What should I add to my bag for headwinds?'"
+                        rows={5}
                         className="w-full bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-2xl p-5 text-white font-bold text-sm outline-none transition resize-none placeholder-slate-600"
                     />
 
@@ -4183,10 +4252,132 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                                 <p className="text-sm font-bold text-slate-200 leading-relaxed">{aiResult.summary}</p>
                             </div>
 
-                            {/* Recommended discs */}
-                            {aiResult.recommended?.length > 0 && (
+                            {/* From Collection */}
+                            {aiResult.from_collection?.length > 0 && (
                                 <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
-                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">🥏 Recommended from Your Bag</p>
+                                    <p className="text-[10px] font-black uppercase text-emerald-400 mb-1">📦 From Your Collection</p>
+                                    {aiResult.from_collection.map((rec, i) => {
+                                        const owned = discs.find(d => d.name.toLowerCase() === rec.name?.toLowerCase() && d.status === 'active');
+                                        return (
+                                            <div key={i} className="flex items-start gap-3 bg-slate-800/60 rounded-2xl p-4">
+                                                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: owned?.color || '#10b981' }} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-black uppercase text-white text-sm">{rec.name}</span>
+                                                        {rec.role && <span className="text-[8px] font-black uppercase bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded-full">{rec.role}</span>}
+                                                    </div>
+                                                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">{rec.reason}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    
+                                    {/* Save as New Bag button */}
+                                    {!aiBagName && (
+                                        <button onClick={() => setAICreateBag(true)}
+                                            className="w-full bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 py-3 rounded-xl font-black uppercase text-emerald-400 text-xs transition">
+                                            💾 Save as New Bag
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Bag Name Input (if saving) */}
+                            {aiCreateBag && !aiBagName && (
+                                <div className="bg-blue-900/20 border border-blue-500/30 rounded-2xl p-5 space-y-3">
+                                    <p className="text-[10px] font-black uppercase text-blue-400">Name Your New Bag</p>
+                                    <input 
+                                        type="text"
+                                        placeholder="e.g., Windy Day Bag, Wooded Course Setup"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-white font-bold outline-none focus:border-blue-500 transition"
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && e.target.value.trim()) {
+                                                const bagName = e.target.value.trim();
+                                                // Create new bag with recommended discs
+                                                const createNewBag = async () => {
+                                                    const { data: newBag } = await supabase.from('bags').insert({
+                                                        user_id: session.user.id,
+                                                        name: bagName,
+                                                        is_public: false
+                                                    }).select().single();
+                                                    
+                                                    if (newBag) {
+                                                        // Move recommended discs to new bag
+                                                        const discsToMove = aiResult.from_collection
+                                                            .map(rec => discs.find(d => d.name.toLowerCase() === rec.name?.toLowerCase()))
+                                                            .filter(Boolean);
+                                                        
+                                                        for (const disc of discsToMove) {
+                                                            await supabase.from('discs').update({ bag_id: newBag.id }).eq('id', disc.id);
+                                                        }
+                                                        
+                                                        setAIBagName(bagName);
+                                                        setAICreateBag(false);
+                                                        // Reload data
+                                                        const { data: updatedBags } = await supabase.from('bags').select('*').eq('user_id', session.user.id).order('created_at');
+                                                        if (updatedBags) setBags(updatedBags);
+                                                        setActiveBagId(newBag.id);
+                                                    }
+                                                };
+                                                createNewBag();
+                                            }
+                                        }}
+                                    />
+                                    <p className="text-[9px] text-slate-500 font-bold">Press Enter to create bag</p>
+                                </div>
+                            )}
+
+                            {aiBagName && (
+                                <div className="bg-emerald-900/20 border border-emerald-500/30 rounded-2xl p-5">
+                                    <p className="text-emerald-400 font-bold text-sm">✅ Bag "{aiBagName}" created successfully!</p>
+                                </div>
+                            )}
+
+                            {/* New Discs to Buy */}
+                            {aiResult.new_to_buy?.length > 0 && (
+                                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
+                                    <p className="text-[10px] font-black uppercase text-pink-400 mb-1">🆕 Discs to Buy</p>
+                                    {aiResult.new_to_buy.map((disc, i) => (
+                                        <div key={i} className="flex items-start gap-3 bg-pink-900/10 border border-pink-500/20 rounded-2xl p-4">
+                                            <div className={`text-lg shrink-0 ${disc.priority === 'high' ? 'text-red-400' : disc.priority === 'medium' ? 'text-yellow-400' : 'text-slate-500'}`}>
+                                                {disc.priority === 'high' ? '🔴' : disc.priority === 'medium' ? '🟡' : '⚪'}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-black uppercase text-white text-sm">{disc.name}</span>
+                                                    <span className="text-[9px] font-bold uppercase text-slate-500">{disc.brand}</span>
+                                                    <span className="text-[8px] font-black text-slate-600 bg-slate-800 px-2 py-0.5 rounded">{disc.flight_numbers}</span>
+                                                </div>
+                                                <p className="text-[11px] font-bold text-slate-400 mt-0.5">{disc.reason}</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => {
+                                                    const [speed, glide, turn, fade] = disc.flight_numbers.split('/').map(Number);
+                                                    addDiscToDB({
+                                                        name: disc.name,
+                                                        brand: disc.brand,
+                                                        speed, glide, turn, fade,
+                                                        wear: 0,
+                                                        bag_id: null,
+                                                        status: 'active',
+                                                        color: `hsl(${Math.random()*360},70%,60%)`,
+                                                        max_dist: 0,
+                                                        aces: 0,
+                                                        is_idea: true
+                                                    });
+                                                }}
+                                                className="shrink-0 w-8 h-8 rounded-full bg-pink-600 hover:bg-pink-500 flex items-center justify-center text-white font-black transition">
+                                                +
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Old recommended field for backwards compatibility */}
+                            {aiResult.recommended?.length > 0 && !aiResult.from_collection && (
+                                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">🥏 Recommended</p>
                                     {aiResult.recommended.map((rec, i) => {
                                         const owned = discs.find(d => d.name.toLowerCase() === rec.name?.toLowerCase() && d.status === 'active');
                                         return (
@@ -4215,7 +4406,7 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                                 </div>
                             )}
 
-                            {/* Gap */}
+                            {/* Gap - Legacy */}
                             {aiResult.missing && (
                                 <div className="bg-blue-900/20 border border-blue-500/20 rounded-2xl px-5 py-4">
                                     <p className="text-[10px] font-black uppercase text-blue-400 mb-1">🔍 Gap in Your Collection</p>
@@ -4234,7 +4425,7 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                         </div>
                     )}
 
-                    <button onClick={() => setShowAIBuilder(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
+                    <button onClick={() => { setShowAIBuilder(false); setAICreateBag(false); setAIBagName(''); setAIResult(null); setAIPrompt(''); }} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
                 </div>
             </div>
         )}
