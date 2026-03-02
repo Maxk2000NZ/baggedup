@@ -4,9 +4,10 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>About BaggedUp | AI Disc Golf App</title>
-  <meta name="description" content="BaggedUp is a free AI-powered disc golf bag planner and trainer. Built for disc golfers of all levels — from first putter to tournament bag."/>
+  <meta name="description" content="BaggedUp is a free AI-powered disc golf bag planner and trainer. Built for disc golfers of all levels. Get in touch at baggedupdiscgolf@gmail.com."/>
   <link rel="canonical" href="https://baggedup.vercel.app/about.html"/>
   <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
@@ -25,8 +26,14 @@
       pointer-events: none; z-index: 0;
     }
 
-    /* NAV */
-    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: rgba(8,11,18,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(8,11,18,0.92); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
     .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
     .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; color: var(--text); }
@@ -36,41 +43,45 @@
     .nav-links a:hover, .nav-links a.active { color: var(--orange); }
     .btn-nav { background: var(--orange); color: #fff; padding: 0.55rem 1.4rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
     .btn-nav:hover { background: #ea6c0a; }
-    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1.1rem; line-height: 1; }
     .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); }
     .mobile-menu.open { display: flex; }
-    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
-    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); transition: color 0.2s; }
+    .mobile-menu a:hover { color: var(--text); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; border-bottom: none; }
     @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
 
-    /* HERO */
+    /* ── HERO ── */
     .page-hero {
       padding: 7rem 2rem 5rem; position: relative; z-index: 1;
       background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%);
     }
     .hero-inner { max-width: 800px; margin: 0 auto; }
-    .page-hero .badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3); color: var(--orange); padding: 0.35rem 1rem; border-radius: 999px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.5rem; animation: fade-up 0.5s ease both; }
+    .badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3); color: var(--orange); padding: 0.35rem 1rem; border-radius: 999px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.5rem; animation: fade-up 0.5s ease both; }
     .page-hero h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3.5rem, 9vw, 7rem); line-height: 0.92; letter-spacing: 0.02em; margin-bottom: 1.5rem; animation: fade-up 0.5s 0.1s ease both; }
     .page-hero h1 em { font-style: normal; color: var(--orange); }
-    .page-hero .lead { font-size: 1.15rem; color: var(--muted); line-height: 1.85; max-width: 600px; animation: fade-up 0.5s 0.2s ease both; }
+    .page-hero .lead { font-size: 1.1rem; color: var(--muted); line-height: 1.85; max-width: 600px; animation: fade-up 0.5s 0.2s ease both; }
 
-    /* CONTENT */
+    /* ── LAYOUT ── */
     .container { max-width: 1100px; margin: 0 auto; padding: 3rem 2rem 6rem; position: relative; z-index: 1; }
 
-    /* MISSION */
+    /* ── SECTION LABEL ── */
+    .section-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--orange); margin-bottom: 0.8rem; }
+
+    /* ── MISSION ── */
     .mission-block { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; margin-bottom: 5rem; }
-    @media (max-width: 700px) { .mission-block { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { .mission-block { grid-template-columns: 1fr; gap: 2rem; } }
     .mission-text h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.2rem, 5vw, 3.5rem); letter-spacing: 0.02em; line-height: 1; margin-bottom: 1rem; }
     .mission-text h2 em { font-style: normal; color: var(--orange); }
     .mission-text p { font-size: 0.95rem; color: var(--muted); line-height: 1.85; margin-bottom: 0.8rem; }
-    .mission-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    .mission-stat { background: var(--card); border: 1px solid var(--border); border-radius: 1.2rem; padding: 1.4rem; text-align: center; }
-    .mission-stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.8rem; color: var(--orange); line-height: 1; }
-    .mission-stat-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.2rem; }
+    .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.2rem; padding: 1.4rem; text-align: center; }
+    .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.8rem; color: var(--orange); line-height: 1; }
+    .stat-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-top: 0.2rem; }
 
-    /* VALUES */
-    .values-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.2rem; margin: 2rem 0 4rem; }
-    .value-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.4rem; padding: 1.6rem; position: relative; overflow: hidden; transition: border-color 0.2s, transform 0.2s; }
+    /* ── VALUES ── */
+    .values-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.2rem; margin: 2rem 0 5rem; }
+    .value-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.4rem; padding: 1.6rem; transition: border-color 0.2s, transform 0.2s; position: relative; overflow: hidden; }
     .value-card:hover { border-color: rgba(249,115,22,0.3); transform: translateY(-3px); }
     .value-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--orange), transparent); opacity: 0; transition: opacity 0.2s; }
     .value-card:hover::before { opacity: 1; }
@@ -78,24 +89,61 @@
     .value-title { font-weight: 800; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; color: var(--text); }
     .value-desc { font-size: 0.84rem; color: var(--muted); line-height: 1.7; }
 
-    /* STORY */
-    .story-section { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 4rem 2rem; margin: 0 -2rem 4rem; }
+    /* ── STORY ── */
+    .story-section { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 5rem 2rem; margin: 0 0 5rem; position: relative; z-index: 1; }
     .story-inner { max-width: 680px; margin: 0 auto; }
-    .story-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--orange); margin-bottom: 0.8rem; }
     .story-inner h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2.8rem; letter-spacing: 0.02em; margin-bottom: 1.2rem; line-height: 1; }
     .story-inner h2 em { font-style: normal; color: var(--orange); }
     .story-inner p { font-size: 0.95rem; color: var(--muted); line-height: 1.9; margin-bottom: 1rem; }
     .story-inner p strong { color: var(--text); }
 
-    /* CTA */
-    .about-cta { background: linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04)); border: 1px solid rgba(249,115,22,0.25); border-radius: 1.8rem; padding: 3rem; text-align: center; }
-    .about-cta h2 { font-family: 'Bebas Neue', sans-serif; font-size: 3rem; margin-bottom: 0.6rem; letter-spacing: 0.02em; }
+    /* ── CONTACT SECTION ── */
+    .contact-section { margin-bottom: 5rem; }
+    .contact-section h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2.2rem, 5vw, 3.5rem); letter-spacing: 0.02em; line-height: 1; margin-bottom: 0.6rem; }
+    .contact-section h2 em { font-style: normal; color: var(--orange); }
+    .contact-section > p { font-size: 0.95rem; color: var(--muted); line-height: 1.7; margin-bottom: 2rem; max-width: 520px; }
+    .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 700px) { .contact-grid { grid-template-columns: 1fr; } }
+
+    .email-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 1.8rem; padding: 2.2rem;
+      position: relative; overflow: hidden; grid-row: span 2;
+    }
+    .email-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--orange), #fb923c, transparent); }
+    .email-card .icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+    .email-card h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+    .email-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.7; margin-bottom: 1.5rem; }
+    .email-link {
+      display: flex; align-items: center; gap: 0.8rem;
+      background: rgba(249,115,22,0.08); border: 1px solid rgba(249,115,22,0.25);
+      border-radius: 1rem; padding: 1rem 1.2rem;
+      text-decoration: none; color: var(--text); transition: all 0.2s; margin-bottom: 1rem;
+    }
+    .email-link:hover { background: rgba(249,115,22,0.15); border-color: rgba(249,115,22,0.5); transform: translateY(-2px); }
+    .email-link .em-icon { font-size: 1.3rem; flex-shrink: 0; }
+    .email-link .em-addr { font-weight: 700; font-size: 0.9rem; color: var(--orange); display: block; }
+    .email-link .em-sub { font-size: 0.72rem; color: var(--muted); display: block; }
+    .response-note { font-size: 0.78rem; color: var(--muted2); font-weight: 600; display: flex; align-items: center; gap: 0.4rem; }
+
+    .info-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.4rem; padding: 1.4rem; }
+    .info-card h3 { font-weight: 800; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--orange); margin-bottom: 0.8rem; }
+    .info-card ul { list-style: none; }
+    .info-card ul li { font-size: 0.82rem; color: var(--muted); padding: 0.3rem 0; border-bottom: 1px solid rgba(30,41,59,0.4); display: flex; align-items: flex-start; gap: 0.5rem; line-height: 1.5; }
+    .info-card ul li:last-child { border-bottom: none; }
+    .info-card ul li::before { content: '›'; color: var(--orange); flex-shrink: 0; }
+
+    /* ── CTA ── */
+    .about-cta { background: linear-gradient(135deg, rgba(249,115,22,0.12), rgba(249,115,22,0.04)); border: 1px solid rgba(249,115,22,0.25); border-radius: 1.8rem; padding: 3rem; text-align: center; margin-bottom: 0; }
+    .about-cta h2 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(2rem, 5vw, 3rem); margin-bottom: 0.6rem; letter-spacing: 0.02em; }
     .about-cta h2 em { font-style: normal; color: var(--orange); }
     .about-cta p { color: var(--muted); font-size: 1rem; margin-bottom: 2rem; line-height: 1.7; }
     .btn-primary { display: inline-block; background: var(--orange); color: #fff; padding: 0.9rem 2.4rem; border-radius: 999px; font-size: 0.88rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; text-decoration: none; box-shadow: 0 0 28px rgba(249,115,22,0.35); transition: all 0.2s; }
     .btn-primary:hover { background: #ea6c0a; transform: translateY(-2px); }
 
-    /* FOOTER */
+    /* ── DIVIDER ── */
+    .section-divider { border: none; border-top: 1px solid var(--border); margin: 4rem 0; }
+
+    /* ── FOOTER ── */
     footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 3rem 2rem; position: relative; z-index: 1; }
     .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; }
     .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
@@ -124,7 +172,7 @@
       <li><a href="/flightpath.html">Flight Science</a></li>
       <li><a href="/plastics.html">Plastics</a></li>
       <li><a href="/games.html">Games</a></li>
-      <li><a href="/contact.html">Contact</a></li>
+      <li><a href="/about.html" class="active">About</a></li>
     </ul>
     <a href="/app" class="btn-nav">Get Started →</a>
     <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
@@ -135,10 +183,11 @@
     <a href="/flightpath.html">Flight Science</a>
     <a href="/plastics.html">Plastics</a>
     <a href="/games.html">Games</a>
-    <a href="/contact.html">Contact</a>
+    <a href="/about.html">About</a>
     <a href="/app" class="mobile-cta">Get Started Free →</a>
   </div>
 
+  <!-- HERO -->
   <div class="page-hero">
     <div class="hero-inner">
       <div class="badge">🥏 About BaggedUp</div>
@@ -152,83 +201,131 @@
     <!-- MISSION -->
     <div class="mission-block reveal">
       <div class="mission-text">
-        <div class="section-label" style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);margin-bottom:0.8rem;">Our Mission</div>
+        <div class="section-label">Our Mission</div>
         <h2>Make every disc golfer throw <em>smarter.</em></h2>
         <p>Disc golf has a knowledge gap problem. Players buy discs they can't throw, build bags with overlapping coverage, and struggle to understand why their disc went left. BaggedUp closes that gap.</p>
-        <p>Every tool in BaggedUp — the flightpath simulator, the AI coach, the bag gap analyser, the wind simulator — was designed to give any player the insight that used to require years of experience or a personal coach.</p>
+        <p>Every tool — the flightpath simulator, the AI coach, the bag gap analyser, the wind simulator — was designed to give any player the insight that used to require years of experience or a personal coach.</p>
         <p>And it's completely free. Always.</p>
       </div>
-      <div class="mission-stat-grid">
-        <div class="mission-stat">
-          <div class="mission-stat-num">100+</div>
-          <div class="mission-stat-label">Features</div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-num">100+</div>
+          <div class="stat-label">Features</div>
         </div>
-        <div class="mission-stat">
-          <div class="mission-stat-num">∞</div>
-          <div class="mission-stat-label">Disc Database</div>
+        <div class="stat-card">
+          <div class="stat-num">∞</div>
+          <div class="stat-label">Disc Database</div>
         </div>
-        <div class="mission-stat">
-          <div class="mission-stat-num">Free</div>
-          <div class="mission-stat-label">Always</div>
+        <div class="stat-card">
+          <div class="stat-num">Free</div>
+          <div class="stat-label">Always</div>
         </div>
-        <div class="mission-stat">
-          <div class="mission-stat-num">Any</div>
-          <div class="mission-stat-label">Device</div>
+        <div class="stat-card">
+          <div class="stat-num">Any</div>
+          <div class="stat-label">Device</div>
         </div>
       </div>
     </div>
 
     <!-- VALUES -->
     <div class="reveal">
-      <div style="font-size:0.7rem;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;color:var(--orange);margin-bottom:0.8rem;">What We Stand For</div>
+      <div class="section-label">What We Stand For</div>
       <h2 style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,5vw,3.2rem);letter-spacing:0.02em;margin-bottom:2rem;line-height:1;">The BaggedUp <em style="font-style:normal;color:var(--orange)">Principles</em></h2>
     </div>
     <div class="values-grid">
       <div class="value-card reveal">
         <span class="value-icon">🆓</span>
         <div class="value-title">Free Forever</div>
-        <p class="value-desc">No paywalls. No premium tiers. No ads. Every feature in BaggedUp is available to every player from day one — because disc golf shouldn't cost more than it already does.</p>
+        <p class="value-desc">No paywalls. No premium tiers. No ads. Every feature is available to every player from day one — because disc golf shouldn't cost more than it already does.</p>
       </div>
       <div class="value-card reveal">
         <span class="value-icon">🎯</span>
         <div class="value-title">Honest Advice</div>
-        <p class="value-desc">The AI coach tells you the truth. If your arm speed can't handle that driver, it says so. If your bag has a gap you keep ignoring, it won't let you forget. No flattery — just accurate feedback.</p>
+        <p class="value-desc">The AI coach tells you the truth. If your arm speed can't handle that driver, it says so. If your bag has a gap you keep ignoring, it won't let you forget.</p>
       </div>
       <div class="value-card reveal">
         <span class="value-icon">📱</span>
         <div class="value-title">Works Everywhere</div>
-        <p class="value-desc">On the course, at home, on a desktop or a 5-year-old phone. BaggedUp is a Progressive Web App — install it like a native app or use it in your browser. No app store required.</p>
+        <p class="value-desc">On the course, at home, on desktop or a 5-year-old phone. BaggedUp is a Progressive Web App — install it like a native app or use it in your browser. No app store required.</p>
       </div>
       <div class="value-card reveal">
         <span class="value-icon">🌱</span>
         <div class="value-title">Every Level Welcome</div>
-        <p class="value-desc">Whether you're buying your first disc or tuning a tournament setup, BaggedUp adjusts. The tools, language, and AI coaching all adapt to your actual skill level — not a marketing persona.</p>
+        <p class="value-desc">Whether you're buying your first disc or tuning a tournament setup, BaggedUp adjusts. Tools, language, and AI coaching all adapt to your actual skill level.</p>
       </div>
       <div class="value-card reveal">
         <span class="value-icon">🔬</span>
         <div class="value-title">Physics-Based</div>
-        <p class="value-desc">The flightpath simulator doesn't guess. It models aerodynamic forces, gyroscopic precession, wind drift, and arm speed to show you exactly how each disc in your bag will actually fly.</p>
+        <p class="value-desc">The flightpath simulator doesn't guess. It models aerodynamic forces, gyroscopic precession, wind drift, and arm speed to show how each disc will actually fly.</p>
       </div>
       <div class="value-card reveal">
         <span class="value-icon">🤝</span>
         <div class="value-title">Community First</div>
-        <p class="value-desc">Card Mates, the community disc database, bag leaderboards — BaggedUp grows with its players. Community-added discs, shared bag setups, and real player data make the whole app better for everyone.</p>
+        <p class="value-desc">Card Mates, community disc database, bag leaderboards — BaggedUp grows with its players. Community-added discs and shared bags make the whole app better for everyone.</p>
       </div>
     </div>
 
-    <!-- STORY -->
-    <div class="story-section reveal">
-      <div class="story-inner">
-        <div class="story-label">The Story</div>
-        <h2>Why We <em>Built This</em></h2>
-        <p>Disc golf is one of the fastest-growing sports in the world. But the tools available to players — especially beginners — haven't kept up. Most disc golf apps are basic bag lists. None of them tell you <strong>why</strong> a disc flew the way it did, or what you should throw next.</p>
-        <p>BaggedUp was built to change that. We wanted an app that felt like having a knowledgeable friend on the course with you — one who knew your exact bag, understood physics, and could give you honest, specific advice without charging you for it.</p>
-        <p>The result is an AI-powered platform that combines flightpath simulation, bag analysis, coaching, and disc discovery in one place. It's built for the player standing on the tee wondering which disc to throw — and for the player at home wondering why they keep missing left.</p>
-        <p><strong>Every feature exists to answer a real question disc golfers actually have.</strong> That's the only filter we use.</p>
+  </div>
+
+  <!-- STORY - full width band -->
+  <div class="story-section reveal">
+    <div class="story-inner">
+      <div class="section-label">The Story</div>
+      <h2>Why We <em>Built This</em></h2>
+      <p>Disc golf is one of the fastest-growing sports in the world. But the tools available to players — especially beginners — haven't kept up. Most disc golf apps are basic bag lists. None of them tell you <strong>why</strong> a disc flew the way it did, or what you should throw next.</p>
+      <p>BaggedUp was built to change that. We wanted an app that felt like having a knowledgeable friend on the course — one who knew your exact bag, understood physics, and gave you honest, specific advice without charging you for it.</p>
+      <p>The result is an AI-powered platform that combines flightpath simulation, bag analysis, coaching, and disc discovery in one place. It's built for the player on the tee wondering which disc to throw — and for the player at home wondering why they keep missing left.</p>
+      <p><strong>Every feature exists to answer a real question disc golfers actually have. That's the only filter we use.</strong></p>
+    </div>
+  </div>
+
+  <div class="container">
+
+    <!-- CONTACT -->
+    <div class="contact-section">
+      <div class="section-label reveal">Get In Touch</div>
+      <h2 class="reveal" style="font-family:'Bebas Neue',sans-serif;font-size:clamp(2.2rem,5vw,3.5rem);letter-spacing:0.02em;line-height:1;margin-bottom:0.6rem;">Say <em style="font-style:normal;color:var(--orange)">Hello</em></h2>
+      <p class="reveal">Questions, feedback, bug reports, partnership ideas, or just want to talk disc golf — our inbox is always open. We read every message.</p>
+
+      <div class="contact-grid reveal">
+        <div class="email-card">
+          <span class="icon">📬</span>
+          <h3>Email Us</h3>
+          <p>Whether it's a feature request, a bug you found, or just feedback on your experience — we want to hear it. We aim to reply within 48 hours.</p>
+          <a href="mailto:baggedupdiscgolf@gmail.com" class="email-link">
+            <div class="em-icon">✉️</div>
+            <div>
+              <span class="em-addr">baggedupdiscgolf@gmail.com</span>
+              <span class="em-sub">Click to open your email client</span>
+            </div>
+          </a>
+          <div class="response-note">⏱ We aim to reply within 48 hours</div>
+        </div>
+
+        <div class="info-card">
+          <h3>What to include</h3>
+          <ul>
+            <li>Your device and browser (for bug reports)</li>
+            <li>Your BaggedUp username if relevant</li>
+            <li>Screenshots if it helps explain</li>
+            <li>As much detail as you're comfortable sharing</li>
+          </ul>
+        </div>
+
+        <div class="info-card">
+          <h3>Common topics</h3>
+          <ul>
+            <li>Bug reports or things not working</li>
+            <li>Feature requests and ideas</li>
+            <li>Disc database corrections or additions</li>
+            <li>Partnership or collaboration enquiries</li>
+            <li>General disc golf chat 🥏</li>
+          </ul>
+        </div>
       </div>
     </div>
 
-    <!-- CTA -->
+    <!-- FINAL CTA -->
     <div class="about-cta reveal">
       <h2>Ready to build your <em>best bag?</em></h2>
       <p>Free forever. No app store. Works on any device. Start in under 2 minutes.</p>
@@ -250,17 +347,17 @@
         <li><a href="/flightpath.html">Flight Science</a></li>
         <li><a href="/plastics.html">Plastics</a></li>
         <li><a href="/games.html">Games</a></li>
-        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/about.html">About</a></li>
         <li><a href="/app">Open App</a></li>
       </ul>
-      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+      <div class="footer-copy">© 2026 BaggedUp · baggedupdiscgolf@gmail.com</div>
     </div>
   </footer>
 
   <script>
     const observer = new IntersectionObserver((entries) => {
       entries.forEach((e, i) => {
-        if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 100);
+        if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 80);
       });
     }, { threshold: 0.1 });
     document.querySelectorAll('.reveal').forEach(el => observer.observe(el));

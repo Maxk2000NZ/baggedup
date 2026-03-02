@@ -13,6 +13,7 @@
   <meta property="og:image" content="https://baggedup.vercel.app/icons/icon-512x512.png"/>
   <meta property="og:type" content="website"/>
   <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
@@ -91,14 +92,14 @@
     .nav-links {
       display: flex;
       align-items: center;
-      gap: 2rem;
+      gap: 1.6rem;
       list-style: none;
     }
 
     .nav-links a {
       color: var(--muted);
       text-decoration: none;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.08em;
@@ -122,7 +123,12 @@
 
     .btn-nav:hover { background: #ea6c0a; transform: translateY(-1px); }
 
-    .nav-mobile-btn { display: none; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 57px; z-index: 99; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); transition: color 0.2s; }
+    .mobile-menu a:hover { color: var(--text); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
 
     /* ── HERO ── */
     .hero {
@@ -137,6 +143,7 @@
       overflow: hidden;
     }
 
+    /* Radial glow behind hero */
     .hero::after {
       content: '';
       position: absolute;
@@ -147,6 +154,7 @@
       pointer-events: none;
     }
 
+    /* Animated disc rings */
     .hero-rings {
       position: absolute;
       top: 50%; left: 50%;
@@ -591,6 +599,7 @@
 </head>
 <body>
 
+  <!-- NAV -->
   <nav>
     <a href="/" class="nav-logo">
       <img src="/baggedup.logo.png" alt="BaggedUp" style="height:36px;width:36px;object-fit:contain;" />
@@ -599,11 +608,25 @@
     <ul class="nav-links">
       <li><a href="/guide.html">Bag Guide</a></li>
       <li><a href="/blog.html">Blog</a></li>
-      <li><a href="/about.html">About</a></li>
+      <li><a href="/flightpath.html">Flight Science</a></li>
+      <li><a href="/plastics.html">Plastics</a></li>
+      <li><a href="/games.html">Games</a></li>
+      <li><a href="/contact.html">Contact</a></li>
     </ul>
-    <a href="/app" class="btn-nav">Get Started Now</a>
+    <a href="/app" class="btn-nav">Get Started →</a>
+    <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
   </nav>
+  <div id="mobile-menu" class="mobile-menu">
+    <a href="/guide.html">Bag Guide</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/flightpath.html">Flight Science</a>
+    <a href="/plastics.html">Plastics</a>
+    <a href="/games.html">Games</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app" class="mobile-cta">Get Started Free →</a>
+  </div>
 
+  <!-- HERO -->
   <div class="hero">
     <div class="hero-rings">
       <span></span><span></span><span></span><span></span>
@@ -640,6 +663,7 @@
     </div>
   </div>
 
+  <!-- MARQUEE STRIP -->
   <div class="features-strip">
     <div class="features-strip-inner">
       <div class="features-strip-item"><span>📊</span> Flightpath Simulator</div>
@@ -652,6 +676,7 @@
       <div class="features-strip-item"><span>📤</span> PDF Export</div>
       <div class="features-strip-item"><span>🧠</span> AI Throw Coach</div>
       <div class="features-strip-item"><span>⚡</span> Arm Speed Advisor</div>
+      <!-- Duplicate for seamless loop -->
       <div class="features-strip-item"><span>📊</span> Flightpath Simulator</div>
       <div class="features-strip-item"><span>🤖</span> AI Bag Coach</div>
       <div class="features-strip-item"><span>📍</span> Lost Disc GPS</div>
@@ -665,6 +690,7 @@
     </div>
   </div>
 
+  <!-- FEATURES -->
   <section>
     <div class="container">
       <div class="reveal">
@@ -723,6 +749,7 @@
     </div>
   </section>
 
+  <!-- HOW IT WORKS -->
   <section class="how-bg">
     <div class="container">
       <div class="reveal">
@@ -756,6 +783,7 @@
     </div>
   </section>
 
+  <!-- WHO IT'S FOR -->
   <section>
     <div class="container">
       <div class="reveal">
@@ -789,22 +817,27 @@
     </div>
   </section>
 
+  <!-- CTA BAND -->
   <div class="cta-band reveal">
     <div class="container">
       <h2>Ready to build<br/>your best bag?</h2>
       <p>Free forever. No app store required. Works on any device.</p>
-      <a href="/app" class="btn-primary">Get Started Now →</a>
+      <a href="/app" class="btn-primary">Get Started Free →</a>
     </div>
   </div>
 
+  <!-- FOOTER -->
   <footer>
     <div class="footer-inner">
       <div class="footer-brand">Bagged<span>Up</span></div>
       <ul class="footer-links">
         <li><a href="/guide.html">Bag Guide</a></li>
         <li><a href="/blog.html">Blog</a></li>
-        <li><a href="/about.html">About</a></li>
-        <li><a href="/app">Get Started Now</a></li>
+        <li><a href="/flightpath.html">Flight Science</a></li>
+        <li><a href="/plastics.html">Plastics</a></li>
+        <li><a href="/games.html">Games</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/app">Get Started</a></li>
       </ul>
       <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
     </div>
