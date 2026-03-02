@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
+const APP_VERSION = 'v29';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -1086,8 +1087,11 @@ export default function App() {
         const points = [];
         for (let i = 0; i <= 100; i++) {
             const p = i / 100;
-            // Handedness flips the x-axis (left-hand throw curves opposite)
-            const handMult = settings.handedness === 'left' ? -1 : 1;
+            // BH RH and FH LH curve the same way; FH mirrors BH (opposite hand effect)
+            const isRH = settings.handedness === 'right';
+            const isBH = throwView === 'bh';
+            // Mirror when: FH+RH or BH+LH (one flip = mirror, two flips = same)
+            const handMult = (isRH === isBH) ? 1 : -1;
             const x = handMult * ((Math.sin(p * Math.PI * 0.75) * (s.turn * -10)) + (Math.pow(p, 2.5) * (s.fade * -8))) * Math.pow(p, 1.8);
             points.push({ x, y: settings.unit === 'm' ? p * s.dist * 0.3048 : p * s.dist });
         }
@@ -1764,6 +1768,7 @@ export default function App() {
                     <button onClick={() => supabase.auth.signOut()} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-red-500 hover:bg-red-900/20 w-full transition">
                         <span className="text-base">✕</span> Log Out
                     </button>
+                    <div className="text-[8px] font-bold text-slate-700 uppercase text-center pt-1">{APP_VERSION}</div>
                 </div>
             </div>
 
@@ -1945,10 +1950,12 @@ export default function App() {
                                     <button onClick={() => setChartMode('path')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'path' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Path</button>
                                     <button onClick={() => setChartMode('matrix')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${chartMode === 'matrix' ? 'bg-orange-600 text-white' : 'text-slate-500'}`}>Stability</button>
                                 </div>
-                                <div className="flex bg-slate-800/50 p-1 rounded-2xl">
-                                    <button onClick={() => setThrowView('bh')} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩BH</button>
-                                    <button onClick={() => setThrowView('fh')} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪FH</button>
-                                </div>
+                                {chartMode === 'path' && (
+                                    <div className="flex bg-slate-800/50 p-1 rounded-2xl">
+                                        <button onClick={() => setThrowView('bh')} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩BH</button>
+                                        <button onClick={() => setThrowView('fh')} className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪FH</button>
+                                    </div>
+                                )}
                             </div>
                             <div className="h-[400px] w-full"><canvas id="mainChart"></canvas></div>
                         </div>
@@ -2068,10 +2075,6 @@ export default function App() {
                             <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
                                 <div className="flex items-center justify-between mb-3 shrink-0">
                                     <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">◎ Stability Matrix</div>
-                                    <div className="flex bg-slate-800 p-0.5 rounded-xl">
-                                        <button onClick={() => setThrowView('bh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↩ BH</button>
-                                        <button onClick={() => setThrowView('fh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500'}`}>↪ FH</button>
-                                    </div>
                                 </div>
                                 <div className="flex-1 relative min-h-0">
                                     <canvas id="desktopStabChart" className="absolute inset-0 w-full h-full"></canvas>
