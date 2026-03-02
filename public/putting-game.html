@@ -6,40 +6,19 @@
     <title>NZ Putting Challenge | BaggedUp</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --orange: #f97316;
-            --bg: #080b12;
-            --text: #f1f5f9;
-        }
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background: var(--bg); font-family: 'DM Sans', sans-serif;
-            color: var(--text);
-        }
-        canvas { display: block; background: linear-gradient(to bottom, #7dd3fc, #15803d); }
+        :root { --orange: #f97316; --bg: #080b12; --text: #f1f5f9; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'DM Sans', sans-serif; color: var(--text); }
+        canvas { display: block; }
         
-        /* UI Overlay */
-        .game-ui {
-            position: absolute; top: 0; left: 0; right: 0; padding: 1.5rem;
-            display: flex; justify-content: space-between; pointer-events: none;
-            z-index: 5;
-        }
-        .stats { font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.05em; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .game-ui { position: absolute; top: 0; left: 0; right: 0; padding: 1.5rem; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; }
+        .stats { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.05em; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
         .stats span { color: var(--orange); }
 
-        .message-overlay {
-            position: absolute; inset: 0; background: rgba(8,11,18,0.9);
-            display: none; flex-direction: column; align-items: center; justify-content: center;
-            text-align: center; z-index: 10;
-        }
-        .message-overlay h2 { font-family: 'Bebas Neue', sans-serif; font-size: 4rem; margin: 0; color: var(--orange); }
-        .btn {
-            margin-top: 1.5rem; padding: 0.8rem 2.5rem; background: var(--orange);
-            color: white; border: none; border-radius: 999px; cursor: pointer;
-            font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; pointer-events: auto;
-            transition: transform 0.1s;
-        }
-        .btn:active { transform: scale(0.95); }
+        .overlay { position: absolute; inset: 0; background: rgba(8,11,18,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 10; backdrop-filter: blur(5px); }
+        .overlay h2 { font-family: 'Bebas Neue', sans-serif; font-size: 4rem; color: var(--orange); margin: 0; }
+        .btn { margin-top: 1.5rem; padding: 1rem 3rem; background: var(--orange); color: white; border: none; border-radius: 999px; cursor: pointer; font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; }
+        
+        .inst { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); opacity: 0.6; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -50,150 +29,165 @@
         <div class="stats">Score: <span id="total-score">0</span></div>
     </div>
 
-    <div id="overlay" class="message-overlay">
-        <h2 id="msg-title">Hole Complete!</h2>
-        <p id="msg-body">Nice putt.</p>
-        <button class="btn" onclick="nextAction()">Continue</button>
+    <div id="overlay" class="overlay">
+        <h2 id="msg-title">Chains!</h2>
+        <p id="msg-body">Great putt from the lakeside.</p>
+        <button class="btn" onclick="nextAction()">Next Shot</button>
     </div>
+
+    <div class="inst">Swipe / Flick Up to Putt</div>
 
     <canvas id="gameCanvas"></canvas>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const holeEl = document.getElementById('hole-num');
-        const throwEl = document.getElementById('throw-num');
-        const scoreEl = document.getElementById('total-score');
         const overlay = document.getElementById('overlay');
 
         let width, height;
         let hole = 1, throws = 0, score = 0;
-        let isDragging = false;
-        let dragStart = { x: 0, y: 0 };
-        let dragCurrent = { x: 0, y: 0 };
+        let isDragging = false, dragStart = {x:0, y:0};
         
-        // Physics Objects
-        let disc = { x: 0, y: 0, vx: 0, vy: 0, radius: 18, active: false };
-        let basket = { x: 0, y: 180, width: 70, height: 90 };
+        // 3D Simulation State
+        let disc = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, size: 60, active: false, rotation: 0 };
+        let basket = { x: 0, z: 500, hit: false }; // z is distance
+
+        const holeConfigs = [
+            { name: "Lake Tekapo", color: "#7dd3fc", basketDist: 450, basketSide: 0 },
+            { name: "Mount Cook Lookout", color: "#1e293b", basketDist: 700, basketSide: -100 },
+            { name: "Queenstown Forest", color: "#064e3b", basketDist: 350, basketSide: 150 }
+        ];
 
         function init() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
             resetDisc();
-            basket.x = width / 2;
+            basket.z = holeConfigs[hole-1].basketDist;
+            basket.x = holeConfigs[hole-1].basketSide;
         }
 
         function resetDisc() {
-            disc.x = width / 2;
-            disc.y = height - 120;
-            disc.vx = 0;
-            disc.vy = 0;
+            disc.x = 0; disc.y = 0; disc.z = 0;
+            disc.vx = 0; disc.vy = 0; disc.vz = 0;
             disc.active = false;
+            disc.size = 60;
         }
 
-        // Input Handling
         const handleStart = (e) => {
             if (disc.active || overlay.style.display === 'flex') return;
             isDragging = true;
-            const pos = getPos(e);
-            dragStart = pos;
-            dragCurrent = pos;
-        };
-
-        const handleMove = (e) => {
-            if (!isDragging) return;
-            dragCurrent = getPos(e);
+            dragStart = getPos(e);
         };
 
         const handleEnd = (e) => {
             if (!isDragging) return;
             isDragging = false;
-            const pos = getPos(e);
+            const endPos = getPos(e);
             
-            // Launch Vector (Inverted)
-            disc.vx = (dragStart.x - pos.x) * 0.12;
-            disc.vy = (dragStart.y - pos.y) * 0.12;
-            
-            if (Math.abs(disc.vx) > 1 || Math.abs(disc.vy) > 1) {
+            // Logic: Flick upward determines power (vz) and direction (vx)
+            disc.vz = (dragStart.y - endPos.y) * 0.12;
+            disc.vx = (endPos.x - dragStart.x) * 0.05;
+            disc.vy = -Math.abs(disc.vz * 0.3); // Slight upward arc
+
+            if (disc.vz > 5) {
                 disc.active = true;
                 throws++;
-                throwEl.innerText = throws;
+                document.getElementById('throw-num').innerText = throws;
             }
         };
 
         function getPos(e) {
-            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-            return { x: clientX, y: clientY };
+            return {
+                x: e.touches ? e.touches[0].clientX : e.clientX,
+                y: e.touches ? e.touches[0].clientY : e.clientY
+            };
         }
 
         window.addEventListener('mousedown', handleStart);
-        window.addEventListener('mousemove', handleMove);
         window.addEventListener('mouseup', handleEnd);
         window.addEventListener('touchstart', handleStart);
-        window.addEventListener('touchmove', handleMove);
         window.addEventListener('touchend', handleEnd);
 
         function update() {
             if (disc.active) {
+                disc.z += disc.vz;
                 disc.x += disc.vx;
                 disc.y += disc.vy;
-                disc.vy += 0.25; // Gravity
-                disc.vx *= 0.98; // Friction
+                disc.vy += 0.2; // Gravity simulation
+                disc.size = Math.max(10, 60 * (1 - disc.z/1000)); // Perspective scaling
+                disc.rotation += 0.2;
 
-                // Collision Detection with Basket
-                if (disc.x > basket.x - 35 && disc.x < basket.x + 35 &&
-                    disc.y > basket.y && disc.y < basket.y + 60) {
-                    
-                    score += 50;
-                    scoreEl.innerText = score;
+                // Collision with Basket
+                let dx = disc.x - basket.x;
+                let dz = disc.z - basket.z;
+                if (Math.abs(dz) < 20 && Math.abs(dx) < 40 && disc.y < -50 && disc.y > -250) {
+                    score += 100;
+                    document.getElementById('total-score').innerText = score;
+                    showOverlay("Chains!", "Perfect shot at " + holeConfigs[hole-1].name);
                     disc.active = false;
-                    showOverlay("Chains!", "+50 Points");
                 }
 
-                // Reset if off screen
-                if (disc.y > height + 50 || disc.x < -50 || disc.x > width + 50 || disc.y < -500) {
-                    if (throws >= 3) {
-                        showOverlay("End of Hole " + hole, "Move to the next pin.");
-                    } else {
-                        resetDisc();
-                    }
+                // Reset if missed
+                if (disc.z > basket.z + 100 || disc.y > 100) {
+                    if (throws >= 3) showOverlay("Hole Over", "Try the next one.");
+                    else resetDisc();
                 }
             }
         }
 
         function draw() {
-            ctx.clearRect(0, 0, width, height);
+            // 1. Draw Environment (NZ Theme)
+            let cfg = holeConfigs[hole-1];
+            let grad = ctx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, '#0ea5e9'); // Sky
+            grad.addColorStop(0.5, '#f1f5f9'); // Horizon/Mountains
+            grad.addColorStop(0.5, '#15803d'); // Grass
+            grad.addColorStop(1, '#065f46');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, width, height);
 
-            // NZ Landscape (Mount Cook style)
-            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            // Draw Lake
+            ctx.fillStyle = cfg.color;
             ctx.beginPath();
-            ctx.moveTo(width * 0.1, height * 0.7);
-            ctx.lineTo(width * 0.3, height * 0.3);
-            ctx.lineTo(width * 0.5, height * 0.7);
+            ctx.ellipse(width/2, height*0.6, width, height*0.2, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Basket
-            ctx.fillStyle = "#cbd5e1";
-            ctx.fillRect(basket.x - 30, basket.y, 60, 5); // Top
-            ctx.fillRect(basket.x - 2, basket.y, 4, 100);  // Pole
-            ctx.fillStyle = "#94a3b8";
-            ctx.fillRect(basket.x - 35, basket.y + 40, 70, 25); // Cage
+            // 2. Draw Basket (Perspective)
+            let bScale = 400 / (basket.z || 1);
+            let bx = width/2 + basket.x * bScale;
+            let by = height/2 + 100 * bScale;
 
-            // Disc
-            ctx.fillStyle = "#f97316";
-            ctx.beginPath();
-            ctx.arc(disc.x, disc.y, disc.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Drag Indicator
-            if (isDragging) {
-                ctx.strokeStyle = "white";
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(dragStart.x, dragStart.y);
-                ctx.lineTo(dragCurrent.x, dragCurrent.y);
-                ctx.stroke();
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.scale(bScale, bScale);
+            // Basket Pole
+            ctx.fillStyle = "#64748b";
+            ctx.fillRect(-2, -150, 4, 150);
+            // Chains
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(-30, -140); ctx.lineTo(30, -140); ctx.lineTo(15, -60); ctx.lineTo(-15, -60); ctx.closePath(); ctx.stroke();
+            // Basket Tray
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(-35, -60, 70, 20);
+            ctx.restore();
+
+            // 3. Draw Disc (First Person)
+            if (disc.active || !isDragging) {
+                let dx = width/2 + disc.x * (400/(disc.z+1));
+                let dy = height - 150 + disc.y;
+                
+                ctx.save();
+                ctx.translate(dx, dy);
+                ctx.rotate(disc.rotation);
+                // Disc Shadow
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.beginPath(); ctx.ellipse(0, 20, disc.size, disc.size/3, 0, 0, Math.PI*2); ctx.fill();
+                // Disc Body
+                ctx.fillStyle = "#f97316";
+                ctx.beginPath(); ctx.ellipse(0, 0, disc.size, disc.size/3, 0, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = "#ea6c0a"; ctx.lineWidth = 3; ctx.stroke();
+                ctx.restore();
             }
 
             update();
@@ -211,13 +205,15 @@
             resetDisc();
             if (throws >= 3) {
                 if (hole >= 3) {
-                    alert("Course Finished! Score: " + score);
+                    alert("Tournament Finished! Total Score: " + score);
                     window.location.href = "/index.html";
                 } else {
                     hole++;
                     throws = 0;
-                    holeEl.innerText = hole;
-                    throwEl.innerText = throws;
+                    document.getElementById('hole-num').innerText = hole;
+                    document.getElementById('throw-num').innerText = 0;
+                    basket.z = holeConfigs[hole-1].basketDist;
+                    basket.x = holeConfigs[hole-1].basketSide;
                 }
             }
         }
