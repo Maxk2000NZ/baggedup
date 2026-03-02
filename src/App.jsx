@@ -638,7 +638,7 @@ export default function App() {
     const [myProfile, setMyProfile] = useState(null); // { username, pdga_number, icon, colour }
     const [showHeatmap, setShowHeatmap] = useState(false);
     const [heatmapData, setHeatmapData] = useState(null);
-    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both', currency: 'USD', geminiKey: 'AIzaSyAjPAPTEdYQv2o8vfwvyVLiR11Pfk_R7b8' });
+    const [settings, setSettings] = useState({ unit: 'ft', maxPower: 350, bhPower: 350, fhPower: 250, country: 'New Zealand', handedness: 'right', skillLevel: 'intermediate', throwStyle: 'both', currency: 'USD', geminiKey: import.meta.env.VITE_GEMINI_API_KEY || '' });
     // windConfig: { type: 'calm'|'headwind'|'tailwind'|'crosswind', speed: number (mph or km/h in display), direction: 'ltr'|'rtl' }
     const [windConfig, setWindConfig] = useState({ type: 'calm', speed: 0, direction: 'ltr' });
     const [showWindPanel, setShowWindPanel] = useState(false);
@@ -795,7 +795,7 @@ export default function App() {
         if (!session?.user) return;
         const loadData = async () => {
             let { data: set } = await supabase.from('settings').select('*').eq('user_id', session.user.id).single();
-            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both', currency: set.currency || 'USD', geminiKey: set.gemini_key || 'AIzaSyAjPAPTEdYQv2o8vfwvyVLiR11Pfk_R7b8' });
+            if (set) setSettings({ unit: set.unit || 'ft', maxPower: set.max_power || 350, bhPower: set.bh_power || set.max_power || 350, fhPower: set.fh_power || 250, country: set.country || 'New Zealand', handedness: set.handedness || 'right', skillLevel: set.skill_level || 'intermediate', throwStyle: set.throw_style || 'both', currency: set.currency || 'USD', geminiKey: set.gemini_key || import.meta.env.VITE_GEMINI_API_KEY || '' });
             else await supabase.from('settings').insert({ user_id: session.user.id });
 
             const { data: b } = await supabase.from('bags').select('*');
@@ -1041,7 +1041,7 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
 
         try {
             const res = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${settings.geminiKey}`,
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${settings.geminiKey}`,
                 {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
