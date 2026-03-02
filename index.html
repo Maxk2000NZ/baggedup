@@ -1,36 +1,108 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+<head>
+  <meta charset="UTF-8" />
 
-    <!-- Responsive & theme color -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#FF6347" />
+  <!-- ═══════════════════════════════════════════════
+       VIEWPORT & THEME
+  ═══════════════════════════════════════════════ -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#FF6347" />
 
-    <!-- Android / desktop PWA manifest -->
-    <link rel="manifest" href="/manifest.json" />
+  <!-- ═══════════════════════════════════════════════
+       PRIMARY SEO — tool/AI focus, no e-commerce
+  ═══════════════════════════════════════════════ -->
+  <title>BaggedUp – AI Disc Golf Trainer & Flightpath Simulator</title>
+  <meta name="description" content="BaggedUp helps disc golf enthusiasts simulate flightpaths, plan their ideal disc bag, and train smarter with AI-powered tools. Free bag planner, flight simulator & AI coach." />
+  <meta name="keywords" content="disc golf bag planner, AI disc golf trainer, flightpath simulator, AI bag creator disc golf, disc golf flight simulator, plan disc golf bag, disc golf training tools, disc golf AI coach, disc golf simulator" />
+  <meta name="author" content="BaggedUp" />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://baggedup.vercel.app/" />
 
-    <!-- iOS PWA support -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+  <!-- ═══════════════════════════════════════════════
+       OPEN GRAPH — social sharing preview
+  ═══════════════════════════════════════════════ -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="BaggedUp" />
+  <meta property="og:title" content="BaggedUp – AI Disc Golf Trainer & Bag Planner" />
+  <meta property="og:description" content="Plan your disc golf bag, simulate flightpaths, and improve your game with AI-powered tools. Free for disc golfers of all skill levels." />
+  <meta property="og:url" content="https://baggedup.vercel.app/" />
+  <meta property="og:image" content="https://baggedup.vercel.app/icons/icon-512x512.png" />
+  <meta property="og:image:width" content="512" />
+  <meta property="og:image:height" content="512" />
+  <meta property="og:locale" content="en_US" />
 
-    <title>BaggedUp</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
+  <!-- ═══════════════════════════════════════════════
+       TWITTER / X CARD
+  ═══════════════════════════════════════════════ -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BaggedUp – AI Disc Golf Trainer & Bag Planner" />
+  <meta name="twitter:description" content="Plan your disc golf bag, simulate flightpaths, and train smarter with AI-powered tools." />
+  <meta name="twitter:image" content="https://baggedup.vercel.app/icons/icon-512x512.png" />
 
-    <!-- Service Worker registration for offline caching -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/service-worker.js')
-            .then(reg => console.log('Service Worker registered', reg))
-            .catch(err => console.log('Service Worker failed', err));
-        });
-      }
-    </script>
-  </body>
+  <!-- ═══════════════════════════════════════════════
+       PWA — Android manifest + iOS support
+  ═══════════════════════════════════════════════ -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BaggedUp" />
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+
+  <!-- ═══════════════════════════════════════════════
+       FAVICON
+  ═══════════════════════════════════════════════ -->
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+  <!-- ═══════════════════════════════════════════════
+       STRUCTURED DATA — WebApplication schema
+       Tells Google this is a tool/app, not a store
+  ═══════════════════════════════════════════════ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "BaggedUp",
+    "url": "https://baggedup.vercel.app",
+    "applicationCategory": "SportsApplication",
+    "operatingSystem": "Web, iOS, Android",
+    "description": "AI-powered disc golf bag planner, flightpath simulator, and training tool to help players of all skill levels plan smarter bags and improve their game.",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": [
+      "AI disc golf bag planner",
+      "Disc flightpath simulator",
+      "AI throw coach and training tips",
+      "Lost disc GPS tracker",
+      "Community disc database",
+      "Bag score and analysis"
+    ],
+    "screenshot": "https://baggedup.vercel.app/icons/icon-512x512.png",
+    "author": {
+      "@type": "Organization",
+      "name": "BaggedUp"
+    }
+  }
+  </script>
+
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+
+  <!-- Service Worker — offline caching & PWA install -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.js')
+          .then(reg => console.log('Service Worker registered', reg))
+          .catch(err => console.log('Service Worker failed', err));
+      });
+    }
+  </script>
+</body>
 </html>
