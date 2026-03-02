@@ -1015,7 +1015,12 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
         try {
             const response = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'anthropic-version': '2023-06-01',
+                    'anthropic-dangerous-direct-browser-access': 'true',
+                    'x-api-key': import.meta.env.VITE_ANTHROPIC_API_KEY || '',
+                },
                 body: JSON.stringify({
                     model: 'claude-sonnet-4-20250514',
                     max_tokens: 1000,
@@ -1026,13 +1031,18 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                     }]
                 })
             });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData?.error?.message || `API error ${response.status}`);
+            }
             const data = await response.json();
             const text = data.content?.map(i => i.text || '').join('') || '';
             const clean = text.replace(/```json|```/g, '').trim();
             const parsed = JSON.parse(clean);
             setAIResult(parsed);
         } catch (err) {
-            setAIResult({ error: 'Could not generate recommendations. Please try again.' });
+            console.error('AI builder error:', err);
+            setAIResult({ error: `${err.message || 'Could not connect to AI. Check your API key is set.'}` });
         }
         setAILoading(false);
     };
@@ -1773,14 +1783,18 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                         <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
                         <div className="flex justify-between items-start">
                             <div className="flex items-start gap-3 min-w-0 flex-1 pr-2">
-                                {/* Disc photo thumbnail */}
+                                {/* Disc photo / colour circle */}
                                 {(discPhotos[d.id] || d.photo_url) ? (
-                                    <button onClick={() => { setPhotoTargetId(d.id); photoInputRef.current?.click(); }} className="shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-slate-700 hover:border-orange-500 transition">
+                                    <button onClick={() => { setPhotoTargetId(d.id); photoInputRef.current?.click(); }} className="shrink-0 w-12 h-12 rounded-full overflow-hidden border-2 hover:border-white transition" style={{ borderColor: d.color || '#f97316' }}>
                                         <img src={discPhotos[d.id] || d.photo_url} alt={d.name} className="w-full h-full object-cover" />
                                     </button>
                                 ) : (
-                                    <button onClick={() => { setPhotoTargetId(d.id); photoInputRef.current?.click(); }} className="shrink-0 w-12 h-12 rounded-xl border border-slate-700 hover:border-orange-500 bg-slate-800 flex items-center justify-center text-slate-600 hover:text-orange-400 transition text-lg">
-                                        📷
+                                    <button onClick={() => { setPhotoTargetId(d.id); photoInputRef.current?.click(); }} className="shrink-0 w-12 h-12 rounded-full border-2 flex items-center justify-center transition group relative overflow-hidden hover:scale-105" style={{ borderColor: d.color || '#f97316', background: `radial-gradient(circle at 35% 35%, ${d.color || '#f97316'}44, ${d.color || '#f97316'}11)` }}>
+                                        {/* Disc rings */}
+                                        <div className="absolute inset-0 rounded-full" style={{ boxShadow: `inset 0 0 0 3px ${d.color || '#f97316'}33` }} />
+                                        <div className="w-3 h-3 rounded-full border" style={{ backgroundColor: d.color || '#f97316', borderColor: d.color || '#f97316', opacity: 0.7 }} />
+                                        {/* Camera icon on hover */}
+                                        <div className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition text-sm">📷</div>
                                     </button>
                                 )}
                                 <div className="min-w-0">
@@ -2139,7 +2153,7 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                         </div>
                     </section>
                     <section className="px-4 pb-24">
-                        <div className="flex items-center justify-between px-2 mb-4">
+                        <div className="flex items-center justify-between px-2 mb-2">
                             <h2 className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</h2>
                             {view === 'collection' && (
                                 <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
@@ -2149,6 +2163,62 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
                                 </div>
                             )}
                         </div>
+
+                        {/* Mobile: per-bag value pill */}
+                        {view === 'active' && (() => {
+                            const cur = settings.currency || 'USD';
+                            const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea && d.value);
+                            const bagTotal = bagDiscs.reduce((s,d) => s + parseFloat(d.value||0), 0);
+                            if (!bagDiscs.length) return null;
+                            return <div className="px-2 mb-3 flex items-center gap-2"><span className="text-[9px] font-black uppercase text-emerald-400">💰 Bag value</span><span className="text-sm font-black text-emerald-300">{cur} {bagTotal.toFixed(2)}</span><span className="text-[9px] text-slate-600 font-bold">({bagDiscs.length} valued)</span></div>;
+                        })()}
+
+                        {/* Mobile: collection value breakdown */}
+                        {view === 'collection' && (() => {
+                            const cur = settings.currency || 'USD';
+                            const allValued = discs.filter(d => d.status === 'active' && !d.is_idea && d.value);
+                            if (!allValued.length) return null;
+                            const collectionTotal = allValued.reduce((s, d) => s + parseFloat(d.value || 0), 0);
+                            const byBag = bags.map(b => {
+                                const bd = allValued.filter(d => d.bag_id === b.id);
+                                return { name: b.name, id: b.id, total: bd.reduce((s,d) => s+parseFloat(d.value||0), 0), count: bd.length };
+                            }).filter(b => b.count > 0);
+                            const unbagged = allValued.filter(d => !d.bag_id);
+                            const unbaggedTotal = unbagged.reduce((s,d) => s+parseFloat(d.value||0), 0);
+                            return (
+                                <div className="mb-4 bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden">
+                                    <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                                        <span className="text-[10px] font-black uppercase text-slate-400">💰 Total Value</span>
+                                        <span className="text-base font-black text-emerald-400">{cur} {collectionTotal.toFixed(2)}</span>
+                                    </div>
+                                    {byBag.length > 1 && (
+                                        <div className="px-4 pt-2 pb-1">
+                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden flex">
+                                                {byBag.map((b, i) => (
+                                                    <div key={b.id} style={{ width: `${(b.total/collectionTotal)*100}%`, backgroundColor: `hsl(${i*47+25},70%,55%)` }} className="h-full" />
+                                                ))}
+                                                {unbaggedTotal > 0 && <div style={{ width: `${(unbaggedTotal/collectionTotal)*100}%` }} className="h-full bg-slate-600" />}
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div className="divide-y divide-slate-800">
+                                        {byBag.map((b, i) => (
+                                            <div key={b.id} className="flex items-center justify-between px-4 py-2">
+                                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full" style={{ backgroundColor: `hsl(${i*47+25},70%,55%)` }} /><span className="text-[10px] font-bold text-slate-300">🎒 {b.name}</span></div>
+                                                <div className="flex items-center gap-2"><span className="text-[9px] text-slate-600">{b.count} discs</span><span className="text-[11px] font-black text-white">{cur} {b.total.toFixed(2)}</span></div>
+                                            </div>
+                                        ))}
+                                        {unbaggedTotal > 0 && (
+                                            <div className="flex items-center justify-between px-4 py-2">
+                                                <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-600" /><span className="text-[10px] font-bold text-slate-500">📦 Storage</span></div>
+                                                <div className="flex items-center gap-2"><span className="text-[9px] text-slate-600">{unbagged.length} discs</span><span className="text-[11px] font-black text-slate-400">{cur} {unbaggedTotal.toFixed(2)}</span></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         <InventoryCards />
                     </section>
                 </main>
@@ -2162,22 +2232,6 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
 
                     {/* LEFT: Charts — flex-1 so they fill all space not taken by inventory */}
                     <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden min-w-0">
-
-                        {/* Bag value strip */}
-                        {view === 'active' && (() => {
-                            const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea && d.value);
-                            const bagTotal = bagDiscs.reduce((sum, d) => sum + parseFloat(d.value || 0), 0);
-                            const allDiscsWithValue = discs.filter(d => d.status === 'active' && !d.is_idea && d.value);
-                            const collectionTotal = allDiscsWithValue.reduce((sum, d) => sum + parseFloat(d.value || 0), 0);
-                            if (!bagDiscs.length && !allDiscsWithValue.length) return null;
-                            const cur = settings.currency || 'USD';
-                            return (
-                                <div className="shrink-0 flex gap-3 text-[9px] font-black uppercase">
-                                    {bagDiscs.length > 0 && <div className="bg-emerald-900/20 border border-emerald-500/20 px-4 py-2 rounded-xl text-emerald-400">💰 Bag Value: {cur} {bagTotal.toFixed(2)}</div>}
-                                    {allDiscsWithValue.length > 0 && <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-slate-400">📦 Collection: {cur} {collectionTotal.toFixed(2)}</div>}
-                                </div>
-                            );
-                        })()}
 
                         {/* Gap analysis banner */}
                         {!gapAnalysis.allFilled && view === 'active' && (
@@ -2281,17 +2335,106 @@ Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
 
                     {/* RIGHT: Inventory panel — fixed width, full height, scrollable */}
                     <div className="w-[380px] shrink-0 h-full border-l border-slate-800 bg-slate-950/50 flex flex-col">
-                        <div className="px-5 py-4 border-b border-slate-800 shrink-0 flex items-center justify-between">
-                            <span className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</span>
-                            {view === 'collection' && (
-                                <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
-                                    {[['all','All'],['unused','📦'],['favorites','⭐'],['aces','🏆']].map(([k,l]) => (
-                                        <button key={k} onClick={() => setCollectionSubView(k)} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${collectionSubView === k ? 'bg-orange-500 text-white' : 'text-slate-500'}`}>{l}</button>
-                                    ))}
-                                </div>
-                            )}
+                        <div className="px-5 py-4 border-b border-slate-800 shrink-0">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="italic text-[10px] font-black uppercase text-slate-500 tracking-widest">{view} Inventory</span>
+                                {view === 'collection' && (
+                                    <div className="flex bg-slate-800/60 p-0.5 rounded-xl gap-0.5">
+                                        {[['all','All'],['unused','📦'],['favorites','⭐'],['aces','🏆']].map(([k,l]) => (
+                                            <button key={k} onClick={() => setCollectionSubView(k)} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${collectionSubView === k ? 'bg-orange-500 text-white' : 'text-slate-500'}`}>{l}</button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {/* Value summary */}
+                            {(() => {
+                                const cur = settings.currency || 'USD';
+                                if (view === 'active') {
+                                    const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea && d.value);
+                                    const bagTotal = bagDiscs.reduce((s, d) => s + parseFloat(d.value || 0), 0);
+                                    if (!bagDiscs.length) return null;
+                                    return (
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[9px] font-black uppercase text-emerald-400">💰 Bag value</span>
+                                            <span className="text-[11px] font-black text-emerald-300">{cur} {bagTotal.toFixed(2)}</span>
+                                            <span className="text-[9px] text-slate-600 font-bold">({bagDiscs.length} valued)</span>
+                                        </div>
+                                    );
+                                }
+                                if (view === 'collection') {
+                                    const allValued = discs.filter(d => d.status === 'active' && !d.is_idea && d.value);
+                                    const total = allValued.reduce((s, d) => s + parseFloat(d.value || 0), 0);
+                                    if (!allValued.length) return null;
+                                    return (
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[9px] font-black uppercase text-yellow-400">📦 Collection</span>
+                                            <span className="text-[11px] font-black text-yellow-300">{cur} {total.toFixed(2)}</span>
+                                            <span className="text-[9px] text-slate-600 font-bold">({allValued.length} discs)</span>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
                         </div>
                         <div className="flex-1 overflow-y-auto p-4 pb-6">
+                            {/* Collection value breakdown */}
+                            {view === 'collection' && (() => {
+                                const cur = settings.currency || 'USD';
+                                const allValued = discs.filter(d => d.status === 'active' && !d.is_idea && d.value);
+                                if (!allValued.length) return null;
+                                const collectionTotal = allValued.reduce((s, d) => s + parseFloat(d.value || 0), 0);
+                                const byBag = bags.map(b => {
+                                    const bd = allValued.filter(d => d.bag_id === b.id);
+                                    return { name: b.name, id: b.id, total: bd.reduce((s,d) => s+parseFloat(d.value||0), 0), count: bd.length };
+                                }).filter(b => b.count > 0);
+                                const unbagged = allValued.filter(d => !d.bag_id);
+                                const unbaggedTotal = unbagged.reduce((s, d) => s + parseFloat(d.value || 0), 0);
+                                return (
+                                    <div className="mb-4 bg-gradient-to-br from-slate-900 to-slate-900/50 border border-slate-700 rounded-2xl overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-slate-800">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest">💰 Total Value</span>
+                                                <span className="text-lg font-black text-emerald-400">{cur} {collectionTotal.toFixed(2)}</span>
+                                            </div>
+                                            {/* Value bar breakdown */}
+                                            {byBag.length > 0 && (
+                                                <div className="mt-2 h-1.5 bg-slate-800 rounded-full overflow-hidden flex">
+                                                    {byBag.map((b, i) => (
+                                                        <div key={b.id} style={{ width: `${(b.total / collectionTotal) * 100}%`, backgroundColor: `hsl(${i * 47 + 25}, 70%, 55%)` }} className="h-full first:rounded-l-full last:rounded-r-full" />
+                                                    ))}
+                                                    {unbaggedTotal > 0 && <div style={{ width: `${(unbaggedTotal / collectionTotal) * 100}%` }} className="h-full bg-slate-600 last:rounded-r-full" />}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="divide-y divide-slate-800">
+                                            {byBag.map((b, i) => (
+                                                <div key={b.id} className="flex items-center justify-between px-4 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: `hsl(${i * 47 + 25}, 70%, 55%)` }} />
+                                                        <span className="text-[10px] font-bold text-slate-300 truncate max-w-[120px]">🎒 {b.name}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] text-slate-600 font-bold">{b.count} discs</span>
+                                                        <span className="text-[11px] font-black text-white">{cur} {b.total.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {unbaggedTotal > 0 && (
+                                                <div className="flex items-center justify-between px-4 py-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-2 h-2 rounded-full bg-slate-600 shrink-0" />
+                                                        <span className="text-[10px] font-bold text-slate-500">📦 Storage</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[9px] text-slate-600 font-bold">{unbagged.length} discs</span>
+                                                        <span className="text-[11px] font-black text-slate-400">{cur} {unbaggedTotal.toFixed(2)}</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                             <InventoryCards />
                         </div>
                     </div>
