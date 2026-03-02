@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v30';
+const APP_VERSION = 'v31';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -698,6 +698,25 @@ export default function App() {
     const [searchFilter, setSearchFilter] = useState('all'); // 'all' | 'putter' | 'mid' | 'fairway' | 'distance' | 'os' | 'st' | 'us'
     const wearDebounce = useRef({});
 
+    // AI Bag Builder
+    const [showAIBuilder, setShowAIBuilder] = useState(false);
+    const [aiPrompt, setAIPrompt] = useState('');
+    const [aiLoading, setAILoading] = useState(false);
+    const [aiResult, setAIResult] = useState(null);
+
+    // Lost disc GPS
+    const [lostGPS, setLostGPS] = useState({}); // { discId: { lat, lng, timestamp } }
+
+    // Disc photo
+    const [discPhotos, setDiscPhotos] = useState({}); // { discId: dataURL }
+    const photoInputRef = useRef(null);
+    const [photoTargetId, setPhotoTargetId] = useState(null);
+
+    // Leaderboard
+    const [showLeaderboard, setShowLeaderboard] = useState(false);
+    const [leaderboardData, setLeaderboardData] = useState([]);
+    const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+
     // Mobile: one toggled chart
     const chartRef = useRef(null);
     // Desktop: two always-visible charts
@@ -971,6 +990,141 @@ export default function App() {
     const deleteDiscInDB = async (id) => {
         setDiscs(discs.filter(d => d.id !== id));
         await supabase.from('discs').delete().eq('id', id);
+    };
+
+    // --- AI BAG BUILDER ---
+    const runAIBagBuilder = async () => {
+        if (!aiPrompt.trim()) return;
+        setAILoading(true);
+        setAIResult(null);
+        const ownedDiscs = discs.filter(d => d.status === 'active' && !d.is_idea);
+        const discList = ownedDiscs.map(d => `${d.name} (${d.brand}, ${d.speed}/${d.glide}/${d.turn}/${d.fade}, wear: ${Math.round((parseFloat(d.wear)||0)*100)}%)`).join('\n');
+        const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+        const currentBag = bagDiscs.map(d => d.name).join(', ') || 'Empty';
+        const systemPrompt = `You are an expert disc golf bag coach. A player describes their game and you recommend the BEST discs from THEIR OWNED COLLECTION to build their bag. You ONLY recommend discs the player actually owns — never suggest discs they don't have. Be specific about why each disc suits their style. Return a JSON object with this exact structure:
+{
+  "summary": "2-3 sentence analysis of their game based on what they described",
+  "recommended": [
+    { "name": "disc name", "reason": "why this disc suits them", "role": "what role it fills e.g. overstable driver" }
+  ],
+  "tips": ["tip 1", "tip 2", "tip 3"],
+  "missing": "one sentence about any key gap in their owned discs that would help their described game"
+}
+Return ONLY the JSON. No markdown, no explanation outside the JSON.`;
+
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 1000,
+                    system: systemPrompt,
+                    messages: [{
+                        role: 'user',
+                        content: `My owned discs:\n${discList || 'No discs yet'}\n\nMy current bag: ${currentBag}\n\nMy game: ${aiPrompt}\n\nSettings: ${settings.handedness}-handed, ${settings.throwStyle} throws, ${settings.skillLevel} level, arm speed ~${settings.bhPower || 350}ft BH / ${settings.fhPower || 250}ft FH`
+                    }]
+                })
+            });
+            const data = await response.json();
+            const text = data.content?.map(i => i.text || '').join('') || '';
+            const clean = text.replace(/```json|```/g, '').trim();
+            const parsed = JSON.parse(clean);
+            setAIResult(parsed);
+        } catch (err) {
+            setAIResult({ error: 'Could not generate recommendations. Please try again.' });
+        }
+        setAILoading(false);
+    };
+
+    // --- LOST DISC GPS ---
+    const captureGPS = (discId) => {
+        if (!navigator.geolocation) { alert('GPS not available on this device'); return; }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude, timestamp: Date.now() };
+                setLostGPS(prev => ({ ...prev, [discId]: loc }));
+                // Persist to disc record
+                const disc = discs.find(d => d.id === discId);
+                if (disc) updateDiscInDB({ ...disc, lost_lat: loc.lat, lost_lng: loc.lng });
+            },
+            () => alert('Could not get location. Please allow location access.')
+        );
+    };
+
+    const shareLostLocation = (disc) => {
+        const loc = lostGPS[disc.id] || (disc.lost_lat ? { lat: disc.lost_lat, lng: disc.lost_lng } : null);
+        if (!loc) return;
+        const mapsUrl = `https://maps.google.com/?q=${loc.lat},${loc.lng}`;
+        const text = `🥏 Lost disc: ${disc.name} (${disc.brand})\n📍 Last seen: ${mapsUrl}\nFind it for me? 🙏`;
+        if (navigator.share) { navigator.share({ title: `Lost ${disc.name}`, text, url: mapsUrl }); }
+        else { navigator.clipboard.writeText(text); alert('Location copied to clipboard!'); }
+    };
+
+    // --- DISC PHOTO ---
+    const handlePhotoCapture = (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !photoTargetId) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const dataUrl = ev.target.result;
+            setDiscPhotos(prev => ({ ...prev, [photoTargetId]: dataUrl }));
+            // Persist photo URL to disc
+            const disc = discs.find(d => d.id === photoTargetId);
+            if (disc) updateDiscInDB({ ...disc, photo_url: dataUrl });
+            setPhotoTargetId(null);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    // --- BAG SCORE LEADERBOARD ---
+    const loadLeaderboard = async () => {
+        setLeaderboardLoading(true);
+        setLeaderboardData([]);
+        // Calculate own score
+        const myBagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea);
+        const myEntry = bagScore ? {
+            username: myProfile?.username || 'You',
+            icon: myProfile?.icon || '🥏',
+            colour: myProfile?.colour || '#f97316',
+            grade: bagScore.grade,
+            score: bagScore.total,
+            discCount: myBagDiscs.length,
+            isYou: true,
+        } : null;
+
+        // Load mates' public bags and score them
+        const mateEntries = await Promise.all(cardMates.map(async (cm) => {
+            try {
+                const { data: mateBags } = await supabase.from('bags').select('*').eq('user_id', cm.mate_user_id).eq('is_public', true);
+                if (!mateBags?.length) return null;
+                const bagIds = mateBags.map(b => b.id);
+                const { data: mateDiscs } = await supabase.from('discs').select('*').in('bag_id', bagIds).eq('status', 'active').eq('is_idea', false);
+                if (!mateDiscs?.length) return null;
+                // Score their best public bag
+                const bestScore = Math.max(...mateBags.map(bag => {
+                    const bagD = mateDiscs.filter(d => d.bag_id === bag.id);
+                    if (!bagD.length) return 0;
+                    const stabB = (t, f) => { const s = parseFloat(t)+parseFloat(f); return s>=2?'OS':s<=-1?'US':'ST'; };
+                    const slotK = (sp, t, f) => { const s=parseFloat(sp),b=stabB(t,f); if(s<=3)return`putter_${b}`;if(s<=6)return`mid_${b}`;if(s<=8)return`fairway_${b}`;return`distance_${b}`; };
+                    const filled = new Set(bagD.map(d => slotK(d.speed, d.turn, d.fade)));
+                    const covScore = Math.round((filled.size/12)*40);
+                    const slotCts = {}; bagD.forEach(d=>{const k=slotK(d.speed,d.turn,d.fade);slotCts[k]=(slotCts[k]||0)+1;});
+                    const overlapP = Object.values(slotCts).reduce((a,c)=>a+Math.max(0,c-1)*5,0);
+                    const speeds = bagD.map(d=>parseFloat(d.speed));
+                    const spread = ((speeds.some(s=>s<=3)?10:0)+(speeds.some(s=>s>=4&&s<=8)?15:0)+(speeds.some(s=>s>=9)?15:0));
+                    const size = bagD.length>=6&&bagD.length<=20?20:bagD.length<6?Math.round(bagD.length/6*20):15;
+                    return Math.max(0,Math.min(100,covScore+spread+size-overlapP));
+                }));
+                const grade = bestScore>=90?'S':bestScore>=75?'A':bestScore>=60?'B':bestScore>=45?'C':'D';
+                return { username: cm.mate_username || cm.mate_email, icon: cm.mate_icon || '🥏', colour: cm.mate_colour || '#22d3ee', grade, score: bestScore, discCount: mateDiscs.length, isYou: false };
+            } catch { return null; }
+        }));
+
+        const allEntries = [...(myEntry ? [myEntry] : []), ...mateEntries.filter(Boolean)]
+            .sort((a, b) => b.score - a.score);
+        setLeaderboardData(allEntries);
+        setLeaderboardLoading(false);
     };
 
     // --- WEAR / BEAT-IN PHYSICS ---
@@ -1618,22 +1772,37 @@ export default function App() {
                     <div key={d.id} className="bg-slate-900 border border-slate-800 p-5 rounded-[2rem] flex flex-col gap-4 shadow-sm relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-1.5 h-full" style={{ backgroundColor: d.color }} />
                         <div className="flex justify-between items-start">
-                            <div className="min-w-0 pr-4">
-                                <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">
-                                    {d.name}
-                                    {d.aces > 0 && (
-                                        <span className="ml-2 inline-flex gap-0.5">
-                                            {Array.from({length: Math.min(d.aces, 5)}).map((_, i) => (
-                                                <span key={i} className="text-yellow-400" title={`${d.aces} ace${d.aces !== 1 ? 's' : ''}`}>🏆</span>
-                                            ))}
-                                            {d.aces > 5 && <span className="text-yellow-400 text-[10px] font-black">×{d.aces}</span>}
-                                        </span>
-                                    )}
-                                </h4>
-                                <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g{d.value ? ` • ${settings.currency || 'USD'} ${parseFloat(d.value).toFixed(2)}` : ''}</p>
-                                {d.status === 'lost' && d.lost_note && (
-                                    <p className="text-[10px] font-bold text-red-400/70 mt-0.5 truncate">📍 {d.lost_note}</p>
+                            <div className="flex items-start gap-3 min-w-0 flex-1 pr-2">
+                                {/* Disc photo thumbnail */}
+                                {(discPhotos[d.id] || d.photo_url) ? (
+                                    <button onClick={() => { setPhotoTargetId(d.id); photoInputRef.current?.click(); }} className="shrink-0 w-12 h-12 rounded-xl overflow-hidden border border-slate-700 hover:border-orange-500 transition">
+                                        <img src={discPhotos[d.id] || d.photo_url} alt={d.name} className="w-full h-full object-cover" />
+                                    </button>
+                                ) : (
+                                    <button onClick={() => { setPhotoTargetId(d.id); photoInputRef.current?.click(); }} className="shrink-0 w-12 h-12 rounded-xl border border-slate-700 hover:border-orange-500 bg-slate-800 flex items-center justify-center text-slate-600 hover:text-orange-400 transition text-lg">
+                                        📷
+                                    </button>
                                 )}
+                                <div className="min-w-0">
+                                    <h4 className="font-black text-sm uppercase italic leading-none mb-1 truncate">
+                                        {d.name}
+                                        {d.aces > 0 && (
+                                            <span className="ml-2 inline-flex gap-0.5">
+                                                {Array.from({length: Math.min(d.aces, 5)}).map((_, i) => (
+                                                    <span key={i} className="text-yellow-400" title={`${d.aces} ace${d.aces !== 1 ? 's' : ''}`}>🏆</span>
+                                                ))}
+                                                {d.aces > 5 && <span className="text-yellow-400 text-[10px] font-black">×{d.aces}</span>}
+                                            </span>
+                                        )}
+                                    </h4>
+                                    <p className="text-[10px] font-bold text-slate-500 uppercase truncate">{d.brand} • {d.plastic || 'Premium'} • {d.weight}g{d.value ? ` • ${settings.currency || 'USD'} ${parseFloat(d.value).toFixed(2)}` : ''}</p>
+                                    {d.status === 'lost' && (d.lost_lat || lostGPS[d.id]) && (
+                                        <button onClick={() => shareLostLocation(d)} className="text-[9px] font-black text-red-400 uppercase mt-0.5 hover:text-red-300 transition">📍 Share Location →</button>
+                                    )}
+                                    {d.status === 'lost' && d.lost_note && (
+                                        <p className="text-[10px] font-bold text-red-400/70 mt-0.5 truncate">📍 {d.lost_note}</p>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex gap-3 shrink-0">
                                 <button
@@ -1708,6 +1877,11 @@ export default function App() {
                                     </button>
                                 </div>
                             )}
+                            {d.status === 'lost' && !d.lost_lat && !lostGPS[d.id] && (
+                                <button onClick={() => captureGPS(d.id)} className="ml-4 shrink-0 bg-red-600/20 hover:bg-red-600/40 border border-red-500/30 text-red-400 text-[8px] font-black uppercase px-3 py-1.5 rounded-full transition whitespace-nowrap">
+                                    📍 Pin Location
+                                </button>
+                            )}
                         </div>
                     </div>
                 );
@@ -1717,6 +1891,8 @@ export default function App() {
 
     return (
         <div className="h-[100dvh] w-full bg-[#0b0f1a] flex overflow-hidden text-slate-200">
+            {/* Hidden photo input */}
+            <input ref={photoInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoCapture} />
             <style>{`
                 .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); }
                 input[type="range"] { -webkit-appearance: none; background: linear-gradient(to right, #f97316, #fb923c); height: 8px; border-radius: 10px; outline: none; cursor: pointer; }
@@ -1759,6 +1935,12 @@ export default function App() {
                 <button onClick={() => setShowHeatmap(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-violet-400 hover:bg-slate-800 transition">
                     <span className="text-base">🔥</span> Heatmap
                 </button>
+                <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🤖</span> AI Bag Builder
+                </button>
+                <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-yellow-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🏆</span> Leaderboard
+                </button>
                 <div className="mt-auto border-t border-slate-800 pt-1">
                     <button onClick={() => { setSettingsTab('bag'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-slate-500 hover:text-slate-300 hover:bg-slate-800 w-full transition">
                         <span className="text-base">⚙️</span> Settings
@@ -1794,6 +1976,8 @@ export default function App() {
                             <span className="text-xl">🥏</span> Play Round
                         </button>
                         <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-xl">🔥</span> Mold Heatmap</button>
+                        <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-pink-400 hover:bg-slate-800 transition"><span className="text-xl">🤖</span> AI Bag Builder</button>
+                        <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-xl">🏆</span> Leaderboard</button>
                         <button onClick={() => { setShowCardMates(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🤝</span> Card Mates
                             {cardMates.length > 0 && <span className="ml-2 bg-cyan-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{cardMates.length}</span>}
@@ -1978,6 +2162,22 @@ export default function App() {
 
                     {/* LEFT: Charts — flex-1 so they fill all space not taken by inventory */}
                     <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden min-w-0">
+
+                        {/* Bag value strip */}
+                        {view === 'active' && (() => {
+                            const bagDiscs = discs.filter(d => d.bag_id === activeBagId && d.status === 'active' && !d.is_idea && d.value);
+                            const bagTotal = bagDiscs.reduce((sum, d) => sum + parseFloat(d.value || 0), 0);
+                            const allDiscsWithValue = discs.filter(d => d.status === 'active' && !d.is_idea && d.value);
+                            const collectionTotal = allDiscsWithValue.reduce((sum, d) => sum + parseFloat(d.value || 0), 0);
+                            if (!bagDiscs.length && !allDiscsWithValue.length) return null;
+                            const cur = settings.currency || 'USD';
+                            return (
+                                <div className="shrink-0 flex gap-3 text-[9px] font-black uppercase">
+                                    {bagDiscs.length > 0 && <div className="bg-emerald-900/20 border border-emerald-500/20 px-4 py-2 rounded-xl text-emerald-400">💰 Bag Value: {cur} {bagTotal.toFixed(2)}</div>}
+                                    {allDiscsWithValue.length > 0 && <div className="bg-slate-800 border border-slate-700 px-4 py-2 rounded-xl text-slate-400">📦 Collection: {cur} {collectionTotal.toFixed(2)}</div>}
+                                </div>
+                            );
+                        })()}
 
                         {/* Gap analysis banner */}
                         {!gapAnalysis.allFilled && view === 'active' && (
@@ -3808,6 +4008,198 @@ export default function App() {
             );
         })()}
 
+
+        {/* =====================================================
+            AI BAG BUILDER MODAL
+        ===================================================== */}
+        {showAIBuilder && (
+            <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl overflow-y-auto p-4 lg:p-6 flex items-start justify-center">
+                <div className="w-full max-w-2xl mx-auto space-y-5 py-6">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-3xl font-black italic uppercase text-pink-400">🤖 AI Bag Builder</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Describe your game — get a custom bag from YOUR discs</p>
+                        </div>
+                        <button onClick={() => setShowAIBuilder(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
+                    </div>
+
+                    {/* Prompt examples */}
+                    <div className="flex gap-2 flex-wrap">
+                        {[
+                            "I miss left a lot and want more distance",
+                            "I play wooded courses and need control",
+                            "I struggle with headwinds",
+                            "I'm a beginner wanting to improve",
+                        ].map(eg => (
+                            <button key={eg} onClick={() => setAIPrompt(eg)}
+                                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-[9px] font-bold text-slate-400 hover:text-white transition border border-slate-700">
+                                {eg}
+                            </button>
+                        ))}
+                    </div>
+
+                    <textarea
+                        value={aiPrompt}
+                        onChange={e => setAIPrompt(e.target.value)}
+                        placeholder="Describe your game, weaknesses, course types, what you want to improve..."
+                        rows={4}
+                        className="w-full bg-slate-900 border border-slate-700 focus:border-pink-500 rounded-2xl p-5 text-white font-bold text-sm outline-none transition resize-none placeholder-slate-600"
+                    />
+
+                    <button
+                        onClick={runAIBagBuilder}
+                        disabled={aiLoading || !aiPrompt.trim()}
+                        className="w-full bg-gradient-to-r from-pink-600 to-violet-600 hover:from-pink-500 hover:to-violet-500 disabled:opacity-50 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition"
+                    >
+                        {aiLoading ? '🤖 Analysing your bag...' : '🚀 Build My Perfect Bag'}
+                    </button>
+
+                    {aiLoading && (
+                        <div className="text-center py-8">
+                            <div className="text-4xl mb-3 animate-bounce">🤖</div>
+                            <p className="text-slate-400 font-bold text-sm uppercase">Analysing your {discs.filter(d=>d.status==='active'&&!d.is_idea).length} discs...</p>
+                        </div>
+                    )}
+
+                    {aiResult && !aiResult.error && (
+                        <div className="space-y-4">
+                            {/* Summary */}
+                            <div className="bg-slate-900 border border-pink-500/30 rounded-3xl p-6">
+                                <p className="text-[10px] font-black uppercase text-pink-400 mb-2">🎯 Game Analysis</p>
+                                <p className="text-sm font-bold text-slate-200 leading-relaxed">{aiResult.summary}</p>
+                            </div>
+
+                            {/* Recommended discs */}
+                            {aiResult.recommended?.length > 0 && (
+                                <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-3">
+                                    <p className="text-[10px] font-black uppercase text-slate-400 mb-1">🥏 Recommended from Your Bag</p>
+                                    {aiResult.recommended.map((rec, i) => {
+                                        const owned = discs.find(d => d.name.toLowerCase() === rec.name?.toLowerCase() && d.status === 'active');
+                                        return (
+                                            <div key={i} className="flex items-start gap-3 bg-slate-800/60 rounded-2xl p-4">
+                                                <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: owned?.color || '#f97316' }} />
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-black uppercase text-white text-sm">{rec.name}</span>
+                                                        {rec.role && <span className="text-[8px] font-black uppercase bg-pink-900/30 text-pink-400 px-2 py-0.5 rounded-full">{rec.role}</span>}
+                                                    </div>
+                                                    <p className="text-[11px] font-bold text-slate-400 mt-0.5">{rec.reason}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {/* Tips */}
+                            {aiResult.tips?.length > 0 && (
+                                <div className="bg-orange-900/20 border border-orange-500/20 rounded-3xl p-5 space-y-2">
+                                    <p className="text-[10px] font-black uppercase text-orange-400 mb-1">💡 Coaching Tips</p>
+                                    {aiResult.tips.map((tip, i) => (
+                                        <p key={i} className="text-sm font-bold text-orange-200">• {tip}</p>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Gap */}
+                            {aiResult.missing && (
+                                <div className="bg-blue-900/20 border border-blue-500/20 rounded-2xl px-5 py-4">
+                                    <p className="text-[10px] font-black uppercase text-blue-400 mb-1">🔍 Gap in Your Collection</p>
+                                    <p className="text-sm font-bold text-blue-200">{aiResult.missing}</p>
+                                    <button onClick={() => { setShowAIBuilder(false); setShowSearch(true); }} className="mt-2 text-[9px] font-black uppercase text-blue-400 hover:text-blue-300 transition">Search Disc Directory →</button>
+                                </div>
+                            )}
+
+                            <button onClick={() => { setAIResult(null); setAIPrompt(''); }} className="w-full py-3 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Try Again</button>
+                        </div>
+                    )}
+
+                    {aiResult?.error && (
+                        <div className="bg-red-900/20 border border-red-500/30 rounded-2xl p-5">
+                            <p className="text-red-400 font-bold text-sm">{aiResult.error}</p>
+                        </div>
+                    )}
+
+                    <button onClick={() => setShowAIBuilder(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
+                </div>
+            </div>
+        )}
+
+        {/* =====================================================
+            BAG SCORE LEADERBOARD MODAL
+        ===================================================== */}
+        {showLeaderboard && (
+            <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl overflow-y-auto p-4 lg:p-6 flex items-start justify-center">
+                <div className="w-full max-w-2xl mx-auto space-y-5 py-6">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h2 className="text-3xl font-black italic uppercase text-yellow-400">🏆 Leaderboard</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">Bag scores — you vs your card mates</p>
+                        </div>
+                        <button onClick={() => setShowLeaderboard(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
+                    </div>
+
+                    {leaderboardLoading && (
+                        <div className="text-center py-12">
+                            <div className="text-4xl mb-3 animate-bounce">🏆</div>
+                            <p className="text-slate-400 font-bold text-sm uppercase">Loading scores...</p>
+                        </div>
+                    )}
+
+                    {!leaderboardLoading && leaderboardData.length === 0 && (
+                        <div className="text-center py-12 bg-slate-900 rounded-3xl border border-slate-800">
+                            <div className="text-4xl mb-3">🤝</div>
+                            <p className="text-slate-400 font-bold uppercase text-sm">Add Card Mates to see the leaderboard</p>
+                            <button onClick={() => { setShowLeaderboard(false); setShowCardMates(true); }} className="mt-4 px-6 py-3 bg-cyan-600/20 border border-cyan-500/30 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-cyan-600/30 transition">Add Card Mates →</button>
+                        </div>
+                    )}
+
+                    {!leaderboardLoading && leaderboardData.length > 0 && (
+                        <div className="space-y-3">
+                            {leaderboardData.map((entry, i) => {
+                                const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+                                const gradeColor = entry.score >= 90 ? 'text-emerald-400' : entry.score >= 75 ? 'text-green-400' : entry.score >= 60 ? 'text-yellow-400' : entry.score >= 45 ? 'text-orange-400' : 'text-red-400';
+                                return (
+                                    <div key={i} className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition ${entry.isYou ? 'bg-orange-900/20 border-orange-500/30' : 'bg-slate-900 border-slate-800'}`}>
+                                        <span className="text-xl shrink-0">{medal}</span>
+                                        <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 border-2" style={{ backgroundColor: (entry.colour || '#f97316') + '22', borderColor: entry.colour || '#f97316' }}>
+                                            {entry.icon}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-black uppercase text-white text-sm truncate">
+                                                    {entry.isYou ? `${entry.username} (You)` : entry.username}
+                                                </span>
+                                                {entry.isYou && <span className="text-[8px] font-black uppercase bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full shrink-0">You</span>}
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden max-w-[120px]">
+                                                    <div className={`h-full rounded-full ${entry.score >= 75 ? 'bg-emerald-500' : entry.score >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`} style={{ width: `${entry.score}%` }} />
+                                                </div>
+                                                <span className={`text-[10px] font-black ${gradeColor}`}>{entry.score}/100</span>
+                                                <span className="text-[9px] font-bold text-slate-600 uppercase">{entry.discCount} discs</span>
+                                            </div>
+                                        </div>
+                                        <div className={`text-3xl font-black italic shrink-0 ${gradeColor}`}>{entry.grade}</div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {!leaderboardLoading && leaderboardData.length > 0 && (
+                        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-5 py-3">
+                            <p className="text-[9px] font-bold text-slate-600 uppercase">Scores based on bag coverage, speed spread and disc count. Only public bags count. Refresh to update.</p>
+                        </div>
+                    )}
+
+                    <div className="flex gap-3">
+                        <button onClick={() => loadLeaderboard()} className="flex-1 py-3 bg-yellow-600/20 border border-yellow-500/30 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-yellow-600/30 transition">↺ Refresh</button>
+                        <button onClick={() => setShowLeaderboard(false)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
+                    </div>
+                </div>
+            </div>
+        )}
 
         {/* =====================================================
             MOLD SLOT HEATMAP MODAL
