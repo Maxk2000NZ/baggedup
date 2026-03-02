@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v47.00-AI';
+const APP_VERSION = 'v49.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -887,6 +887,7 @@ export default function App() {
                 setMyProfile(profile);
                 if (profile.icon) setAuthIcon(profile.icon);
                 if (profile.colour) setAuthColour(profile.colour);
+                if (profile.is_admin) setIsAdmin(true); // auto-grant admin state if flagged in DB
             } else {
                 // Existing user with no profile — prompt setup
                 setAuthEmail(session.user.email || '');
@@ -1021,7 +1022,7 @@ export default function App() {
                 cs.brand.toLowerCase() === (discObj.brand || '').toLowerCase()
             );
             if (!alreadyInCommunity) {
-                const communityPayload = { model: discObj.name, brand: discObj.brand || '', speed: parseFloat(discObj.speed), glide: parseFloat(discObj.glide), turn: parseFloat(discObj.turn), fade: parseFloat(discObj.fade), added_by: session.user.id, verified: false };
+                const communityPayload = { model: discObj.name, brand: discObj.brand || '', speed: parseFloat(discObj.speed), glide: parseFloat(discObj.glide), turn: parseFloat(discObj.turn), fade: parseFloat(discObj.fade), added_by: session.user.id };
                 try {
                     const { data: csData, error: csError } = await supabase.from('community_suggestions').insert(communityPayload).select().single();
                     if (csError) console.error('Error saving to community_suggestions:', csError);
@@ -1374,15 +1375,20 @@ Guidelines:
     };
 
     // --- ADMIN ---
-    const ADMIN_PASS = 'AdminPlayer35!';
-
-    const adminLogin = () => {
-        if (adminPassword === ADMIN_PASS) {
-            setIsAdmin(true); setShowAdminLogin(false); setAdminPassword(''); setAdminError('');
-            setShowAdmin(true); loadAdminData();
-        } else {
-            setAdminError('Incorrect password. Try again.');
+    const adminLogin = async () => {
+        setAdminError('');
+        // Admin check is server-side only — no password stored in frontend code
+        const { data: profile, error } = await supabase
+            .from('profiles')
+            .select('is_admin')
+            .eq('user_id', session?.user?.id)
+            .single();
+        if (error || !profile?.is_admin) {
+            setAdminError('Access denied. This account does not have admin privileges.');
+            return;
         }
+        setIsAdmin(true); setShowAdminLogin(false); setAdminPassword('');
+        setShowAdmin(true); loadAdminData();
     };
 
     const loadAdminData = async () => {
@@ -1460,9 +1466,19 @@ Guidelines:
         setAdminUsers(prev => prev.map(u => u.id === user.id ? { ...u, banned: true } : u));
     };
 
+    const adminToggleAdmin = async (user) => {
+        const newVal = !user.is_admin;
+        if (newVal && !confirm(`Grant admin access to @${user.username}? They will have full access to this panel.`)) return;
+        if (!newVal && !confirm(`Remove admin access from @${user.username}?`)) return;
+        const { error } = await supabase.from('profiles').update({ is_admin: newVal }).eq('user_id', user.user_id);
+        if (error) { alert('Error: ' + error.message); return; }
+        setAdminUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, is_admin: newVal } : u));
+    };
+
     // --- HELP SUBMISSION ---
     const submitHelp = async () => {
         if (!helpText.trim()) return;
+        if (helpText.trim().length > 2000) { alert('Message too long (max 2000 characters).'); return; }
         try {
             await supabase.from('help_submissions').insert({
                 user_id: session?.user?.id || null,
@@ -1543,14 +1559,34 @@ Guidelines:
     const handlePhotoCapture = (e) => {
         const file = e.target.files?.[0];
         if (!file || !photoTargetId) return;
+
+        // Validate file type
+        if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+
+        // Compress to max 800px wide / 70% quality before storing
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const dataUrl = ev.target.result;
-            setDiscPhotos(prev => ({ ...prev, [photoTargetId]: dataUrl }));
-            // Persist photo URL to disc
-            const disc = discs.find(d => d.id === photoTargetId);
-            if (disc) updateDiscInDB({ ...disc, photo_url: dataUrl });
-            setPhotoTargetId(null);
+            const img = new Image();
+            img.onload = () => {
+                const MAX = 800;
+                const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                const compressed = canvas.toDataURL('image/jpeg', 0.70);
+
+                // Safety check — if still over 500KB warn user
+                const sizeKB = Math.round((compressed.length * 0.75) / 1024);
+                if (sizeKB > 500) console.warn(`Photo is ${sizeKB}KB after compression — may be slow to load.`);
+
+                setDiscPhotos(prev => ({ ...prev, [photoTargetId]: compressed }));
+                const disc = discs.find(d => d.id === photoTargetId);
+                if (disc) updateDiscInDB({ ...disc, photo_url: compressed });
+                setPhotoTargetId(null);
+            };
+            img.src = ev.target.result;
         };
         reader.readAsDataURL(file);
     };
@@ -3136,8 +3172,8 @@ Guidelines:
                         <div className="flex justify-between"><h3 className="text-2xl font-black italic uppercase text-blue-500">Add to Global Directory</h3><button type="button" onClick={() => setShowCommunityAdd(false)}>✕</button></div>
                         <p className="text-[10px] font-bold text-slate-400 uppercase">Help the community by adding this disc! It will be available to all pilots.</p>
                         <div className="grid grid-cols-2 gap-3">
-                            <input type="text" value={communityFormData.name} onChange={(e) => setCommunityFormData({ ...communityFormData, name: e.target.value })} placeholder="DISC MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
-                            <input type="text" value={communityFormData.brand} onChange={(e) => setCommunityFormData({ ...communityFormData, brand: e.target.value })} placeholder="MANUFACTURER" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
+                            <input type="text" maxLength={60} value={communityFormData.name} onChange={(e) => setCommunityFormData({ ...communityFormData, name: e.target.value })} placeholder="DISC MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
+                            <input type="text" maxLength={60} value={communityFormData.brand} onChange={(e) => setCommunityFormData({ ...communityFormData, brand: e.target.value })} placeholder="MANUFACTURER" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
                         </div>
                         <div className="grid grid-cols-4 gap-2 text-center">
                             {['speed', 'glide', 'turn', 'fade'].map((l, i) => {
@@ -3176,15 +3212,15 @@ Guidelines:
                     }} className="bg-slate-900 p-8 rounded-[2.5rem] border border-slate-800 w-full max-w-lg space-y-4 my-auto">
                         <div className="flex justify-between"><h3 className="text-2xl font-black italic uppercase text-orange-500">Edit Disc</h3><button type="button" onClick={() => setEditing(null)}>✕</button></div>
                         <div className="grid grid-cols-2 gap-3">
-                            <input name="n" defaultValue={editing.name} placeholder="MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
+                            <input name="n" maxLength={60} defaultValue={editing.name} placeholder="MODEL" className="bg-slate-800 p-4 rounded-xl font-bold uppercase text-[16px] text-white outline-none" />
                             <select name="bag" defaultValue={editing.bag_id || ''} className="bg-slate-800 p-4 rounded-xl text-[16px] text-white">
                                 <option value="">Storage</option>
                                 {bags.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                             </select>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <input name="b" defaultValue={editing.brand} placeholder="BRAND" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
-                            <input name="pl" defaultValue={editing.plastic} placeholder="PLASTIC" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
+                            <input name="b" maxLength={60} defaultValue={editing.brand} placeholder="BRAND" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
+                            <input name="pl" maxLength={40} defaultValue={editing.plastic} placeholder="PLASTIC" className="bg-slate-800 p-4 rounded-xl uppercase text-[16px] text-white outline-none" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <input name="wt" defaultValue={editing.weight} placeholder="WEIGHT (g)" className="bg-slate-800 p-4 rounded-xl text-[16px] text-white outline-none" />
@@ -5297,6 +5333,7 @@ Guidelines:
                         <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Bag Name</label>
                         <input
                             type="text"
+                            maxLength={50}
                             value={newBagName}
                             onChange={e => setNewBagName(e.target.value)}
                             placeholder="e.g. Tournament Bag, Practice Bag…"
@@ -5526,22 +5563,14 @@ Guidelines:
                 <div className="bg-slate-900 border border-red-500/30 rounded-3xl w-full max-w-sm p-8 space-y-5">
                     <div className="text-center">
                         <div className="text-4xl mb-3">🛡</div>
-                        <h2 className="text-xl font-black uppercase italic text-red-400">Admin Login</h2>
+                        <h2 className="text-xl font-black uppercase italic text-red-400">Admin Access</h2>
                         <p className="text-[10px] font-bold text-slate-600 uppercase mt-1">BaggedUp Administration</p>
+                        <p className="text-xs text-slate-500 mt-2">Access is verified against your account — no password required.</p>
                     </div>
                     {adminError && <div className="bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-2 text-red-400 text-xs font-bold text-center">{adminError}</div>}
-                    <input
-                        type="password"
-                        value={adminPassword}
-                        onChange={e => setAdminPassword(e.target.value)}
-                        onKeyDown={e => e.key === 'Enter' && adminLogin()}
-                        placeholder="Admin password"
-                        className="w-full bg-slate-800 border border-slate-700 focus:border-red-500 px-4 py-3 rounded-2xl text-white font-bold outline-none transition placeholder-slate-600"
-                        autoFocus
-                    />
                     <div className="flex gap-3">
-                        <button onClick={() => setShowAdminLogin(false)} className="flex-1 py-3 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Cancel</button>
-                        <button onClick={adminLogin} className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase text-xs text-white transition shadow-lg">Login →</button>
+                        <button onClick={() => { setShowAdminLogin(false); setAdminError(''); }} className="flex-1 py-3 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Cancel</button>
+                        <button onClick={adminLogin} className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase text-xs text-white transition shadow-lg">Verify Access →</button>
                     </div>
                 </div>
             </div>
@@ -5759,8 +5788,16 @@ Guidelines:
                                         <button onClick={() => { navigator.clipboard?.writeText(user.user_id || user.id); alert('User ID copied!'); }} className="text-[7px] font-black uppercase text-slate-700 hover:text-violet-400 transition mt-0.5">📋 Copy ID</button>
                                     </div>
                                     <div className="flex flex-col gap-1 shrink-0">
+                                        {user.is_admin && (
+                                            <span className="text-[8px] font-black uppercase text-violet-400 text-center">🛡 Admin</span>
+                                        )}
+                                        <button
+                                            onClick={() => adminToggleAdmin(user)}
+                                            className={`px-2 py-1 border rounded-lg text-[8px] font-black uppercase transition ${user.is_admin ? 'bg-violet-900/30 hover:bg-violet-900/60 border-violet-500/30 text-violet-400' : 'bg-slate-800 hover:bg-violet-900/20 border-slate-700 text-slate-500 hover:text-violet-400'}`}>
+                                            {user.is_admin ? 'Revoke Admin' : 'Make Admin'}
+                                        </button>
                                         {user.banned
-                                            ? <span className="text-[8px] font-black uppercase text-red-400">Banned</span>
+                                            ? <span className="text-[8px] font-black uppercase text-red-400 text-center">Banned</span>
                                             : <button onClick={() => adminBanUser(user)} className="px-2 py-1 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 rounded-lg text-[8px] font-black uppercase text-red-400 transition">Ban</button>
                                         }
                                     </div>
@@ -5812,8 +5849,10 @@ Guidelines:
                                 onChange={e => setHelpText(e.target.value)}
                                 placeholder={helpType === 'suggestion' ? 'e.g. "I\'d love to be able to track scores per round..."' : 'e.g. "Tapping Add Disc crashes the app on..."'}
                                 rows={4}
+                                maxLength={2000}
                                 className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-4 py-3 rounded-2xl text-white font-medium text-sm outline-none transition resize-none placeholder-slate-600"
                             />
+                            <div className="text-right text-[9px] text-slate-600 font-bold">{helpText.length}/2000</div>
                         </div>
 
                         <div className="text-[9px] font-bold text-slate-600">Sent as @{myProfile?.username || 'anonymous'} · {session?.user?.email || 'not logged in'}</div>
