@@ -3179,7 +3179,7 @@ export default function App() {
                     title: 'Adding Discs',
                     color: 'text-orange-500',
                     tag: '+ Button — Top Right',
-                    body: 'Tap the orange + to search thousands of disc moulds. Tap any disc to add it as a wishlist idea first. Once you own it, hit ✓ Bought to mark it active. Can't find yours? Add it to the global community directory.',
+                    body: "Tap the orange + to search thousands of disc moulds. Tap any disc to add it as a wishlist idea first. Once you own it, hit ✓ Bought to mark it active. Can't find yours? Add it to the global community directory.",
                     tip: 'Community discs show in green — tap to verify the numbers and help everyone.',
                 },
                 {
@@ -3227,7 +3227,7 @@ export default function App() {
                     title: 'Card Mates',
                     color: 'text-cyan-400',
                     tag: '🤝 Card Mates — Sidebar',
-                    body: 'Search any player by username, PDGA number or email to view their public bag. Save them as Card Mates to quickly check what they're throwing before a round. Their icon and colour show on their profile.',
+                    body: "Search any player by username, PDGA number or email to view their public bag. Save them as Card Mates to quickly check what they're throwing before a round. Their icon and colour show on their profile.",
                     tip: 'Make your bags public in Settings to let your crew view them.',
                 },
                 {
