@@ -623,6 +623,173 @@ const recordDiscEvent = async (supabase, discName, brand, speed, turn, fade, use
     } catch (_) { /* non-critical */ }
 };
 
+// ── DISC EXPLORER COMPONENT ──────────────────────────────────────────────────
+const DiscExplorer = ({ discs, onClose, onAdd, userId, supabase }) => {
+    const [idx, setIdx] = useState(() => Math.floor(Math.random() * discs.length));
+    const [dragX, setDragX] = useState(0);
+    const [dragging, setDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [animDir, setAnimDir] = useState(null); // 'left' | 'right' | null
+    const [filterSpeed, setFilterSpeed] = useState('all');
+
+    const filtered = filterSpeed === 'all' ? discs
+        : filterSpeed === 'putter' ? discs.filter(d => d.speed <= 3)
+        : filterSpeed === 'mid' ? discs.filter(d => d.speed >= 4 && d.speed <= 6)
+        : filterSpeed === 'fairway' ? discs.filter(d => d.speed >= 7 && d.speed <= 8)
+        : discs.filter(d => d.speed >= 9);
+
+    const [pool] = useState(() => [...filtered].sort(() => Math.random() - 0.5));
+    const [poolIdx, setPoolIdx] = useState(0);
+    const disc = pool[poolIdx % pool.length];
+
+    const getStabilityLabel = (t, f) => {
+        const s = parseFloat(t) + parseFloat(f);
+        return s >= 2 ? { label: 'Overstable', color: 'text-blue-400' }
+            : s <= -1 ? { label: 'Understable', color: 'text-red-400' }
+            : { label: 'Neutral', color: 'text-emerald-400' };
+    };
+
+    const recordSwipe = async (discName, brand, dir) => {
+        if (!supabase || !userId) return;
+        try {
+            await supabase.from('disc_explorer_swipes').upsert({
+                disc_model: discName,
+                brand: brand || '',
+                swipe: dir, // 'like' | 'pass'
+                user_id: userId,
+                swiped_at: new Date().toISOString(),
+            }, { onConflict: 'user_id,disc_model' });
+        } catch (_) { /* non-critical */ }
+    };
+
+    const swipe = (dir) => {
+        setAnimDir(dir);
+        recordSwipe(disc.name, disc.brand, dir === 'right' ? 'like' : 'pass');
+        setTimeout(() => {
+            setPoolIdx(p => p + 1);
+            setDragX(0);
+            setAnimDir(null);
+        }, 280);
+    };
+
+    const onPointerDown = (e) => { setDragging(true); setStartX(e.clientX || e.touches?.[0]?.clientX || 0); };
+    const onPointerMove = (e) => { if (!dragging) return; const cx = e.clientX || e.touches?.[0]?.clientX || 0; setDragX(cx - startX); };
+    const onPointerUp = () => {
+        if (!dragging) return; setDragging(false);
+        if (Math.abs(dragX) > 80) swipe(dragX > 0 ? 'right' : 'left');
+        else setDragX(0);
+    };
+
+    const stab = getStabilityLabel(disc.turn, disc.fade);
+    const rotation = dragging ? dragX * 0.08 : animDir === 'right' ? 20 : animDir === 'left' ? -20 : 0;
+    const tx = dragging ? dragX : animDir === 'right' ? 400 : animDir === 'left' ? -400 : 0;
+    const opacity = animDir ? 0 : 1;
+
+    return (
+        <div className="fixed inset-0 z-[250] bg-black/98 backdrop-blur-xl flex flex-col items-center justify-center p-4">
+            <div className="w-full max-w-sm">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-5">
+                    <div>
+                        <h2 className="text-2xl font-black italic uppercase text-orange-500">🃏 Disc Explorer</h2>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Swipe right to bag it · left to pass</p>
+                    </div>
+                    <button onClick={onClose} className="text-slate-500 hover:text-white text-2xl transition">✕</button>
+                </div>
+
+                {/* Speed filter */}
+                <div className="flex gap-1.5 mb-5">
+                    {[['all','All'],['putter','Putters'],['mid','Mids'],['fairway','Fairways'],['distance','Drivers']].map(([k,l]) => (
+                        <button key={k} onClick={() => setFilterSpeed(k)}
+                            className={`px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase transition flex-1 ${filterSpeed === k ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{l}</button>
+                    ))}
+                </div>
+
+                {/* Swipe card */}
+                <div className="relative flex items-center justify-center" style={{ height: 360 }}>
+                    {/* Ghost card behind */}
+                    <div className="absolute inset-0 bg-slate-800/30 border border-slate-700/40 rounded-[2rem]" style={{ transform: 'scale(0.96) translateY(8px)' }} />
+
+                    <div
+                        className="absolute inset-0 bg-slate-900 border border-slate-700 rounded-[2rem] p-7 flex flex-col cursor-grab active:cursor-grabbing select-none"
+                        style={{
+                            transform: `translateX(${tx}px) rotate(${rotation}deg)`,
+                            transition: animDir ? 'transform 0.28s ease, opacity 0.28s ease' : dragging ? 'none' : 'transform 0.18s ease',
+                            opacity,
+                            borderColor: dragX > 40 ? 'rgba(34,197,94,0.6)' : dragX < -40 ? 'rgba(239,68,68,0.4)' : undefined,
+                        }}
+                        onMouseDown={onPointerDown} onMouseMove={onPointerMove} onMouseUp={onPointerUp} onMouseLeave={onPointerUp}
+                        onTouchStart={onPointerDown} onTouchMove={onPointerMove} onTouchEnd={onPointerUp}
+                    >
+                        {/* Like / Pass overlays */}
+                        {dragX > 40 && (
+                            <div className="absolute top-6 left-6 border-4 border-emerald-400 rounded-xl px-3 py-1 rotate-[-20deg]">
+                                <span className="text-emerald-400 font-black text-xl uppercase tracking-widest">BAG IT</span>
+                            </div>
+                        )}
+                        {dragX < -40 && (
+                            <div className="absolute top-6 right-6 border-4 border-red-400 rounded-xl px-3 py-1 rotate-[20deg]">
+                                <span className="text-red-400 font-black text-xl uppercase tracking-widest">PASS</span>
+                            </div>
+                        )}
+
+                        {/* Disc visual */}
+                        <div className="flex items-center justify-center mb-5">
+                            <div className="w-28 h-28 rounded-full border-4 border-orange-500/30 flex items-center justify-center relative"
+                                style={{ background: 'radial-gradient(circle at 35% 35%, rgba(249,115,22,0.2), rgba(249,115,22,0.04))' }}>
+                                <div className="absolute inset-3 rounded-full border border-orange-500/15" />
+                                <div className="absolute inset-7 rounded-full border border-orange-500/10" />
+                                <div className="w-6 h-6 rounded-full bg-orange-500/30 border border-orange-500/50" />
+                            </div>
+                        </div>
+
+                        {/* Info */}
+                        <div className="text-center flex-1">
+                            <div className="text-[10px] font-black uppercase text-slate-500 mb-1">{disc.brand}</div>
+                            <div className="text-3xl font-black italic uppercase text-white mb-2 leading-none">{disc.name}</div>
+                            <div className={`text-[11px] font-black uppercase mb-4 ${stab.color}`}>{stab.label}</div>
+
+                            {/* Flight numbers */}
+                            <div className="flex justify-center gap-3">
+                                {[['SPD', disc.speed], ['GLD', disc.glide], ['TRN', disc.turn], ['FDE', disc.fade]].map(([l, v]) => (
+                                    <div key={l} className="bg-slate-800 rounded-xl px-3 py-2 text-center">
+                                        <div className="text-[8px] font-black text-slate-500 uppercase">{l}</div>
+                                        <div className="text-lg font-black text-white">{v}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Swipe hint */}
+                <div className="flex items-center justify-center gap-2 mt-4 text-[9px] font-bold text-slate-600 uppercase">
+                    <span>← Pass</span>
+                    <span className="text-slate-700">·</span>
+                    <span>Bag It →</span>
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 mt-4">
+                    <button onClick={() => swipe('left')}
+                        className="flex-1 py-4 rounded-2xl bg-slate-800 border border-slate-700 font-black uppercase text-sm text-red-400 hover:bg-red-900/20 hover:border-red-500/40 transition">
+                        ✕ Pass
+                    </button>
+                    <button onClick={() => { onAdd(disc); }}
+                        className="flex-1 py-4 rounded-2xl bg-orange-600 font-black uppercase text-sm text-white hover:bg-orange-500 transition shadow-lg shadow-orange-900/30">
+                        + Bag It
+                    </button>
+                    <button onClick={() => swipe('right')}
+                        className="flex-1 py-4 rounded-2xl bg-slate-800 border border-slate-700 font-black uppercase text-sm text-emerald-400 hover:bg-emerald-900/20 hover:border-emerald-500/40 transition">
+                        ♥ Like
+                    </button>
+                </div>
+                <p className="text-center text-[9px] text-slate-700 font-bold uppercase mt-3">Swipe data is collected anonymously to rank disc popularity</p>
+            </div>
+        </div>
+    );
+};
+
 export default function App() {
     const [session, setSession] = useState(null);
     const [authEmail, setAuthEmail] = useState('');
@@ -645,6 +812,7 @@ export default function App() {
     const [releaseAngle, setReleaseAngle] = useState('flat'); // 'flat' | 'hyzer' | 'anhyzer'
     const [chartZoom, setChartZoom] = useState(1); // 1 | 1.5 | 2
     const [discDetailId, setDiscDetailId] = useState(null); // id of disc being spotlighted
+    const [showDiscExplorer, setShowDiscExplorer] = useState(false); // Disc Explorer swipe mode
     const [showCoach, setShowCoach] = useState(false);
     const [activeBagId, setActiveBagId] = useState('');
     const [bags, setBags] = useState([]);
@@ -2069,6 +2237,38 @@ Guidelines:
         }
     }, [discs, activeBagId, view, session, settings, chartMode, favSubView, windConfig, throwView, releaseAngle, chartZoom, discDetailId]);
 
+    // --- PINCH TO ZOOM on mobile chart canvas ---
+    useEffect(() => {
+        const canvas = document.getElementById('mainChart');
+        if (!canvas) return;
+        let initialDist = null;
+        let startZoom = chartZoom;
+        const onTouchStart = (e) => {
+            if (e.touches.length === 2) {
+                initialDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                startZoom = chartZoom;
+            }
+        };
+        const onTouchMove = (e) => {
+            if (e.touches.length === 2 && initialDist) {
+                e.preventDefault();
+                const newDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                const ratio = newDist / initialDist;
+                const clamped = Math.min(3, Math.max(1, startZoom * ratio));
+                setChartZoom(Math.round(clamped * 10) / 10);
+            }
+        };
+        const onTouchEnd = () => { initialDist = null; };
+        canvas.addEventListener('touchstart', onTouchStart, { passive: true });
+        canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+        canvas.addEventListener('touchend', onTouchEnd);
+        return () => {
+            canvas.removeEventListener('touchstart', onTouchStart);
+            canvas.removeEventListener('touchmove', onTouchMove);
+            canvas.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [chartZoom]);
+
     // --- AUTH RENDER ---
     if (!session || authMode === 'profile_setup') return (
         <div className="min-h-[100dvh] w-full bg-[#0b0f1a] flex flex-col lg:flex-row">
@@ -2736,6 +2936,8 @@ Guidelines:
                                 </div>
                             );
                         })()}
+                        {/* Mobile Flightpath Simulator label */}
+                        <div className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-2 px-1">✈ Flightpath Simulator</div>
                         <div className="bg-slate-900/40 rounded-[2.5rem] border border-slate-800 p-4 shadow-2xl">
                             <div className="flex gap-2 mb-4 max-w-xs mx-auto w-full">
                                 <div className="flex bg-slate-800/50 p-1 rounded-2xl flex-1">
@@ -2749,19 +2951,13 @@ Guidelines:
                                     </div>
                                 )}
                             </div>
-                            {/* Release angle + zoom row */}
+                            {/* Release angle + row — mobile */}
                             {chartMode === 'path' && (
                                 <div className="flex gap-2 mb-3 max-w-xs mx-auto w-full">
                                     <div className="flex bg-slate-800/50 p-1 rounded-2xl flex-1">
-                                        {[['flat','—'],['hyzer','↙HYZ'],['anhyzer','↗ANH']].map(([v,l]) => (
+                                        {[['flat','Flat'],['hyzer','↙ Hyzer'],['anhyzer','↗ Anhyzer']].map(([v,l]) => (
                                             <button key={v} onClick={() => setReleaseAngle(v)}
                                                 className={`flex-1 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${releaseAngle === v ? 'bg-violet-600 text-white' : 'text-slate-500'}`}>{l}</button>
-                                        ))}
-                                    </div>
-                                    <div className="flex bg-slate-800/50 p-1 rounded-2xl">
-                                        {[[1,'1×'],[1.5,'1.5×'],[2,'2×']].map(([v,l]) => (
-                                            <button key={v} onClick={() => setChartZoom(v)}
-                                                className={`px-2.5 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${chartZoom === v ? 'bg-emerald-600 text-white' : 'text-slate-500'}`}>{l}</button>
                                         ))}
                                     </div>
                                 </div>
@@ -2850,90 +3046,62 @@ Guidelines:
                     {/* LEFT: Charts — flex-1 so they fill all space not taken by inventory */}
                     <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden min-w-0">
 
-                        {/* WIND CONTROL + SCORE — desktop */}
-                        {view === 'active' && (
-                            <div className="shrink-0 flex gap-3 items-center flex-wrap">
-                                {/* Wind type buttons */}
-                                <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1">
-                                    {[['calm','😌','Calm'],['headwind','💨','Headwind'],['tailwind','🌬','Tailwind'],['crosswind','↔','Crosswind']].map(([t,e,l]) => (
-                                        <button key={t} onClick={() => setWindConfig(wc => ({ ...wc, type: t, speed: t === 'calm' ? 0 : (wc.speed || 10) }))}
-                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition whitespace-nowrap ${windConfig.type === t ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
-                                            {e} {l}
-                                        </button>
-                                    ))}
-                                </div>
-                                {/* Speed input */}
-                                {windConfig.type !== 'calm' && (
-                                    <div className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 rounded-2xl px-3 py-1.5">
-                                        <span className="text-[9px] font-black uppercase text-slate-500">Speed</span>
-                                        <input type="number" min="1" max={settings.unit === 'm' ? 80 : 50}
-                                            value={windConfig.speed || 10}
-                                            onChange={e => setWindConfig(wc => ({ ...wc, speed: Math.max(1, Number(e.target.value)) }))}
-                                            className="w-12 bg-transparent text-blue-400 font-black text-sm text-center outline-none" />
-                                        <span className="text-[9px] font-black text-blue-400">{settings.unit === 'm' ? 'km/h' : 'mph'}</span>
-                                    </div>
-                                )}
-                                {/* Crosswind direction */}
-                                {windConfig.type === 'crosswind' && (
-                                    <div className="flex gap-1 bg-slate-900/60 border border-slate-800 rounded-2xl p-1">
-                                        <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'ltr' }))}
-                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${windConfig.direction === 'ltr' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
-                                            ← L to R
-                                        </button>
-                                        <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'rtl' }))}
-                                            className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition ${windConfig.direction === 'rtl' ? 'bg-blue-600 text-white' : 'text-slate-600 hover:text-slate-400'}`}>
-                                            R to L →
-                                        </button>
-                                    </div>
-                                )}
-                                {bagScore && (
-                                    <button onClick={() => setShowCoach(true)} className="flex items-center gap-2 bg-slate-900/60 border border-slate-800 hover:border-orange-500/40 rounded-2xl px-4 py-2 transition shrink-0 ml-auto">
-                                        <span className={`text-xl font-black italic ${bagScore.color}`}>{bagScore.grade}</span>
-                                        <div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-24 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div className={`h-full rounded-full ${bagScore.total >= 75 ? 'bg-emerald-500' : bagScore.total >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`} style={{ width: `${bagScore.total}%` }} />
-                                                </div>
-                                                <span className={`text-xs font-black ${bagScore.color}`}>{bagScore.total}</span>
-                                            </div>
-                                            <div className="text-[8px] font-bold text-slate-600 uppercase">Smart Bag Coach 🧠</div>
-                                        </div>
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
                         {/* Two charts side by side, filling all remaining vertical space */}
                         <div className="flex-1 grid grid-cols-2 gap-4 min-h-0">
 
                             {/* Flight Path Chart */}
                             <div className="bg-slate-900/40 rounded-[2rem] border border-slate-800 p-5 flex flex-col min-h-0 overflow-hidden">
-                                <div className="flex items-center justify-between mb-3 shrink-0">
-                                    <div className="text-[10px] font-black uppercase text-slate-500 tracking-widest">✈ Flight Path</div>
-                                    <div className="flex items-center gap-2">
-                                        {/* Release angle */}
-                                        <div className="flex bg-slate-800 p-0.5 rounded-xl">
-                                            {[['flat','—'],['hyzer','↙HYZ'],['anhyzer','↗ANH']].map(([v,l]) => (
-                                                <button key={v} onClick={() => setReleaseAngle(v)}
-                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${releaseAngle === v ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{l}</button>
-                                            ))}
-                                        </div>
-                                        {/* Zoom */}
-                                        <div className="flex bg-slate-800 p-0.5 rounded-xl">
-                                            {[[1,'1×'],[1.5,'1.5×'],[2,'2×']].map(([v,l]) => (
-                                                <button key={v} onClick={() => setChartZoom(v)}
-                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${chartZoom === v ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{l}</button>
-                                            ))}
-                                        </div>
-                                        <span className="text-[9px] font-bold text-slate-600 uppercase">
-                                            {throwView === 'bh'
-                                                ? `${settings.unit === 'm' ? Math.round((settings.bhPower || 350) * 0.3048) : (settings.bhPower || 350)}${settings.unit}`
-                                                : `${settings.unit === 'm' ? Math.round((settings.fhPower || 250) * 0.3048) : (settings.fhPower || 250)}${settings.unit}`}
-                                        </span>
+                                {/* Header: title + all controls */}
+                                <div className="shrink-0 mb-3">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="text-[11px] font-black uppercase text-orange-500 tracking-widest">✈ Flightpath Simulator</div>
+                                        {bagScore && (
+                                            <button onClick={() => setShowCoach(true)} className="flex items-center gap-1.5 bg-slate-800 hover:border-orange-500/40 rounded-xl px-2.5 py-1 transition">
+                                                <span className={`text-base font-black italic ${bagScore.color}`}>{bagScore.grade}</span>
+                                                <span className={`text-[10px] font-black ${bagScore.color}`}>{bagScore.total}</span>
+                                                <span className="text-[8px] font-bold text-slate-600 uppercase">Coach 🧠</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                    {/* Controls row */}
+                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                        {/* BH/FH */}
                                         <div className="flex bg-slate-800 p-0.5 rounded-xl">
                                             <button onClick={() => setThrowView('bh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'bh' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>↩ BH</button>
                                             <button onClick={() => setThrowView('fh')} className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase transition ${throwView === 'fh' ? 'bg-cyan-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>↪ FH</button>
                                         </div>
+                                        {/* Release angle */}
+                                        <div className="flex bg-slate-800 p-0.5 rounded-xl">
+                                            {[['flat','Flat'],['hyzer','↙ Hyzer'],['anhyzer','↗ Anhyzer']].map(([v,l]) => (
+                                                <button key={v} onClick={() => setReleaseAngle(v)}
+                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${releaseAngle === v ? 'bg-violet-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}>{l}</button>
+                                            ))}
+                                        </div>
+                                        {/* Wind */}
+                                        <div className="flex gap-1 bg-slate-800 p-0.5 rounded-xl">
+                                            {[['calm','😌'],['headwind','💨'],['tailwind','🌬'],['crosswind','↔']].map(([t,e]) => (
+                                                <button key={t} onClick={() => setWindConfig(wc => ({ ...wc, type: t, speed: t === 'calm' ? 0 : (wc.speed || 10) }))}
+                                                    className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${windConfig.type === t ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                                                    title={t.charAt(0).toUpperCase()+t.slice(1)}>
+                                                    {e}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {windConfig.type !== 'calm' && (
+                                            <div className="flex items-center gap-1.5 bg-slate-800 rounded-xl px-2 py-1">
+                                                <input type="number" min="1" max={settings.unit === 'm' ? 80 : 50}
+                                                    value={windConfig.speed || 10}
+                                                    onChange={e => setWindConfig(wc => ({ ...wc, speed: Math.max(1, Number(e.target.value)) }))}
+                                                    className="w-10 bg-transparent text-blue-400 font-black text-[11px] text-center outline-none" />
+                                                <span className="text-[9px] font-black text-blue-400">{settings.unit === 'm' ? 'km/h' : 'mph'}</span>
+                                            </div>
+                                        )}
+                                        {windConfig.type === 'crosswind' && (
+                                            <div className="flex gap-0.5 bg-slate-800 p-0.5 rounded-xl">
+                                                <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'ltr' }))} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${windConfig.direction === 'ltr' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>L→R</button>
+                                                <button onClick={() => setWindConfig(wc => ({ ...wc, direction: 'rtl' }))} className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${windConfig.direction === 'rtl' ? 'bg-blue-600 text-white' : 'text-slate-500'}`}>R→L</button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex-1 relative min-h-0">
@@ -3077,14 +3245,9 @@ Guidelines:
                         <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
                         <div className="flex items-center gap-2">
                             <button
-                                onClick={() => {
-                                    const allDiscs = [...FACTORY_DB, ...communitySuggestions.filter(d => d.approved !== false)];
-                                    const rand = allDiscs[Math.floor(Math.random() * allDiscs.length)];
-                                    if (rand) setDbQuery(rand.Model || rand.model || '');
-                                }}
-                                className="flex items-center gap-1.5 px-3 py-2 bg-pink-600/20 border border-pink-500/40 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-pink-600/30 transition"
-                                title="Disc Tinder — random disc"
-                            >🔀 Disc Tinder</button>
+                                onClick={() => setShowDiscExplorer(true)}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-pink-600/20 to-orange-600/20 border border-pink-500/40 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:from-pink-600/30 hover:to-orange-600/30 transition"
+                            >🃏 Disc Explorer</button>
                             <button onClick={() => { setShowSearch(false); setDbQuery(''); setSearchFilter('all'); }} className="text-2xl">✕</button>
                         </div>
                     </div>
@@ -3288,6 +3451,26 @@ Guidelines:
             )}
 
             {/* GAP ANALYSIS MODAL */}
+
+            {/* DISC EXPLORER — swipe card UI */}
+            {showDiscExplorer && (() => {
+                const allDiscs = [
+                    ...FACTORY_DB.map(d => ({ name: d.Model, brand: d.Manufacturer, speed: d.Speed, glide: d.Glide, turn: d.Turn, fade: d.Fade })),
+                    ...communitySuggestions.filter(d => d.approved !== false).map(d => ({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade }))
+                ];
+                return (
+                    <DiscExplorer
+                        discs={allDiscs}
+                        onClose={() => setShowDiscExplorer(false)}
+                        onAdd={(d) => {
+                            addDiscToDB({ name: d.name, brand: d.brand, speed: parseFloat(d.speed), glide: parseFloat(d.glide), turn: parseFloat(d.turn), fade: parseFloat(d.fade), wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.round(Math.random()*360)},70%,60%)`, max_dist: 0, aces: 0, is_idea: false });
+                            setShowDiscExplorer(false);
+                        }}
+                        userId={session?.user?.id}
+                        supabase={supabase}
+                    />
+                );
+            })()}
 
             {/* EDIT MODAL */}
             {editing && (
