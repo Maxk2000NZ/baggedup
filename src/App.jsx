@@ -631,16 +631,21 @@ const DiscExplorer = ({ discs, onClose, onAdd, userId, supabase }) => {
     const [startX, setStartX] = useState(0);
     const [animDir, setAnimDir] = useState(null); // 'left' | 'right' | null
     const [filterSpeed, setFilterSpeed] = useState('all');
-
-    const filtered = filterSpeed === 'all' ? discs
-        : filterSpeed === 'putter' ? discs.filter(d => d.speed <= 3)
-        : filterSpeed === 'mid' ? discs.filter(d => d.speed >= 4 && d.speed <= 6)
-        : filterSpeed === 'fairway' ? discs.filter(d => d.speed >= 7 && d.speed <= 8)
-        : discs.filter(d => d.speed >= 9);
-
-    const [pool] = useState(() => [...filtered].sort(() => Math.random() - 0.5));
+    const [pool, setPool] = useState(() => [...discs].sort(() => Math.random() - 0.5));
     const [poolIdx, setPoolIdx] = useState(0);
-    const disc = pool[poolIdx % pool.length];
+
+    // Re-generate pool when filter changes
+    useEffect(() => {
+        const filtered = filterSpeed === 'all' ? discs
+            : filterSpeed === 'putter' ? discs.filter(d => d.speed <= 3)
+            : filterSpeed === 'mid' ? discs.filter(d => d.speed >= 4 && d.speed <= 6)
+            : filterSpeed === 'fairway' ? discs.filter(d => d.speed >= 7 && d.speed <= 8)
+            : discs.filter(d => d.speed >= 9);
+        setPool([...filtered].sort(() => Math.random() - 0.5));
+        setPoolIdx(0);
+    }, [filterSpeed]);
+
+    const disc = pool[poolIdx % Math.max(1, pool.length)];
 
     const getStabilityLabel = (t, f) => {
         const s = parseFloat(t) + parseFloat(f);
@@ -776,8 +781,8 @@ const DiscExplorer = ({ discs, onClose, onAdd, userId, supabase }) => {
                         ✕ Pass
                     </button>
                     <button onClick={() => { onAdd(disc); }}
-                        className="flex-1 py-4 rounded-2xl bg-orange-600 font-black uppercase text-sm text-white hover:bg-orange-500 transition shadow-lg shadow-orange-900/30">
-                        + Bag It
+                        className="flex-[2] py-4 rounded-2xl bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-500 hover:to-pink-500 font-black uppercase text-base text-white transition shadow-xl shadow-orange-900/40 border border-orange-500/30 animate-pulse">
+                        🎒 + Add to Bag
                     </button>
                     <button onClick={() => swipe('right')}
                         className="flex-1 py-4 rounded-2xl bg-slate-800 border border-slate-700 font-black uppercase text-sm text-emerald-400 hover:bg-emerald-900/20 hover:border-emerald-500/40 transition">
@@ -1379,6 +1384,20 @@ export default function App() {
     { "name": "disc model", "brand": "manufacturer", "flight_numbers": "speed/glide/turn/fade", "reason": "why they need this", "priority": "high/medium/low" }
   ],
   "tips": ["tip 1", "tip 2"]
+}`;
+        }
+
+        if (aiMode === 'fullbag') {
+            recommendationType = 'Design a COMPLETE balanced bag for this player. Include: which discs from their collection to keep, plus new discs to buy to fill all critical slots. Cover putters, midranges, fairway drivers, and distance drivers appropriate for their skill level. Aim for 9-15 discs total.';
+            responseFormat = `{
+  "summary": "2-3 sentence bag philosophy for this player",
+  "from_collection": [
+    { "name": "exact disc name", "reason": "why keep this in the bag", "role": "putter/mid/fairway/driver" }
+  ],
+  "new_to_buy": [
+    { "name": "disc model", "brand": "manufacturer", "flight_numbers": "speed/glide/turn/fade", "reason": "fills this gap", "priority": "high/medium/low" }
+  ],
+  "tips": ["tip 1", "tip 2", "tip 3"]
 }`;
         }
 
@@ -2310,6 +2329,7 @@ Guidelines:
                     <h1 className="text-2xl font-black italic uppercase text-white mt-2 tracking-tight">
                         Bagged<span className="text-orange-500">Up</span>
                     </h1>
+                    <a href="/" className="mt-2 text-[10px] font-bold text-slate-600 hover:text-slate-400 uppercase transition">← Back to Homepage</a>
                 </div>
 
                 <div className="w-full max-w-sm lg:max-w-md">
@@ -2381,6 +2401,9 @@ Guidelines:
                                     className="text-orange-500 hover:text-orange-400 font-bold uppercase text-xs transition">
                                     Create Account →
                                 </button>
+                            </div>
+                            <div className="pt-2 text-center">
+                                <a href="/" className="text-[10px] font-bold text-slate-600 hover:text-slate-400 uppercase transition">← Back to Homepage</a>
                             </div>
                         </form>
                     )}
@@ -2850,11 +2873,17 @@ Guidelines:
                             {showWindPanel && (
                                 <div className="mt-2 bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
                                     {/* Type row */}
-                                    <div className="grid grid-cols-4 gap-1.5">
-                                        {[['calm','😌','Calm'],['headwind','💨','Head'],['tailwind','🌬','Tail'],['crosswind','↔','Cross']].map(([t,e,l]) => (
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        {[
+                                            ['calm','😌','Calm','No wind'],
+                                            ['headwind','💨','Headwind','Wind in your face → disc goes shorter, fades harder'],
+                                            ['tailwind','🌬','Tailwind','Wind behind you → disc acts overstable, fades early'],
+                                            ['crosswind','↔','Crosswind','Wind from the side → disc drifts with/against wind'],
+                                        ].map(([t,e,l,desc]) => (
                                             <button key={t} onClick={() => setWindConfig(wc => ({ ...wc, type: t, speed: t === 'calm' ? 0 : (wc.speed || 10) }))}
-                                                className={`py-2 rounded-xl text-[9px] font-black uppercase transition ${windConfig.type === t ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                                                {e}<br/>{l}
+                                                className={`py-2.5 px-3 rounded-xl text-left transition ${windConfig.type === t ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                                                <div className="text-[10px] font-black uppercase">{e} {l}</div>
+                                                <div className={`text-[8px] font-bold mt-0.5 leading-tight ${windConfig.type === t ? 'text-blue-200' : 'text-slate-600'}`}>{desc}</div>
                                             </button>
                                         ))}
                                     </div>
@@ -3079,11 +3108,11 @@ Guidelines:
                                         </div>
                                         {/* Wind */}
                                         <div className="flex gap-1 bg-slate-800 p-0.5 rounded-xl">
-                                            {[['calm','😌'],['headwind','💨'],['tailwind','🌬'],['crosswind','↔']].map(([t,e]) => (
+                                            {[['calm','😌','Calm'],['headwind','💨','Head↑'],['tailwind','🌬','Tail↓'],['crosswind','↔','Cross']].map(([t,e,l]) => (
                                                 <button key={t} onClick={() => setWindConfig(wc => ({ ...wc, type: t, speed: t === 'calm' ? 0 : (wc.speed || 10) }))}
                                                     className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase transition ${windConfig.type === t ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
-                                                    title={t.charAt(0).toUpperCase()+t.slice(1)}>
-                                                    {e}
+                                                    title={t === 'headwind' ? 'Headwind: wind in your face — disc goes shorter, fades harder' : t === 'tailwind' ? 'Tailwind: wind behind you — disc acts overstable, fades early' : t === 'crosswind' ? 'Crosswind: wind from the side — disc drifts left or right' : 'No wind'}>
+                                                    {e} {l}
                                                 </button>
                                             ))}
                                         </div>
@@ -3242,7 +3271,12 @@ Guidelines:
             {showSearch && !showCommunityAdd && (
                 <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
                     <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
+                        <div>
+                            <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">
+                                Adding to: <span className="text-orange-400">{bags.find(b => b.id === activeBagId)?.name || 'Main Bag'}</span>
+                            </p>
+                        </div>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setShowDiscExplorer(true)}
@@ -3530,7 +3564,7 @@ Guidelines:
                             <div className="bg-slate-800 p-3 rounded-xl"><span className="text-[8px] font-black text-slate-500 uppercase">Path Color</span><input name="c" type="color" defaultValue={editing.color} className="w-full h-6 bg-transparent" /></div>
                         </div>
                         <div className="flex gap-2">
-                            <label className="flex-1 bg-slate-800 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-slate-500"><input name="fav" type="checkbox" defaultChecked={editing.favorite} className="accent-orange-500 h-5 w-5" />Collection</label>
+                            <label className="flex-1 bg-slate-800 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-slate-500"><input name="fav" type="checkbox" defaultChecked={editing.favorite} className="accent-orange-500 h-5 w-5" />⭐ Favourite</label>
                             <label className="flex-1 bg-red-900/20 p-4 rounded-xl flex items-center gap-3 text-[10px] font-black uppercase text-red-500"><input name="lost" type="checkbox" defaultChecked={editing.status === 'lost'} className="accent-red-500 h-5 w-5" />Lost Disc</label>
                         </div>
                         <button type="submit" className="w-full bg-orange-600 py-5 rounded-2xl font-black uppercase text-white shadow-xl">Sync to Cloud</button>
@@ -4497,6 +4531,13 @@ Guidelines:
                     open: () => setShowSearch(true), openLabel: '➕ Open Disc Search Now',
                 },
                 {
+                    emoji: '🃏', title: 'Disc Explorer — Swipe to Discover',
+                    color: 'text-pink-400', border: 'border-pink-500/40',
+                    glow: 'shadow-pink-900/60',
+                    body: "Not sure what disc to try next? Disc Explorer lets you swipe through our database like Tinder for discs. Swipe right to like, tap '+ Add to Bag' to add it instantly. Filter by type — putters, mids, fairways, or drivers.",
+                    open: () => setShowDiscExplorer(true), openLabel: '🃏 Open Disc Explorer',
+                },
+                {
                     emoji: '🎒', title: 'My Bag — Live Flight Chart',
                     color: 'text-orange-400', border: 'border-orange-500/40',
                     glow: 'shadow-orange-900/60',
@@ -5245,6 +5286,22 @@ Guidelines:
                             </button>
                         </div>
 
+                        {/* Quick access to charts */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-2xl px-5 py-4 space-y-3">
+                            <p className="text-[10px] font-black uppercase text-slate-500">📊 Visualise Your Bag</p>
+                            <div className="flex gap-3">
+                                <button onClick={() => { setShowCoach(false); setView('active'); setChartMode('path'); }}
+                                    className="flex-1 py-3 bg-orange-600/20 border border-orange-500/30 hover:bg-orange-600/40 rounded-xl font-black uppercase text-xs text-orange-400 transition">
+                                    ✈ Flight Path Simulator
+                                </button>
+                                <button onClick={() => { setShowCoach(false); setView('active'); setChartMode('matrix'); }}
+                                    className="flex-1 py-3 bg-blue-600/20 border border-blue-500/30 hover:bg-blue-600/40 rounded-xl font-black uppercase text-xs text-blue-400 transition">
+                                    ◎ Stability Matrix
+                                </button>
+                            </div>
+                            <p className="text-[9px] font-bold text-slate-600">Flight Path shows S-curves for every disc. Stability Matrix plots speed vs turn+fade so you can see your bag's stability spread at a glance.</p>
+                        </div>
+
                         <button onClick={() => setShowCoach(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
                     </div>
                 </div>
@@ -5269,11 +5326,12 @@ Guidelines:
                     {/* Mode selection */}
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
                         <p className="text-[9px] font-black uppercase text-slate-500 mb-2">Recommendation Mode</p>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             {[
-                                ['collection', '📦 My Discs Only'],
-                                ['new', '🆕 Buy New Discs'],
-                                ['both', '📦+🆕 Both']
+                                ['collection', '📦 My Discs'],
+                                ['new', '🆕 Buy New'],
+                                ['both', '📦+🆕 Both'],
+                                ['fullbag', '🎒 Full Bag Build'],
                             ].map(([mode, label]) => (
                                 <button key={mode} onClick={() => setAIMode(mode)}
                                     className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase transition ${aiMode === mode ? 'bg-pink-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
@@ -5281,6 +5339,9 @@ Guidelines:
                                 </button>
                             ))}
                         </div>
+                        {aiMode === 'fullbag' && (
+                            <p className="text-[9px] font-bold text-pink-300 mt-2">🎒 Full Bag Build: AI designs a complete balanced bag for your skill level and goals — recommending which discs from your collection to keep plus new ones to buy. Results will be saved as a new bag.</p>
+                        )}
                     </div>
 
                     {/* Prompt examples */}
@@ -5448,7 +5509,7 @@ Guidelines:
                                                         brand: disc.brand,
                                                         speed, glide, turn, fade,
                                                         wear: 0,
-                                                        bag_id: null,
+                                                        bag_id: activeBagId,
                                                         status: 'active',
                                                         color: `hsl(${Math.random()*360},70%,60%)`,
                                                         max_dist: 0,
