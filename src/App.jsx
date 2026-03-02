@@ -4116,7 +4116,7 @@ Guidelines:
                     emoji: '🎯', title: 'AI Bag Builder',
                     color: 'text-pink-400', border: 'border-pink-500/40',
                     glow: 'shadow-pink-900/60',
-                    body: "Describe your game in plain English — AI recommends exactly the right discs. Try: "I need a beginner fairway driver that goes straight". Add discs from the results straight to your bag. Needs a free Gemini key in Settings.",
+                    body: "Describe your game in plain English — AI recommends exactly the right discs. Try: 'I need a beginner fairway driver that goes straight'. Add discs from the results straight to your bag. Needs a free Gemini key in Settings.",
                     open: () => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }, openLabel: '🎯 Open AI Bag Builder',
                 },
                 {
