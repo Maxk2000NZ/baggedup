@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v41.00-AI';
+const APP_VERSION = 'v42.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -3942,146 +3942,176 @@ Guidelines:
             TUTORIAL / WALKTHROUGH
         ===================================================== */}
         {showTutorial && (() => {
+            // Steps: each opens the real UI so user can interact with it live
+            // 'open' = side effect to run (navigate/open modal), shown via "See it live" button
+            // 'anchor' = data-tour attribute to spotlight (optional)
             const steps = [
                 {
-                    emoji: '👋', title: 'Welcome to BaggedUp!', color: 'text-orange-400',
-                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
-                    body: "The ultimate disc golf bag tracker. This quick tour shows every feature — and opens them so you can see them live. Hit Next or use the action buttons.",
-                    action: null, actionLabel: null, isFinal: false,
+                    emoji: '👋', title: 'Welcome to BaggedUp!',
+                    color: 'text-orange-400', border: 'border-orange-500/40',
+                    glow: 'shadow-orange-900/60',
+                    body: "Your complete disc golf companion. This tour opens every feature so you can explore it live — not just read about it. Use the buttons below each step to jump right in.",
+                    open: null, openLabel: null,
                 },
                 {
-                    emoji: '➕', title: 'Adding Discs', color: 'text-orange-400',
-                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
-                    body: "Tap '+ Add Disc' in the header to search our full disc database. Search any mould name, manufacturer, or flight numbers — then add it straight to your bag.",
-                    action: () => setShowSearch(true), actionLabel: '➕ Open Add Disc', isFinal: false,
+                    emoji: '➕', title: 'Add Discs to Your Bag',
+                    color: 'text-orange-400', border: 'border-orange-500/40',
+                    glow: 'shadow-orange-900/60',
+                    body: "Tap '+ Add Disc' in the top-right header to search our full disc database. Find any mould by name, brand, or flight numbers — then add it to your bag instantly.",
+                    open: () => setShowSearch(true), openLabel: '➕ Open Disc Search Now',
                 },
                 {
-                    emoji: '🎒', title: 'My Bag', color: 'text-orange-400',
-                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
-                    body: "Your active bag with a live flight path chart. Every disc plots its S-curve so you can see your full bag spread at a glance. Tap any disc to edit, rate condition, or remove it.",
-                    action: () => setView('active'), actionLabel: '🎒 Go to My Bag', isFinal: false,
+                    emoji: '🎒', title: 'My Bag — Live Flight Chart',
+                    color: 'text-orange-400', border: 'border-orange-500/40',
+                    glow: 'shadow-orange-900/60',
+                    body: "Your active bag with a real-time flight path chart. Every disc plots its S-curve so you can see the full spread. Tap any disc card to edit details, set wear level, or remove it.",
+                    open: () => setView('active'), openLabel: '🎒 Go to My Bag',
                 },
                 {
-                    emoji: '📦', title: 'Collection', color: 'text-amber-400',
-                    bg: 'from-amber-950/98 to-slate-950/99', border: 'border-amber-500/30',
-                    body: "Every disc you own — in-bag, retired, or on the wishlist. 'Idea Discs' are discs you're thinking about buying. Manage your full inventory here.",
-                    action: () => setView('collection'), actionLabel: '📦 Open Collection', isFinal: false,
+                    emoji: '📦', title: 'Collection — Your Full Inventory',
+                    color: 'text-amber-400', border: 'border-amber-500/40',
+                    glow: 'shadow-amber-900/60',
+                    body: "Every disc you own — active, retired, or on the wishlist. 'Idea Discs' are discs you're planning to buy. Use this view to manage your full collection and track wear over time.",
+                    open: () => setView('collection'), openLabel: '📦 Open Collection',
                 },
                 {
-                    emoji: '🪦', title: 'Lost Discs', color: 'text-slate-300',
-                    bg: 'from-slate-800/98 to-slate-950/99', border: 'border-slate-600/30',
-                    body: "Mark a disc as lost, pin its GPS location on a map, and share the exact coordinates with your card mates so they can help you find it.",
-                    action: () => setView('graveyard'), actionLabel: '🪦 Open Lost Discs', isFinal: false,
+                    emoji: '🪦', title: 'Lost Discs — GPS Tracking',
+                    color: 'text-slate-300', border: 'border-slate-500/40',
+                    glow: 'shadow-slate-900/60',
+                    body: "Mark any disc as lost, pin its exact GPS location, and share the coordinates with card mates so they can help search. Tap a disc → Mark as Lost to pin the location.",
+                    open: () => setView('graveyard'), openLabel: '🪦 Open Lost Discs',
                 },
                 {
-                    emoji: '🎯', title: 'AI Bag Builder', color: 'text-pink-400',
-                    bg: 'from-pink-950/98 to-slate-950/99', border: 'border-pink-500/30',
-                    body: "Describe your game in plain English and AI recommends the perfect discs. Try: \"I need a beginner-friendly fairway driver that goes straight\". Needs a free Gemini key in Settings.",
-                    action: () => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }, actionLabel: '🎯 Open AI Bag Builder', isFinal: false,
+                    emoji: '🧠', title: 'Smart Bag Coach',
+                    color: 'text-orange-400', border: 'border-orange-500/40',
+                    glow: 'shadow-orange-900/60',
+                    body: "Your bag automatically scored and analysed. The Coach checks for missing disc types, arm speed mismatches, redundant discs, speed gaps, and gives you a bag grade. Tap the score bar in My Bag to open it.",
+                    open: () => { setView('active'); setShowCoach(true); }, openLabel: '🧠 Open Smart Bag Coach',
                 },
                 {
-                    emoji: '🧑‍🏫', title: 'My Coach', color: 'text-emerald-400',
-                    bg: 'from-emerald-950/98 to-slate-950/99', border: 'border-emerald-500/30',
-                    body: "Your personal AI disc golf coach. Ask it to fix your grip lock, recommend YouTube drills, build a 4-week training plan, or explain how to read wind. It knows your skill level and bag.",
-                    action: () => setShowMyCoach(true), actionLabel: '🧑‍🏫 Open My Coach', isFinal: false,
+                    emoji: '🎯', title: 'AI Bag Builder',
+                    color: 'text-pink-400', border: 'border-pink-500/40',
+                    glow: 'shadow-pink-900/60',
+                    body: "Describe your game in plain English — AI recommends exactly the right discs. Try: "I need a beginner fairway driver that goes straight". Add discs from the results straight to your bag. Needs a free Gemini key in Settings.",
+                    open: () => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }, openLabel: '🎯 Open AI Bag Builder',
                 },
                 {
-                    emoji: '🤝', title: 'Card Mates & Leaderboard', color: 'text-cyan-400',
-                    bg: 'from-cyan-950/98 to-slate-950/99', border: 'border-cyan-500/30',
-                    body: "Add your playing partners by email. See their bags, compare discs, and compete on the Leaderboard ranked by bag score. Try adding your first card mate now.",
-                    action: () => { setShowCardMates(true); setCardMatesTab('mates'); }, actionLabel: '🤝 Open Card Mates', isFinal: false,
+                    emoji: '🧑‍🏫', title: 'My Coach — AI Coaching',
+                    color: 'text-emerald-400', border: 'border-emerald-500/40',
+                    glow: 'shadow-emerald-900/60',
+                    body: "Your personal AI disc golf coach. Ask about form, fixing grip lock, reading wind, training plans, or YouTube drill recommendations. It knows your skill level, arm speed, and current bag.",
+                    open: () => setShowMyCoach(true), openLabel: '🧑‍🏫 Open My Coach',
                 },
                 {
-                    emoji: '🔥', title: 'Disc Heatmap', color: 'text-violet-400',
-                    bg: 'from-violet-950/98 to-slate-950/99', border: 'border-violet-500/30',
-                    body: "A visual grid of your collection by disc type. See instantly if you're stacked with drivers and missing mid-range, or perfectly balanced across all four categories.",
-                    action: () => setShowHeatmap(true), actionLabel: '🔥 Open Heatmap', isFinal: false,
+                    emoji: '🤝', title: 'Card Mates & Leaderboard',
+                    color: 'text-cyan-400', border: 'border-cyan-500/40',
+                    glow: 'shadow-cyan-900/60',
+                    body: "Add playing partners by email. Browse their bags, compare disc choices, and compete on the Leaderboard ranked by bag score. Try searching for someone you play with.",
+                    open: () => { setShowCardMates(true); setCardMatesTab('mates'); }, openLabel: '🤝 Open Card Mates',
                 },
                 {
-                    emoji: '📋', title: 'Bag Check', color: 'text-yellow-400',
-                    bg: 'from-yellow-950/98 to-slate-950/99', border: 'border-yellow-500/30',
-                    body: "Pre-round checklist. Tick off every disc, flag anything damaged. Run this before every round and you'll never show up to the course missing a disc again.",
-                    action: () => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }, actionLabel: '📋 Open Bag Check', isFinal: false,
+                    emoji: '🔥', title: 'Disc Type Heatmap',
+                    color: 'text-violet-400', border: 'border-violet-500/40',
+                    glow: 'shadow-violet-900/60',
+                    body: "A visual grid of your collection by disc type. Instantly see if you're stacked with distance drivers and have no mid-range, or if you're perfectly balanced. Great for spotting holes in your bag.",
+                    open: () => setShowHeatmap(true), openLabel: '🔥 Open Heatmap',
                 },
                 {
-                    emoji: '📤', title: 'Export & Share', color: 'text-purple-400',
-                    bg: 'from-purple-950/98 to-slate-950/99', border: 'border-purple-500/30',
-                    body: "Export your full bag as a clean PDF or image. Post it on Instagram, share with your club, or archive it before a bag change. Looks great on any device.",
-                    action: () => setShowExport(true), actionLabel: '📤 Open Export', isFinal: false,
+                    emoji: '📋', title: 'Bag Check — Pre-Round Checklist',
+                    color: 'text-yellow-400', border: 'border-yellow-500/40',
+                    glow: 'shadow-yellow-900/60',
+                    body: "Run this before every round. Walk through your bag, tick each disc, flag anything damaged. You'll never arrive at the course missing a mid-range again.",
+                    open: () => { setRoundBagId(activeBagId); setRoundChecked({}); setLostComment({}); setShowPlayRound(true); }, openLabel: '📋 Open Bag Check',
                 },
                 {
-                    emoji: '⚙️', title: "Set Yourself Up", color: 'text-orange-400',
-                    bg: 'from-orange-950/98 to-slate-950/99', border: 'border-orange-500/30',
-                    body: "Open Settings to enter your skill level, throwing distances, and handedness. This personalises every recommendation. Add a free Gemini key (aistudio.google.com) to unlock AI features.",
-                    action: () => { setSettingsTab('account'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); },
-                    actionLabel: '⚙️ Open Settings', isFinal: true,
+                    emoji: '📤', title: 'Export & Share Your Bag',
+                    color: 'text-purple-400', border: 'border-purple-500/40',
+                    glow: 'shadow-purple-900/60',
+                    body: "Export your bag as a clean PDF or shareable image. Post it on Instagram, send to your club, or save it before a bag change. All your flight paths and disc details in one clean layout.",
+                    open: () => setShowExport(true), openLabel: '📤 Open Export',
+                },
+                {
+                    emoji: '⚙️', title: "Final Step — Set Yourself Up",
+                    color: 'text-orange-400', border: 'border-orange-500/40',
+                    glow: 'shadow-orange-900/60',
+                    body: "Open Settings to enter your skill level, throwing distances, and handedness. This personalises every AI recommendation and the Smart Bag Coach. Add a free Gemini key (aistudio.google.com) to unlock AI features.",
+                    open: () => { setSettingsTab('account'); setAccountEdit({ username: myProfile?.username || '', pdga_number: myProfile?.pdga_number || '', email: session?.user?.email || '' }); setAccountMessage(''); setShowSettings(true); },
+                    openLabel: '⚙️ Open Settings', isFinal: true,
                 },
             ];
 
             const step = steps[tutorialStep];
             const isFirst = tutorialStep === 0;
             const isLast = tutorialStep === steps.length - 1;
-            const progress = ((tutorialStep + 1) / steps.length) * 100;
+            const progress = Math.round(((tutorialStep + 1) / steps.length) * 100);
 
             return (
-                <div className="fixed inset-0 z-[500] flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4" style={{ background: 'rgba(2,6,23,0.80)', backdropFilter: 'blur(6px)' }}>
-                    <div className="w-full max-w-md mx-auto flex flex-col gap-3">
+                // Semi-transparent overlay — user can see the real app behind it
+                <div className="fixed inset-0 z-[490] pointer-events-none" style={{ background: 'rgba(2,6,23,0.65)', backdropFilter: 'blur(2px)' }}>
+                    {/* Tooltip card — positioned bottom, pointer-events active */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 pb-4 sm:p-5 sm:pb-6 pointer-events-auto">
+                        <div className="max-w-lg mx-auto flex flex-col gap-2.5">
 
-                        {/* Progress */}
-                        <div className="flex items-center gap-3 px-1">
-                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 shrink-0">App Tour {tutorialStep + 1}/{steps.length}</span>
-                            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                                <div className="h-full bg-orange-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                            {/* Progress row */}
+                            <div className="flex items-center gap-3 px-0.5">
+                                <div className="flex gap-1 items-center shrink-0">
+                                    {steps.map((_, i) => (
+                                        <button key={i} onClick={() => setTutorialStep(i)}
+                                            className={`rounded-full transition-all duration-300 pointer-events-auto ${i === tutorialStep ? 'w-5 h-2 bg-orange-500' : i < tutorialStep ? 'w-2 h-2 bg-orange-700 hover:bg-orange-500' : 'w-2 h-2 bg-slate-700 hover:bg-slate-500'}`}
+                                        />
+                                    ))}
+                                </div>
+                                <div className="flex-1 h-1 bg-slate-800/80 rounded-full overflow-hidden">
+                                    <div className="h-full bg-orange-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                                </div>
+                                <span className="text-[9px] font-black text-slate-500 shrink-0">{tutorialStep + 1}/{steps.length}</span>
+                                <button onClick={() => setShowTutorial(false)} className="text-[9px] font-black uppercase text-slate-600 hover:text-slate-300 transition shrink-0">Skip ✕</button>
                             </div>
-                            <button onClick={() => setShowTutorial(false)} className="text-slate-600 hover:text-slate-400 text-[10px] font-black uppercase shrink-0 transition">Skip ✕</button>
-                        </div>
 
-                        {/* Card */}
-                        <div className={`rounded-3xl border bg-gradient-to-br ${step.bg} ${step.border} p-6 shadow-2xl`}>
-                            <div className="flex items-center gap-3 mb-3">
-                                <div className="text-4xl shrink-0">{step.emoji}</div>
-                                <h2 className={`text-xl font-black uppercase italic leading-tight ${step.color}`}>{step.title}</h2>
-                            </div>
-                            <p className="text-slate-300 text-sm font-medium leading-relaxed mb-5">{step.body}</p>
+                            {/* Main card */}
+                            <div className={`rounded-2xl sm:rounded-3xl border bg-slate-950/95 ${step.border} px-5 py-4 shadow-2xl ${step.glow}`}>
+                                {/* Title row */}
+                                <div className="flex items-center gap-3 mb-2.5">
+                                    <span className="text-3xl shrink-0">{step.emoji}</span>
+                                    <h3 className={`text-base font-black uppercase italic leading-tight ${step.color}`}>{step.title}</h3>
+                                </div>
 
-                            {/* Feature action button — closes tour, opens the real thing, then re-opens tour */}
-                            {step.action && (
-                                <button
-                                    onClick={() => { setShowTutorial(false); step.action(); setTimeout(() => setShowTutorial(true), 250); }}
-                                    className={`w-full py-3 rounded-2xl font-black uppercase text-sm border mb-4 transition hover:scale-[1.01] active:scale-[0.99] shadow-lg ${step.border} bg-white/5 hover:bg-white/10 ${step.color}`}
-                                >
-                                    {step.actionLabel} ↗
-                                </button>
-                            )}
+                                {/* Body */}
+                                <p className="text-slate-300 text-sm font-medium leading-relaxed mb-4">{step.body}</p>
 
-                            <div className="flex gap-2">
-                                {!isFirst && (
-                                    <button onClick={() => setTutorialStep(t => t - 1)} className="px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition shrink-0">← Back</button>
-                                )}
-                                {!isLast ? (
-                                    <button onClick={() => setTutorialStep(t => t + 1)} className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
-                                        Next Feature →
+                                {/* Action — opens the REAL feature */}
+                                {step.open && (
+                                    <button
+                                        onClick={() => { step.open(); setShowTutorial(false); setTimeout(() => setShowTutorial(true), 280); }}
+                                        className={`w-full py-2.5 rounded-xl font-black uppercase text-xs border mb-3 transition active:scale-[0.98] ${step.border} bg-white/5 hover:bg-white/10 ${step.color}`}
+                                    >
+                                        {step.openLabel} — tap to explore ↗
                                     </button>
-                                ) : (
-                                    <button onClick={() => { setShowTutorial(false); if (step.action) step.action(); }} className="flex-1 py-2.5 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-sm text-white shadow-lg shadow-orange-900/40 transition">
-                                        ⚙️ Finish & Open Settings
-                                    </button>
                                 )}
-                            </div>
-                        </div>
 
-                        {/* Dot nav */}
-                        <div className="flex justify-center gap-1.5">
-                            {steps.map((_, i) => (
-                                <button key={i} onClick={() => setTutorialStep(i)} className={`rounded-full transition-all duration-300 ${i === tutorialStep ? 'w-5 h-2 bg-orange-500' : i < tutorialStep ? 'w-2 h-2 bg-orange-700' : 'w-2 h-2 bg-slate-700 hover:bg-slate-600'}`} />
-                            ))}
+                                {/* Nav row */}
+                                <div className="flex gap-2">
+                                    {!isFirst && (
+                                        <button onClick={() => setTutorialStep(t => t - 1)} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-xl font-black uppercase text-xs text-slate-400 transition shrink-0">← Back</button>
+                                    )}
+                                    {!isLast ? (
+                                        <button onClick={() => setTutorialStep(t => t + 1)} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 rounded-xl font-black uppercase text-sm text-white shadow-lg transition">
+                                            Next →
+                                        </button>
+                                    ) : (
+                                        <button onClick={() => { setShowTutorial(false); if (step.open) step.open(); }} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 rounded-xl font-black uppercase text-sm text-white shadow-lg transition">
+                                            ⚙️ Finish & Open Settings
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
             );
         })()}
 
-        {/* Tutorial replay button - shown in Settings header */}
+
 
         {/* =====================================================
             CARD MATES MODAL
@@ -4365,15 +4395,47 @@ Guidelines:
             const speedGaps = [];
             for (let i = 0; i < speeds.length - 1; i++) { if (speeds[i+1] - speeds[i] >= 4) speedGaps.push({ from: speeds[i], to: speeds[i+1] }); }
 
-            // Arm speed — tiered recommendation (not cliff-edge)
+            // Arm speed — table-based thresholds from distance
             const bh = settings.bhPower || settings.maxPower;
             const bhFt = settings.unit === 'm' ? Math.round(bh * 0.3048) : bh;
-            // Comfortable max: ~1ft of distance per 30ft of arm = speed 10 at 300ft, speed 12 at 360ft, etc.
-            // Give 2 extra speeds of headroom before warning
-            const comfortSpeed = Math.round(bhFt / 28); // slightly generous
-            const hardMax = Math.round(bhFt / 24);       // still usable but pushing it
-            // Only flag discs > hardMax — not just "too fast by a bit"
+            const bhM = settings.unit === 'm' ? bh : Math.round(bh * 0.3048);
+            // Distance-to-max-recommended-speed lookup (using metres)
+            // Beginner players often have faster discs — flag discs meaningfully over threshold
+            // comfortSpeed = ideal upper limit; hardMax = absolute ceiling before real problems
+            const getSpeedThreshold = (metres) => {
+                if (metres < 40)  return { comfort: 3,  hard: 4  };
+                if (metres < 60)  return { comfort: 4,  hard: 5  };
+                if (metres < 80)  return { comfort: 6,  hard: 7  };
+                if (metres < 100) return { comfort: 7,  hard: 9  };
+                if (metres < 120) return { comfort: 9,  hard: 10 };
+                if (metres < 140) return { comfort: 10, hard: 11 };
+                if (metres < 160) return { comfort: 11, hard: 12 };
+                return { comfort: 13, hard: 14 };
+            };
+            const speedThresh = getSpeedThreshold(bhM);
+            const comfortSpeed = speedThresh.comfort;
+            const hardMax = speedThresh.hard;
+            // Flag discs above hardMax threshold; always allow at least speed 5 (mids) regardless
             const tooFast = active.filter(d => parseFloat(d.speed) > hardMax);
+
+            // Duplicate putter detection — if 2+ putters have same name, likely putting + throwing putter
+            const putterDiscs = active.filter(d => parseFloat(d.speed) <= 3);
+            const puttersByName = {};
+            putterDiscs.forEach(d => { const n = (d.name || '').trim().toLowerCase(); if (!puttersByName[n]) puttersByName[n] = []; puttersByName[n].push(d); });
+            const duplicatePutterPairs = Object.entries(puttersByName).filter(([, arr]) => arr.length >= 2);
+
+            // Speed range diversity check — ensure good spread across speed ranges
+            const speedRangeCounts = { putter: 0, mid: 0, fairway: 0, distance: 0 };
+            active.forEach(d => {
+                const sp = parseFloat(d.speed);
+                if (sp <= 3) speedRangeCounts.putter++;
+                else if (sp <= 6) speedRangeCounts.mid++;
+                else if (sp <= 9) speedRangeCounts.fairway++;
+                else speedRangeCounts.distance++;
+            });
+            const totalDiscs = active.length;
+            const heavyOnDrivers = totalDiscs >= 4 && speedRangeCounts.distance >= Math.ceil(totalDiscs * 0.5);
+            const missingSlowDiscs = totalDiscs >= 4 && speedRangeCounts.putter === 0 && speedRangeCounts.mid === 0;
 
             const skillTips = {
                 beginner: 'Focus on discs speed 1-7. High-speed drivers are harder to control and will actually fly shorter for beginners.',
@@ -4455,34 +4517,71 @@ Guidelines:
                             <p className="text-sm font-bold text-orange-200">{skillTips[settings.skillLevel] || skillTips.intermediate}</p>
                         </div>
 
-                        {/* Arm speed advisory */}
+                        {/* Arm Speed Advisory — enhanced */}
                         {tooFast.length > 0 && (
-                            <div className="bg-red-900/20 border border-red-500/30 rounded-2xl px-5 py-4">
-                                <p className="text-[10px] font-black uppercase text-red-400 mb-2">⚠️ Arm Speed Advisory</p>
-                                <p className="text-sm font-bold text-red-300 mb-1">
-                                    At {settings.unit === 'm' ? Math.round(bh * 0.3048) : bh}{settings.unit} backhand, your effective range is up to speed {comfortSpeed}.
-                                    These {tooFast.length} disc{tooFast.length > 1 ? 's' : ''} (speed {hardMax}+) will likely turn over or not fly as intended:
-                                </p>
-                                <div className="bg-red-900/20 rounded-xl p-3 mb-3 space-y-1">
-                                    <p className="text-[9px] font-black uppercase text-red-400">Why this matters:</p>
-                                    <p className="text-[10px] font-bold text-red-300">High-speed drivers need significant arm speed to reach their intended flight path. Too slow = the disc turns over (bad for RHBH). Beat-in/worn versions fly more understable and can work at lower arm speeds.</p>
-                                    <p className="text-[10px] font-bold text-orange-300 mt-1.5">💡 Try: Hyzer-releasing these discs to compensate, or switch to a fairway driver in the same stability for now.</p>
+                            <div className="bg-red-900/20 border border-red-500/30 rounded-2xl px-5 py-4 space-y-3">
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-red-400 mb-1">⚠️ Arm Speed Advisory</p>
+                                    <p className="text-sm font-bold text-red-200">
+                                        At {settings.unit === 'm' ? bhM : bhFt}{settings.unit} backhand, your ideal disc range is up to speed {comfortSpeed}
+                                        {hardMax > comfortSpeed ? ` (max ${hardMax} with good form)` : ''}.
+                                    </p>
+                                    <p className="text-sm font-bold text-red-300 mt-1">
+                                        These {tooFast.length} disc{tooFast.length > 1 ? 's' : ''} (speed {hardMax + 1}+) will likely turn over or not reach their intended flight:
+                                    </p>
+                                </div>
+                                <div className="bg-red-950/40 rounded-xl p-3 space-y-1 border border-red-800/30">
+                                    <p className="text-[9px] font-black uppercase text-red-400">WHY THIS MATTERS</p>
+                                    <p className="text-[10px] font-bold text-red-300">High-speed drivers need significant arm speed to generate the gyroscopic stability they're designed for. Too slow = disc turns over (RHBH goes hard right). A beat-in or worn disc flies more understable and can work at lower arm speeds.</p>
+                                    <p className="text-[10px] font-bold text-orange-300 mt-1.5">💡 Hyzer-release these discs to compensate, or find a fairway/control driver in the same stability profile — it'll go further and straighter for your arm speed.</p>
                                 </div>
                                 <div className="space-y-1.5">
                                     {tooFast.map(d => {
                                         const wear = parseFloat(d.wear) || 0;
-                                        const wearLabel = wear >= 0.7 ? '🟢 Well Worn — may work' : wear >= 0.4 ? '🟡 Beat In — borderline' : wear >= 0.1 ? '🟠 Slight Wear — too fast' : '🔴 New Plastic — too fast';
+                                        const spd = parseFloat(d.speed);
+                                        const wearLabel = wear >= 0.7 ? '🟢 WELL WORN — MAY WORK' : wear >= 0.4 ? '🟡 BEAT IN — BORDERLINE' : wear >= 0.1 ? '🟠 SLIGHT WEAR — TOO FAST' : '🔴 NEW PLASTIC — TOO FAST';
+                                        const wearColor = wear >= 0.7 ? 'text-emerald-400' : wear >= 0.4 ? 'text-yellow-400' : wear >= 0.1 ? 'text-orange-400' : 'text-red-400';
+                                        const howFast = spd > hardMax + 3 ? 'text-red-400' : spd > hardMax + 1 ? 'text-orange-400' : 'text-yellow-400';
                                         return (
-                                            <div key={d.id} className="flex items-center gap-2 bg-red-900/10 rounded-xl px-3 py-2">
-                                                <span style={{color: d.color}}>●</span>
-                                                <span className="font-black text-[11px] text-red-300 flex-1">{d.name}</span>
-                                                <span className="text-red-500 text-[10px] font-bold">Spd {d.speed}</span>
-                                                {d.plastic && <span className="text-slate-500 text-[9px] uppercase">{d.plastic}</span>}
-                                                <span className={`text-[9px] uppercase ml-auto ${wear >= 0.4 ? 'text-emerald-400' : 'text-slate-500'}`}>{wearLabel}</span>
+                                            <div key={d.id} className="flex items-center gap-2 bg-slate-900/60 rounded-xl px-3 py-2.5 border border-red-900/30">
+                                                <span className="text-lg shrink-0" style={{color: d.color || '#f97316'}}>●</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="font-black text-[11px] text-white">{d.name}</span>
+                                                    {d.plastic && <span className="text-slate-500 text-[9px] uppercase ml-1.5">{d.plastic}</span>}
+                                                </div>
+                                                <span className={`text-[10px] font-black shrink-0 ${howFast}`}>Spd {d.speed}</span>
+                                                <span className={`text-[9px] font-black uppercase shrink-0 ${wearColor}`}>{wearLabel}</span>
                                             </div>
                                         );
                                     })}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Duplicate Putter Note */}
+                        {duplicatePutterPairs.length > 0 && (
+                            <div className="bg-blue-900/20 border border-blue-500/30 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-blue-400 mb-2">🎯 Putting Putter Detected</p>
+                                {duplicatePutterPairs.map(([name, arr]) => (
+                                    <div key={name}>
+                                        <p className="text-sm font-bold text-blue-200">You have {arr.length}× <span className="text-white">{arr[0].name}</span> — this is a classic setup! One is likely your putting putter, the other your approach/throwing putter.</p>
+                                        <p className="text-[10px] font-bold text-blue-400 mt-1.5">💡 Tip: Label them in your disc notes (e.g. "Putter - Putting" vs "Putter - Throwing") so you can tell them apart at a glance. The more worn one usually makes a better driving putter.</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Speed spread advisory */}
+                        {heavyOnDrivers && (
+                            <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-amber-400 mb-1">📊 Speed Balance Warning</p>
+                                <p className="text-sm font-bold text-amber-200">Your bag is heavy on distance drivers ({speedRangeCounts.distance} discs). Even advanced players get more distance from a well-thrown fairway driver than a badly-thrown distance driver. Make sure you have mid-range and fairway discs for control shots.</p>
+                            </div>
+                        )}
+                        {missingSlowDiscs && (
+                            <div className="bg-amber-900/20 border border-amber-500/30 rounded-2xl px-5 py-4">
+                                <p className="text-[10px] font-black uppercase text-amber-400 mb-1">⚠️ No Control Discs</p>
+                                <p className="text-sm font-bold text-amber-200">You have no putters or mid-ranges. Approach shots, short park jobs and tricky technical holes demand slower, more accurate discs. Add at least one mid-range and one putter.</p>
                             </div>
                         )}
 
@@ -4513,7 +4612,12 @@ Guidelines:
                                                     );
                                                 })}
                                             </div>
-                                            {isExact && <p className="text-[9px] font-bold text-yellow-600 mt-1.5">Same mould — different plastics/wear levels can be intentional. Consider keeping your most worn for utility throws.</p>}
+                                            {isExact && (() => {
+                                                const slotType = slot.startsWith('putter') ? 'putter' : null;
+                                                return slotType ? 
+                                                    <p className="text-[9px] font-bold text-blue-400 mt-1.5">💡 Same putter mould — this is often intentional! One for putting, one for throwing/approach. No action needed if they serve different roles.</p> :
+                                                    <p className="text-[9px] font-bold text-yellow-600 mt-1.5">Same mould — different plastics/wear levels can be intentional. Keep the most worn version for utility throws.</p>;
+                                            })()}
                                         </div>
                                     );
                                 })}
