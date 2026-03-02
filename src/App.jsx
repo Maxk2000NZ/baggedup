@@ -664,7 +664,6 @@ export default function App() {
     const [lostComment, setLostComment] = useState({});
     const [roundBagId, setRoundBagId] = useState('');
     const [communityFormData, setCommunityFormData] = useState({name: '', brand: '', speed: 5, glide: 5, turn: 0, fade: 2.5});
-    const [showTutorial, setShowTutorial] = useState(false);
     const [tutorialStep, setTutorialStep] = useState(0);
     const [showVerifyDisc, setShowVerifyDisc] = useState(null); // holds community disc to verify
     const [verifyName, setVerifyName] = useState('');
@@ -809,11 +808,6 @@ export default function App() {
 
             // Show tutorial for new users (no discs yet)
             const isNewUser = !set || (!d || d.length === 0);
-            const tutorialSeen = localStorage.getItem(`tutorial_seen_${session.user.id}`);
-            if (isNewUser && !tutorialSeen) {
-                setShowTutorial(true);
-                setTutorialStep(0);
-            }
 
             const { data: cs, error: csError } = await supabase.from('community_suggestions').select('*');
             if (csError) console.error('Failed to load community suggestions:', csError);
@@ -998,7 +992,82 @@ export default function App() {
         await supabase.from('discs').delete().eq('id', id);
     };
 
-    // --- BAG BUILDER (Google Gemini) ---
+    // --- SIMPLE QUERY DETECTOR (NO AI NEEDED) ---
+    const detectSimpleQuery = (query) => {
+        const q = query.toLowerCase().trim();
+        const owned = discs.filter(d => d.status === 'active' && !d.is_idea);
+        
+        // Speed queries: "speed 7", "speed 10-12", "high speed", "low speed"
+        const speedMatch = q.match(/speed\s+(\d+)(?:-(\d+))?/);
+        if (speedMatch) {
+            const min = parseInt(speedMatch[1]);
+            const max = speedMatch[2] ? parseInt(speedMatch[2]) : min;
+            return owned.filter(d => d.speed >= min && d.speed <= max);
+        }
+        if (q.includes('high speed') || q.includes('distance driver')) {
+            return owned.filter(d => d.speed >= 9);
+        }
+        if (q.includes('low speed') || q.includes('slow')) {
+            return owned.filter(d => d.speed <= 5);
+        }
+        
+        // Disc types
+        if (q.includes('putter')) return owned.filter(d => d.speed <= 3);
+        if (q.includes('mid') || q.includes('midrange')) return owned.filter(d => d.speed >= 4 && d.speed <= 6);
+        if (q.includes('fairway')) return owned.filter(d => d.speed >= 7 && d.speed <= 9);
+        if (q.includes('driver') && !q.includes('fairway')) return owned.filter(d => d.speed >= 10);
+        
+        // Stability
+        if (q.includes('overstable') || q.includes('os')) {
+            return owned.filter(d => {
+                const netTurn = parseFloat(d.turn) + parseFloat(d.fade);
+                return netTurn >= 2;
+            });
+        }
+        if (q.includes('understable') || q.includes('us') || q.includes('flippy')) {
+            return owned.filter(d => {
+                const netTurn = parseFloat(d.turn) + parseFloat(d.fade);
+                return netTurn <= 0;
+            });
+        }
+        if (q.includes('straight') || q.includes('stable')) {
+            return owned.filter(d => {
+                const netTurn = parseFloat(d.turn) + parseFloat(d.fade);
+                return netTurn > 0 && netTurn < 2;
+            });
+        }
+        
+        // Brand
+        const brands = [...new Set(owned.map(d => d.brand))];
+        const matchedBrand = brands.find(b => q.includes(b.toLowerCase()));
+        if (matchedBrand) {
+            return owned.filter(d => d.brand.toLowerCase() === matchedBrand.toLowerCase());
+        }
+        
+        // Flight numbers: "4/5/-2/1" or "turn -2" or "fade 3"
+        const flightMatch = q.match(/(\d+)\/(\d+)\/([-\d]+)\/([-\d]+)/);
+        if (flightMatch) {
+            const [_, speed, glide, turn, fade] = flightMatch.map(Number);
+            return owned.filter(d => 
+                Math.abs(d.speed - speed) <= 1 &&
+                Math.abs(d.glide - glide) <= 1 &&
+                Math.abs(d.turn - turn) <= 1 &&
+                Math.abs(d.fade - fade) <= 1
+            );
+        }
+        if (q.match(/turn\s+([-\d]+)/)) {
+            const turn = parseInt(q.match(/turn\s+([-\d]+)/)[1]);
+            return owned.filter(d => Math.abs(d.turn - turn) <= 0.5);
+        }
+        if (q.match(/fade\s+(\d+)/)) {
+            const fade = parseInt(q.match(/fade\s+(\d+)/)[1]);
+            return owned.filter(d => Math.abs(d.fade - fade) <= 0.5);
+        }
+        
+        return null; // Complex query - use AI
+    };
+
+    // --- BAG BUILDER (Hybrid: Simple Filter or AI) ---
     const runAIBagBuilder = async () => {
         if (!aiPrompt.trim()) return;
         setAILoading(true);
@@ -1007,6 +1076,28 @@ export default function App() {
         const owned = discs.filter(d => d.status === 'active' && !d.is_idea);
         if (!owned.length) {
             setAIResult({ error: 'Add some discs to your collection first, then come back to build your bag.' });
+            setAILoading(false);
+            return;
+        }
+
+        // Try simple query detection first (no API cost!)
+        const simpleResults = detectSimpleQuery(aiPrompt);
+        if (simpleResults !== null) {
+            // Simple query matched - instant results!
+            setAIResult({
+                summary: `Found ${simpleResults.length} disc${simpleResults.length !== 1 ? 's' : ''} matching "${aiPrompt}"`,
+                recommended: simpleResults.slice(0, 10).map(d => ({
+                    name: d.name,
+                    reason: `${d.brand} • ${d.speed}/${d.glide}/${d.turn}/${d.fade}`,
+                    role: d.speed <= 3 ? 'Putter' : d.speed <= 6 ? 'Midrange' : d.speed <= 9 ? 'Fairway Driver' : 'Distance Driver'
+                })),
+                tips: simpleResults.length === 0 
+                    ? ['No matches found. Try adding more discs or adjust your search.']
+                    : simpleResults.length > 10
+                    ? [`Showing top 10 of ${simpleResults.length} matches.`]
+                    : [],
+                isSimple: true
+            });
             setAILoading(false);
             return;
         }
@@ -2061,13 +2152,6 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                     MOBILE LAYOUT (below lg): stacked — chart then inventory
                 ===================================================== */}
                 <main className="lg:hidden flex-1 overflow-y-auto">
-                    {!gapAnalysis.allFilled && view === 'active' && (
-                        <div className="px-4 pt-4">
-                            <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.text === 'Bag is Empty — Build Your Bag' ? '🎒 Bag Empty — View All 12 Slot Suggestions' : `${gapAnalysis.gaps.length} gap${gapAnalysis.gaps.length!==1?'s':''} — ${gapAnalysis.text} — View All`}
-                            </button>
-                        </div>
-                    )}
                     {gapAnalysis.allFilled && view === 'active' && (
                         <div className="px-4 pt-4">
                             <div className="w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 slots filled</div>
@@ -2252,16 +2336,6 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
 
                     {/* LEFT: Charts — flex-1 so they fill all space not taken by inventory */}
                     <div className="flex-1 flex flex-col p-5 gap-4 overflow-hidden min-w-0">
-
-                        {/* Gap analysis banner */}
-                        {!gapAnalysis.allFilled && view === 'active' && (
-                            <button onClick={() => setSuggestionPool(gapAnalysis.gaps)} className="shrink-0 w-full bg-blue-500/10 border border-blue-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-blue-400 animate-pulse">
-                                {gapAnalysis.text === 'Bag is Empty — Build Your Bag' ? '🎒 Bag Empty — View All 12 Slot Suggestions' : `${gapAnalysis.gaps.length} gap${gapAnalysis.gaps.length!==1?'s':''} detected — ${gapAnalysis.text} — View All Suggestions`}
-                            </button>
-                        )}
-                        {gapAnalysis.allFilled && view === 'active' && (
-                            <div className="shrink-0 w-full bg-emerald-500/10 border border-emerald-500/20 py-2 rounded-xl text-[10px] font-black uppercase text-emerald-400 text-center">✓ Bag Optimised — All 12 disc slots covered</div>
-                        )}
 
                         {/* WIND CONTROL + SCORE — desktop */}
                         {view === 'active' && (
@@ -2476,7 +2550,7 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                         <h2 className="text-3xl font-black italic text-orange-500 uppercase">Search</h2>
                         <button onClick={() => { setShowSearch(false); setDbQuery(''); setSearchFilter('all'); }} className="text-2xl">✕</button>
                     </div>
-                    <input autoFocus placeholder="DISC MODEL, SPEED (e.g. 12), OR BRAND..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full max-w-2xl mx-auto bg-slate-900 p-5 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-3 outline-none focus:border-orange-500" />
+                    <input autoFocus placeholder="DISC MODEL, BRAND, SPEED, OR FLIGHT NUMBERS (e.g. 7/5/-1/2)..." value={dbQuery} onChange={e => setDbQuery(e.target.value)} className="w-full max-w-2xl mx-auto bg-slate-900 p-5 rounded-3xl border border-slate-800 font-black text-[16px] uppercase italic text-white mb-3 outline-none focus:border-orange-500" />
                     {/* Filter chips */}
                     <div className="flex gap-1.5 flex-wrap max-w-2xl mx-auto w-full mb-4">
                         {[
@@ -2512,12 +2586,36 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                             };
                             const query = dbQuery.toLowerCase().trim();
                             const isNumeric = !isNaN(parseFloat(query)) && query !== '';
+                            
+                            // Flight number search: "7/5/-1/2" or "speed 7" or "turn -3" or "fade 2"
+                            const flightMatch = query.match(/(\d+)\/(\d+)\/([-\d]+)\/([-\d]+)/);
+                            const speedMatch = query.match(/(?:speed\s+)?(\d+)$/);
+                            const turnMatch = query.match(/turn\s+([-\d]+)/);
+                            const fadeMatch = query.match(/fade\s+(\d+)/);
 
                             const factoryFiltered = FACTORY_DB.filter(d => {
                                 if (!typeFilter(d.Speed)) return false;
                                 if (!stabFilter(d.Turn, d.Fade)) return false;
                                 if (!query) return true;
+                                
+                                // Full flight numbers: 7/5/-1/2
+                                if (flightMatch) {
+                                    const [_, speed, glide, turn, fade] = flightMatch.map(Number);
+                                    return Math.abs(d.Speed - speed) <= 1 && 
+                                           Math.abs(d.Glide - glide) <= 1 && 
+                                           Math.abs(d.Turn - turn) <= 1 && 
+                                           Math.abs(d.Fade - fade) <= 1;
+                                }
+                                
+                                // Individual flight number queries
+                                if (turnMatch) return Math.abs(d.Turn - Number(turnMatch[1])) <= 0.5;
+                                if (fadeMatch) return Math.abs(d.Fade - Number(fadeMatch[1])) <= 0.5;
+                                if (speedMatch) return d.Speed === Number(speedMatch[1]);
+                                
+                                // Legacy: single number matches speed or glide
                                 if (isNumeric) return parseFloat(d.Speed) === parseFloat(query) || parseFloat(d.Glide) === parseFloat(query);
+                                
+                                // Text search
                                 return d.Model.toLowerCase().includes(query) || d.Manufacturer.toLowerCase().includes(query);
                             });
 
@@ -2525,7 +2623,25 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                                 if (!typeFilter(d.speed)) return false;
                                 if (!stabFilter(d.turn, d.fade)) return false;
                                 if (!query) return true;
+                                
+                                // Full flight numbers
+                                if (flightMatch) {
+                                    const [_, speed, glide, turn, fade] = flightMatch.map(Number);
+                                    return Math.abs(d.speed - speed) <= 1 && 
+                                           Math.abs(d.glide - glide) <= 1 && 
+                                           Math.abs(d.turn - turn) <= 1 && 
+                                           Math.abs(d.fade - fade) <= 1;
+                                }
+                                
+                                // Individual flight numbers
+                                if (turnMatch) return Math.abs(d.turn - Number(turnMatch[1])) <= 0.5;
+                                if (fadeMatch) return Math.abs(d.fade - Number(fadeMatch[1])) <= 0.5;
+                                if (speedMatch) return d.speed === Number(speedMatch[1]);
+                                
+                                // Legacy
                                 if (isNumeric) return parseFloat(d.speed) === parseFloat(query);
+                                
+                                // Text search
                                 return d.model.toLowerCase().includes(query) || d.brand.toLowerCase().includes(query);
                             });
 
@@ -2617,69 +2733,6 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
             )}
 
             {/* GAP ANALYSIS MODAL */}
-            {suggestionPool && (
-                <div className="fixed inset-0 z-[200] bg-black/95 p-6 backdrop-blur-xl flex flex-col">
-                    <div className="flex justify-between items-center mb-4 shrink-0">
-                        <div>
-                            <h2 className="text-2xl font-black italic text-blue-400 uppercase">🎯 Bag Gap Analysis</h2>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">
-                                {suggestionPool.length === 0 ? 'All 12 slots covered!' : `${suggestionPool.length} of 12 slots missing`}
-                            </p>
-                        </div>
-                        <button onClick={() => setSuggestionPool(null)} className="text-2xl text-slate-500 hover:text-white">✕</button>
-                    </div>
-                    <div className="shrink-0 mb-4">
-                        {[{label:'Putter',slots:['putter_ST','putter_OS','putter_US']},{label:'Midrange',slots:['mid_ST','mid_OS','mid_US']},{label:'Fairway',slots:['fairway_ST','fairway_OS','fairway_US']},{label:'Distance',slots:['distance_ST','distance_OS','distance_US']}].map(row => {
-                            const missingKeys = new Set(suggestionPool.map(g => g.key));
-                            return (
-                                <div key={row.label} className="flex items-center gap-2 mb-1.5">
-                                    <span className="text-[9px] font-black uppercase text-slate-500 w-14 shrink-0">{row.label}</span>
-                                    {['ST','OS','US'].map((stab,i) => {
-                                        const key=row.slots[i]; const isMissing=missingKeys.has(key);
-                                        return <div key={stab} className={`flex-1 py-1 rounded-lg text-center text-[8px] font-black uppercase ${isMissing?'bg-red-900/40 border border-red-600/40 text-red-400':'bg-emerald-900/30 border border-emerald-600/30 text-emerald-400'}`}>{isMissing?'✗':'✓'} {stab}</div>;
-                                    })}
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <div className="flex-grow overflow-y-auto space-y-5 pb-10 max-w-2xl w-full mx-auto">
-                        {suggestionPool.length === 0 ? (
-                            <div className="text-center py-12">
-                                <div className="text-5xl mb-4">🏆</div>
-                                <p className="text-emerald-400 font-black uppercase text-lg">Perfect Bag!</p>
-                                <p className="text-slate-500 text-xs font-bold uppercase mt-2">All 12 disc categories are covered</p>
-                            </div>
-                        ) : suggestionPool.map(gap => (
-                            <div key={gap.key} className="bg-slate-900 border border-slate-800 rounded-2xl p-4">
-                                <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
-                                    <span className="font-black uppercase text-sm text-white">{gap.label}</span>
-                                    <span className="ml-auto text-[9px] font-bold text-slate-600 uppercase">Priority {gap.priority===1?'🔴 High':gap.priority<=3?'🟡 Med':'⚪ Low'}</span>
-                                </div>
-                                {gap.suggestions?.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {gap.suggestions.map((d,i) => (
-                                            <div key={`${d.Model}-${i}`}
-                                                onClick={() => { addDiscToDB({name:d.Model,brand:d.Manufacturer,speed:d.Speed,glide:d.Glide,turn:d.Turn,fade:d.Fade,wear:0,bag_id:activeBagId,status:'active',color:`hsl(${Math.random()*360},70%,60%)`,max_dist:0,aces:0,is_idea:true}); setSuggestionPool(null); }}
-                                                className={`flex justify-between items-center p-3 rounded-xl border cursor-pointer transition ${d.source==='community'?'bg-emerald-900/10 border-emerald-700/30 hover:border-emerald-500':'bg-slate-800/60 border-slate-700/40 hover:border-blue-500'}`}>
-                                                <div>
-                                                    <span className={`font-black uppercase text-sm ${d.source==='community'?'text-emerald-400':'text-white'}`}>{d.Model}</span>
-                                                    <span className="text-slate-500 text-[10px] font-bold uppercase ml-2">{d.Manufacturer}</span>
-                                                    {d.source==='community'&&<span className="ml-2 text-[8px] font-black uppercase text-emerald-600 bg-emerald-900/30 px-1.5 py-0.5 rounded">Community</span>}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[10px] font-bold text-slate-400">{d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</span>
-                                                    <span className="text-blue-400 font-black text-lg">+</span>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : <p className="text-slate-600 text-[10px] font-bold uppercase">No suggestions in database — add via the + button</p>}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
 
             {/* EDIT MODAL */}
             {editing && (
@@ -2881,10 +2934,6 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                                 <button onClick={() => { saveSettings(settings); setShowSettings(false); }}
                                     className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition">
                                     Save & Close
-                                </button>
-                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }}
-                                    className="w-full bg-blue-600/20 border border-blue-500/30 py-3 rounded-2xl font-black uppercase text-blue-400 text-xs hover:bg-blue-600/30 transition">
-                                    📖 View Tutorial
                                 </button>
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between">
@@ -3618,159 +3667,6 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
         {/* =====================================================
             TUTORIAL MODAL
         ===================================================== */}
-        {showTutorial && (() => {
-            const STEPS = [
-                {
-                    icon: '🎒',
-                    title: 'Welcome to BaggedUp!',
-                    color: 'text-orange-500',
-                    tag: null,
-                    body: 'Your complete disc golf bag tracker and coach. Add your discs, visualise flights, simulate wind, analyse your bag gaps and get smart coaching — all in one place.',
-                    tip: null,
-                },
-                {
-                    icon: '➕',
-                    title: 'Adding Discs',
-                    color: 'text-orange-500',
-                    tag: '+ Button — Top Right',
-                    body: "Tap the orange + to search thousands of disc moulds. Tap any disc to add it as a wishlist idea first. Once you own it, hit ✓ Bought to mark it active. Can't find yours? Add it to the global community directory.",
-                    tip: 'Community discs show in green — tap to verify the numbers and help everyone.',
-                },
-                {
-                    icon: '📊',
-                    title: 'Flight Charts',
-                    color: 'text-blue-400',
-                    tag: 'Main Screen',
-                    body: 'Two live charts update as you build your bag. Flight Path shows how each disc curves. Toggle ↩ BH / ↪ FH on the chart to switch between your backhand and forehand arm speeds. Stability Matrix shows speed vs stability across your whole bag.',
-                    tip: 'Wear affects the chart too — drag the Fresh → Beat slider on any disc to see how beat-in plastic flies.',
-                },
-                {
-                    icon: '💨',
-                    title: 'Wind Simulator',
-                    color: 'text-blue-400',
-                    tag: 'Above the Charts',
-                    body: 'Select Headwind, Tailwind or Crosswind and dial in the exact speed in mph or km/h. The flight paths update in real time — overstable discs tighten up in headwinds, understable discs balloon. Crosswind direction (L→R or R→L) matters too.',
-                    tip: 'At 20+ mph headwind, a straight disc flies like an understable one. Use this to plan your shot selection on windy days.',
-                },
-                {
-                    icon: '🧠',
-                    title: 'Smart Bag Coach',
-                    color: 'text-orange-500',
-                    tag: 'Bag Score — Tap It',
-                    body: 'Your bag gets a score from 0–100 (grade S to D) based on slot coverage, speed spread and bag size. Tap the score bar to open the Coach — it shows overlapping discs, speed gaps, arm speed mismatches and missing slots with suggestions.',
-                    tip: 'Set your Backhand and Forehand max distance in Settings — the Coach uses them to flag discs that may be too fast for your arm.',
-                },
-                {
-                    icon: '🔥',
-                    title: 'Mold Slot Heatmap',
-                    color: 'text-violet-400',
-                    tag: '🔥 Heatmap — Sidebar',
-                    body: 'A visual grid showing all 12 speed × stability combinations. Orange cells = covered, dark = missing. Each cell lists your discs including plastic and wear. Overlapping slots are highlighted yellow.',
-                    tip: 'Community insights will appear here as more players join — showing trending moulds and what similar players carry.',
-                },
-                {
-                    icon: '⚙️',
-                    title: 'Settings & Profile',
-                    color: 'text-purple-400',
-                    tag: '⚙️ Settings — Sidebar',
-                    body: 'Set your unit (ft/m), backhand and forehand max distance, throwing hand (flips the flight chart left/right), skill level and throw style (BH/FH/Roller — personalises bag coaching). In My Account, choose your player icon and colour — visible to Card Mates.',
-                    tip: 'Bags can be set Public or Private — public bags are visible to your Card Mates.',
-                },
-                {
-                    icon: '🤝',
-                    title: 'Card Mates',
-                    color: 'text-cyan-400',
-                    tag: '🤝 Card Mates — Sidebar',
-                    body: "Search any player by username, PDGA number or email to view their public bag. Save them as Card Mates to quickly check what they're throwing before a round. Their icon and colour show on their profile.",
-                    tip: 'Make your bags public in Settings to let your crew view them.',
-                },
-                {
-                    icon: '🥏',
-                    title: 'Play a Round',
-                    color: 'text-emerald-400',
-                    tag: '🥏 Play Round — Sidebar',
-                    body: 'Before heading out, open Play Round for a checklist of your full bag. When you get back, tick every disc you still have. Unticked discs move to the Graveyard with a note about where you lost them.',
-                    tip: null,
-                },
-                {
-                    icon: '📤',
-                    title: 'Export & Share',
-                    color: 'text-purple-400',
-                    tag: '📤 Export — Sidebar',
-                    body: 'Export your bag as a PDF or image with all disc specs, flight numbers, wear stats and charts at full resolution. Perfect for sharing with your crew or printing for the course.',
-                    tip: 'The export renders both Flight Path and Stability Matrix charts.',
-                },
-            ];
-            const step = STEPS[tutorialStep];
-            const isLast = tutorialStep === STEPS.length - 1;
-
-            return (
-                <div className="fixed inset-0 z-[400] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4">
-                    <div className="bg-slate-900 border border-slate-700 rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden">
-                        {/* Coloured top bar */}
-                        <div className={`h-1 w-full ${step.color.replace('text-','bg-')}`} />
-
-                        <div className="p-8 space-y-5">
-                            {/* Progress bar */}
-                            <div className="flex gap-1 justify-center">
-                                {STEPS.map((_, i) => (
-                                    <div key={i} onClick={() => setTutorialStep(i)} className={`h-1 rounded-full transition-all cursor-pointer ${i === tutorialStep ? 'w-8 bg-orange-500' : i < tutorialStep ? 'flex-1 bg-orange-500/40' : 'flex-1 bg-slate-700'}`} />
-                                ))}
-                            </div>
-
-                            {/* Step counter */}
-                            <div className="text-center">
-                                <span className="text-[9px] font-black uppercase text-slate-600 tracking-widest">{tutorialStep + 1} of {STEPS.length}</span>
-                            </div>
-
-                            {/* Icon + title */}
-                            <div className="text-center space-y-2">
-                                <div className="text-5xl">{step.icon}</div>
-                                <h2 className={`text-xl font-black italic uppercase ${step.color}`}>{step.title}</h2>
-                                {step.tag && (
-                                    <div className="inline-flex items-center gap-1.5 bg-slate-800 border border-slate-700 rounded-full px-3 py-1">
-                                        <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">📍 {step.tag}</span>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Body */}
-                            <p className="text-slate-300 font-bold text-sm leading-relaxed text-center">{step.body}</p>
-
-                            {/* Tip */}
-                            {step.tip && (
-                                <div className="bg-orange-500/10 border border-orange-500/20 rounded-2xl px-4 py-3">
-                                    <p className="text-orange-400 text-[11px] font-bold leading-relaxed">💡 {step.tip}</p>
-                                </div>
-                            )}
-
-                            {/* Navigation */}
-                            <div className="flex gap-3 pt-1">
-                                {tutorialStep > 0 && (
-                                    <button onClick={() => setTutorialStep(s => s - 1)} className="py-3 px-5 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">← Back</button>
-                                )}
-                                <button
-                                    onClick={() => {
-                                        if (isLast) {
-                                            localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true');
-                                            setShowTutorial(false);
-                                        } else {
-                                            setTutorialStep(s => s + 1);
-                                        }
-                                    }}
-                                    className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 rounded-2xl font-black uppercase text-xs text-white shadow-lg transition"
-                                >
-                                    {isLast ? '🚀 Let\'s Go!' : 'Next →'}
-                                </button>
-                            </div>
-                            {!isLast && (
-                                <button onClick={() => { localStorage.setItem(`tutorial_seen_${session.user.id}`, 'true'); setShowTutorial(false); }} className="w-full text-center text-[10px] font-bold text-slate-700 uppercase hover:text-slate-500 transition">Skip Tour</button>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        })()}
 
         {/* =====================================================
             CARD MATES MODAL
@@ -4153,34 +4049,65 @@ Respond ONLY with a valid JSON object, no markdown, no explanation outside JSON:
                             </div>
                         )}
 
-                        {/* Missing priority slots */}
-                        {missingSlots.length > 0 && (
-                            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5">
-                                <p className="text-[10px] font-black uppercase text-slate-500 mb-3">Missing Slots ({missingSlots.length})</p>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {missingSlots.map(slot => {
-                                        const suggestions = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Turn:d.Turn, Fade:d.Fade }))].filter(d => {
-                                            const b = stabBucket(d.Turn, d.Fade);
-                                            const sp = parseFloat(d.Speed);
-                                            if (slot.startsWith('putter') && sp > 3) return false;
-                                            if (slot.startsWith('mid') && (sp < 4 || sp > 6)) return false;
-                                            if (slot.startsWith('fairway') && (sp < 7 || sp > 8)) return false;
-                                            if (slot.startsWith('distance') && sp < 9) return false;
-                                            return slot.endsWith(b);
-                                        }).filter(d => d.Speed <= hardMax).slice(0, 2);
-                                        return (
-                                            <div key={slot} className="bg-slate-800 rounded-2xl p-3">
-                                                <div className="text-[9px] font-black uppercase text-slate-500 mb-1">{SLOT_LABELS[slot]}</div>
-                                                {suggestions.map(s => (
-                                                    <div key={s.Model} className="text-[11px] font-bold text-white">{s.Model} <span className="text-slate-500">{s.Manufacturer}</span></div>
-                                                ))}
-                                                {suggestions.length === 0 && <div className="text-[10px] text-slate-600 font-bold">Build arm speed first</div>}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                        {/* Bag Gap Analysis - 12 Slot Coverage Grid */}
+                        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5">
+                            <p className="text-[10px] font-black uppercase text-blue-400 mb-3">🎯 Bag Gap Analysis — {missingSlots.length === 0 ? 'All 12 Slots Covered!' : `${missingSlots.length} of 12 Slots Missing`}</p>
+                            
+                            {/* 12-slot grid */}
+                            <div className="mb-4">
+                                {[{label:'Putter',slots:['putter_ST','putter_OS','putter_US']},{label:'Midrange',slots:['mid_ST','mid_OS','mid_US']},{label:'Fairway',slots:['fairway_ST','fairway_OS','fairway_US']},{label:'Distance',slots:['distance_ST','distance_OS','distance_US']}].map(row => {
+                                    const missingKeys = new Set(missingSlots);
+                                    return (
+                                        <div key={row.label} className="flex items-center gap-2 mb-1.5">
+                                            <span className="text-[9px] font-black uppercase text-slate-500 w-14 shrink-0">{row.label}</span>
+                                            {['ST','OS','US'].map((stab,i) => {
+                                                const key=row.slots[i]; const isMissing=missingKeys.has(key);
+                                                return <div key={stab} className={`flex-1 py-1 rounded-lg text-center text-[8px] font-black uppercase ${isMissing?'bg-red-900/40 border border-red-600/40 text-red-400':'bg-emerald-900/30 border border-emerald-600/30 text-emerald-400'}`}>{isMissing?'✗':'✓'} {stab}</div>;
+                                            })}
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        )}
+
+                            {/* Missing slots with suggestions */}
+                            {missingSlots.length > 0 ? (
+                                <div className="space-y-3">
+                                    {gapAnalysis.gaps.map(gap => (
+                                        <div key={gap.key}>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                                                <span className="font-black uppercase text-[10px] text-white">{gap.label}</span>
+                                                <span className="ml-auto text-[8px] font-bold text-slate-600 uppercase">Priority {gap.priority===1?'🔴 High':gap.priority<=3?'🟡 Med':'⚪ Low'}</span>
+                                            </div>
+                                            {gap.suggestions?.length > 0 ? (
+                                                <div className="space-y-1.5">
+                                                    {gap.suggestions.slice(0,3).map((d,i) => (
+                                                        <div key={`${d.Model}-${i}`}
+                                                            onClick={() => { addDiscToDB({name:d.Model,brand:d.Manufacturer,speed:d.Speed,glide:d.Glide,turn:d.Turn,fade:d.Fade,wear:0,bag_id:activeBagId,status:'active',color:`hsl(${Math.random()*360},70%,60%)`,max_dist:0,aces:0,is_idea:true}); setShowCoach(false); }}
+                                                            className={`flex justify-between items-center p-2.5 rounded-xl border cursor-pointer transition ${d.source==='community'?'bg-emerald-900/10 border-emerald-700/30 hover:border-emerald-500':'bg-slate-800/60 border-slate-700/40 hover:border-blue-500'}`}>
+                                                            <div>
+                                                                <span className={`font-black uppercase text-[11px] ${d.source==='community'?'text-emerald-400':'text-white'}`}>{d.Model}</span>
+                                                                <span className="text-slate-500 text-[9px] font-bold uppercase ml-1.5">{d.Manufacturer}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-[9px] font-bold text-slate-400">{d.Speed}/{d.Glide}/{d.Turn}/{d.Fade}</span>
+                                                                <span className="text-blue-400 font-black text-sm">+</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : <p className="text-slate-600 text-[9px] font-bold">No suggestions — add via + button</p>}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-6">
+                                    <div className="text-3xl mb-2">🏆</div>
+                                    <p className="text-emerald-400 font-black uppercase text-sm">Perfect Coverage!</p>
+                                    <p className="text-slate-500 text-[9px] font-bold uppercase mt-1">All 12 disc categories covered</p>
+                                </div>
+                            )}
+                        </div>
 
                         <button onClick={() => setShowCoach(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
                     </div>
