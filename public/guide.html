@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Beginner's Guide to Building a Disc Golf Bag | BaggedUp</title>
+  <meta name="description" content="Learn how to build your first disc golf bag. Understand flight numbers, which discs to start with, and how to grow your bag as your game improves."/>
+  <link rel="canonical" href="https://baggedup.vercel.app/guide.html"/>
+  <meta property="og:title" content="Beginner's Guide to Building a Disc Golf Bag | BaggedUp"/>
+  <meta property="og:description" content="Everything you need to know about disc selection, flight numbers, and building a bag that matches your skill level."/>
+  <meta property="og:url" content="https://baggedup.vercel.app/guide.html"/>
+  <meta property="og:image" content="https://baggedup.vercel.app/icons/icon-512x512.png"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f97316; --bg: #080b12; --bg2: #0d1117;
+      --card: #111827; --border: #1e293b;
+      --text: #f1f5f9; --muted: #64748b; --muted2: #334155;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(8,11,18,0.9); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo-icon { width: 30px; height: 30px; background: var(--orange); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.05em; color: var(--text); }
+    .nav-logo-text span { color: var(--orange); }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
+    .nav-link { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .nav-link:hover { color: var(--text); }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; }
+
+    /* LAYOUT */
+    .page-wrap { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; display: grid; grid-template-columns: 1fr 280px; gap: 4rem; }
+    @media (max-width: 900px) { .page-wrap { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+    /* ARTICLE */
+    article { min-width: 0; }
+
+    .article-tag {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3);
+      color: var(--orange); padding: 0.3rem 0.9rem; border-radius: 999px;
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em;
+      margin-bottom: 1.2rem;
+    }
+
+    .article-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.5rem, 7vw, 4rem);
+      line-height: 1.05; letter-spacing: 0.02em;
+      margin-bottom: 1.2rem;
+    }
+
+    .article-title em { font-style: normal; color: var(--orange); }
+
+    .article-intro {
+      font-size: 1.1rem; color: var(--muted); line-height: 1.8;
+      border-left: 3px solid var(--orange);
+      padding-left: 1.2rem; margin-bottom: 3rem;
+    }
+
+    h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem; letter-spacing: 0.03em;
+      margin: 3rem 0 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    h3 {
+      font-weight: 800; font-size: 1rem;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--orange); margin: 2rem 0 0.6rem;
+    }
+
+    p { font-size: 0.95rem; color: var(--muted); line-height: 1.85; margin-bottom: 1rem; }
+    p strong { color: var(--text); font-weight: 700; }
+
+    /* CALLOUT BOXES */
+    .callout {
+      background: var(--card); border: 1px solid var(--border);
+      border-left: 4px solid var(--orange);
+      border-radius: 0.8rem; padding: 1.2rem 1.4rem;
+      margin: 1.8rem 0;
+    }
+    .callout-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); margin-bottom: 0.4rem; }
+    .callout p { margin: 0; font-size: 0.9rem; }
+
+    .tip { border-left-color: #22c55e; }
+    .tip .callout-label { color: #22c55e; }
+    .warning { border-left-color: #eab308; }
+    .warning .callout-label { color: #eab308; }
+
+    /* FLIGHT NUMBER TABLE */
+    .fn-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 1rem; margin: 1.5rem 0;
+    }
+    .fn-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1rem; padding: 1.2rem; text-align: center;
+    }
+    .fn-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--orange); }
+    .fn-range { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0.2rem 0; }
+    .fn-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+
+    /* BAG BUILDS */
+    .bag-build {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1.2rem; padding: 1.6rem; margin: 1.5rem 0;
+    }
+    .bag-build-label {
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--orange); margin-bottom: 0.8rem;
+    }
+    .bag-build ul { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .bag-build li {
+      display: flex; align-items: center; gap: 0.8rem;
+      font-size: 0.875rem; color: var(--muted);
+    }
+    .bag-build li strong { color: var(--text); }
+    .disc-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--orange); shrink: 0; flex-shrink: 0;
+    }
+
+    /* SIDEBAR */
+    .sidebar { position: sticky; top: 80px; height: fit-content; }
+
+    .sidebar-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1.2rem; padding: 1.4rem; margin-bottom: 1.2rem;
+    }
+
+    .sidebar-title {
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.1em; color: var(--muted); margin-bottom: 1rem;
+    }
+
+    .toc-list { list-style: none; display: flex; flex-direction: column; gap: 0.5rem; }
+    .toc-list a {
+      font-size: 0.82rem; color: var(--muted); text-decoration: none;
+      font-weight: 600; transition: color 0.2s; display: block; padding: 0.2rem 0;
+      border-left: 2px solid transparent; padding-left: 0.8rem;
+      transition: all 0.2s;
+    }
+    .toc-list a:hover { color: var(--orange); border-left-color: var(--orange); }
+
+    .sidebar-cta {
+      background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05));
+      border: 1px solid rgba(249,115,22,0.3); border-radius: 1.2rem;
+      padding: 1.4rem; text-align: center;
+    }
+    .sidebar-cta p { font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; line-height: 1.6; }
+    .sidebar-cta a {
+      display: block; background: var(--orange); color: #fff;
+      padding: 0.7rem; border-radius: 999px; font-size: 0.78rem;
+      font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;
+      text-decoration: none;
+    }
+
+    footer {
+      background: var(--bg2); border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center;
+    }
+    .footer-links { display: flex; gap: 2rem; justify-content: center; list-style: none; margin-bottom: 1rem; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+    .footer-copy { font-size: 0.75rem; color: var(--muted2); }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🥏</div>
+      <span class="nav-logo-text">Bagged<span>Up</span></span>
+    </a>
+    <div class="nav-right">
+      <a href="/blog.html" class="nav-link">Blog</a>
+      <a href="/about.html" class="nav-link">About</a>
+      <a href="/app" class="btn-nav">Open App →</a>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <article>
+
+      <div class="article-tag">📖 Beginner's Guide</div>
+
+      <h1 class="article-title">How to Build Your<br/><em>First Disc Golf Bag</em></h1>
+
+      <p class="article-intro">
+        Most beginners buy the wrong discs. They grab whatever looks cool, end up with a bag full of high-speed drivers they can't throw, and wonder why the game feels impossible. This guide will save you that money and frustration.
+      </p>
+
+      <h2 id="flight-numbers">Understanding Flight Numbers</h2>
+
+      <p>Every disc golf disc has four numbers printed on it. These are called <strong>flight numbers</strong>, and they describe how the disc flies. Understanding them is the single most important skill for building a bag that actually works for you.</p>
+
+      <div class="fn-grid">
+        <div class="fn-card">
+          <div class="fn-name">Speed</div>
+          <div class="fn-range">1 – 14</div>
+          <div class="fn-desc">How fast you need to throw it. Higher = more arm speed required. Beginners should stay under speed 7.</div>
+        </div>
+        <div class="fn-card">
+          <div class="fn-name">Glide</div>
+          <div class="fn-range">1 – 7</div>
+          <div class="fn-desc">How long it stays in the air. Higher glide = more distance potential. Great for beginners.</div>
+        </div>
+        <div class="fn-card">
+          <div class="fn-name">Turn</div>
+          <div class="fn-range">-5 – +1</div>
+          <div class="fn-desc">High-speed tendency. Negative = turns right (RHBH). Beginners want -1 to -3 for straighter flights.</div>
+        </div>
+        <div class="fn-card">
+          <div class="fn-name">Fade</div>
+          <div class="fn-range">0 – 5</div>
+          <div class="fn-desc">Low-speed finish. Higher = harder left hook at the end. Beginners want 0-2 for predictable finishes.</div>
+        </div>
+      </div>
+
+      <div class="callout warning">
+        <div class="callout-label">⚠️ The Biggest Beginner Mistake</div>
+        <p>Buying a distance driver (speed 10–14) as your first disc. At low arm speeds, high-speed drivers don't spin fast enough to be stable — they fly hard right (for RHBH throwers) and go nowhere. Start with discs rated speed 5–7.</p>
+      </div>
+
+      <h2 id="disc-types">The Four Types of Discs</h2>
+
+      <h3>Putters (Speed 1–3)</h3>
+      <p>The most important discs in your bag. Slow, predictable, and forgiving. Great for approach shots inside 150ft and for learning the throwing motion. Beginners often make the mistake of ignoring putters — don't.</p>
+      <p><strong>Good starter options:</strong> Innova Aviar, Discraft Jawbreaker Luna, Dynamic Discs Judge</p>
+
+      <h3>Midranges (Speed 4–6)</h3>
+      <p>The backbone of a beginner's bag. These fly straight, go far enough for most shots, and are very forgiving of technique mistakes. A beginner with a solid midrange can play most courses effectively.</p>
+      <p><strong>Good starter options:</strong> Innova Mako3, Discraft Buzzz, Dynamic Discs Verdict</p>
+
+      <h3>Fairway Drivers (Speed 7–8)</h3>
+      <p>The first driver type beginners should try. Lower speed requirements than distance drivers, still give you more distance than a midrange when thrown correctly. Add these once you can consistently throw a midrange 200ft+.</p>
+      <p><strong>Good starter options:</strong> Innova Leopard3, Discraft Undertaker, Latitude 64 River</p>
+
+      <h3>Distance Drivers (Speed 9–14)</h3>
+      <p>Only useful when you can generate enough arm speed to make them work — typically 280ft+ consistent distance. Until then, they turn over uncontrollably and go shorter than your midrange.</p>
+
+      <div class="callout tip">
+        <div class="callout-label">✅ Pro Tip</div>
+        <p>Use BaggedUp's <strong>Arm Speed Advisor</strong> — set your max backhand distance and the app will flag any disc in your bag that's too fast for your current arm speed.</p>
+      </div>
+
+      <h2 id="stability">Understanding Disc Stability</h2>
+
+      <p>Stability describes a disc's tendency to curve during flight. For a right-handed backhand (RHBH) thrower:</p>
+
+      <p><strong>Overstable discs</strong> finish left. They fight headwinds well and are reliable in windy conditions. For beginners, overstable discs can go very far right before a hard left finish — hard to control early on.</p>
+
+      <p><strong>Stable / Neutral discs</strong> fly relatively straight. These are your workhorses — they do exactly what you expect and are beginner-friendly.</p>
+
+      <p><strong>Understable discs</strong> turn right during flight (RHBH). These are beginner-friendly at low arm speeds because they naturally compensate for the low spin you generate — they still fly relatively straight instead of fading hard left.</p>
+
+      <div class="callout">
+        <div class="callout-label">💡 Stability Formula</div>
+        <p>Add Turn + Fade together. Positive result = overstable. Near zero = neutral. Negative result = understable. A disc with turn -3 and fade 1 has a stability of -2 — nicely understable for beginners.</p>
+      </div>
+
+      <h2 id="first-bag">Building Your First Bag</h2>
+
+      <p>You don't need 20 discs to play well. Here are three bag builds based on how many discs you want to start with:</p>
+
+      <div class="bag-build">
+        <div class="bag-build-label">🌱 Starter Bag — 3 Discs</div>
+        <ul>
+          <li><span class="disc-dot"></span><strong>1× Putter</strong> — for putting and short approach shots (e.g. Aviar, Judge)</li>
+          <li><span class="disc-dot"></span><strong>1× Understable Midrange</strong> — your go-to disc for most shots (e.g. Mako3, Comet)</li>
+          <li><span class="disc-dot"></span><strong>1× Understable Fairway Driver</strong> — for longer holes (e.g. Leopard3, River)</li>
+        </ul>
+      </div>
+
+      <div class="bag-build">
+        <div class="bag-build-label">⚡ Intermediate Bag — 7 Discs</div>
+        <ul>
+          <li><span class="disc-dot"></span><strong>1× Dedicated Putter</strong> — for inside the circle putting</li>
+          <li><span class="disc-dot"></span><strong>1× Approach Putter</strong> — slightly more overstable for bump-and-run shots</li>
+          <li><span class="disc-dot"></span><strong>1× Understable Midrange</strong> — straight shots and rollers</li>
+          <li><span class="disc-dot"></span><strong>1× Neutral Midrange</strong> — workhorse for 150–220ft</li>
+          <li><span class="disc-dot"></span><strong>1× Understable Fairway Driver</strong> — turnover shots and max distance</li>
+          <li><span class="disc-dot"></span><strong>1× Neutral Fairway Driver</strong> — straight lines, slight fade</li>
+          <li><span class="disc-dot"></span><strong>1× Overstable Fairway Driver</strong> — headwinds and forced fades</li>
+        </ul>
+      </div>
+
+      <div class="callout tip">
+        <div class="callout-label">✅ Use BaggedUp's Gap Analysis</div>
+        <p>Once you've entered your discs into BaggedUp, the <strong>Gap Analysis</strong> tool automatically identifies which shot shapes you're missing and recommends specific discs to fill them. It's personalised to your arm speed and skill level.</p>
+      </div>
+
+      <h2 id="arm-speed">Matching Discs to Your Arm Speed</h2>
+
+      <p>Arm speed is the most important factor in disc selection — more important than brand, plastic, or what your favourite player throws. Here's a rough guide:</p>
+
+      <p><strong>Under 200ft:</strong> Stick to putters and understable midranges only. Speed 1–5.</p>
+      <p><strong>200–280ft:</strong> Add fairway drivers. Speed 5–8. Distance drivers will turn over.</p>
+      <p><strong>280–350ft:</strong> You can begin to use entry-level distance drivers. Speed 7–10.</p>
+      <p><strong>350ft+:</strong> Most drivers in your bag will fly as intended. Speed 9–13 available.</p>
+
+      <div class="callout">
+        <div class="callout-label">📊 Try It In BaggedUp</div>
+        <p>Set your backhand max distance in BaggedUp Settings. The app calculates your arm speed and flags any disc that exceeds your capability — showing exactly why it's turning over or not flying right.</p>
+      </div>
+
+      <h2 id="plastic">Does Plastic Type Matter?</h2>
+
+      <p>Yes — but not in the way most beginners think. Plastic affects <strong>durability, grip, and how quickly a disc wears</strong>, not the fundamental flight characteristics.</p>
+
+      <p><strong>Premium plastics</strong> (Star, Champion, Z-Line, Lucid) are slippery when new, wear slowly, and hold their original flight shape for a long time. Good for discs you want to stay predictable.</p>
+
+      <p><strong>Base plastics</strong> (DX, Pro-D, Base Grip) are grippy, cheap, and beat in quickly. A beat-in base plastic disc becomes understable and is great for beginners because it flies straighter at low arm speeds.</p>
+
+      <div class="callout tip">
+        <div class="callout-label">✅ Beginner Plastic Tip</div>
+        <p>Start with <strong>base plastic putters and midranges</strong>. They're cheap, grippy, and naturally become more understable as they wear — which actually helps beginners throw straighter. Save the premium plastic for when you know exactly which discs you love.</p>
+      </div>
+
+      <h2 id="next-steps">Next Steps</h2>
+
+      <p>Now that you understand the basics, here's how to put it into practice:</p>
+
+      <p><strong>1.</strong> Open BaggedUp and add your current discs. Even if you only have 2–3 discs, the flightpath simulator will show you exactly how they fly at your arm speed.</p>
+      <p><strong>2.</strong> Set your max throw distance in Settings. This unlocks the Arm Speed Advisory and Gap Analysis tools.</p>
+      <p><strong>3.</strong> Ask the AI Bag Coach "What discs should I add for a beginner with 200ft backhand?" — it will give you specific recommendations matched to your bag.</p>
+      <p><strong>4.</strong> Come back to this guide as you improve. What works at 200ft looks completely different at 350ft.</p>
+
+    </article>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <div class="sidebar-title">On This Page</div>
+        <ul class="toc-list">
+          <li><a href="#flight-numbers">Flight Numbers</a></li>
+          <li><a href="#disc-types">Types of Discs</a></li>
+          <li><a href="#stability">Disc Stability</a></li>
+          <li><a href="#first-bag">Building Your First Bag</a></li>
+          <li><a href="#arm-speed">Arm Speed Guide</a></li>
+          <li><a href="#plastic">Plastic Types</a></li>
+          <li><a href="#next-steps">Next Steps</a></li>
+        </ul>
+      </div>
+
+      <div class="sidebar-cta">
+        <p>Ready to build your bag with AI-powered tools?</p>
+        <a href="/app">Open BaggedUp Free →</a>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/blog.html">Blog</a></li>
+      <li><a href="/about.html">About</a></li>
+      <li><a href="/app">Open App</a></li>
+    </ul>
+    <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+  </footer>
+
+</body>
+</html>

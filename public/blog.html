@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Disc Golf Tips & Guides | BaggedUp Blog</title>
+  <meta name="description" content="Disc golf tips, bag building guides, flight number explainers, and AI training advice for players of all skill levels."/>
+  <link rel="canonical" href="https://baggedup.vercel.app/blog.html"/>
+  <meta property="og:title" content="Disc Golf Tips & Guides | BaggedUp Blog"/>
+  <meta property="og:description" content="Disc golf tips, bag building guides, and AI training advice for all skill levels."/>
+  <meta property="og:url" content="https://baggedup.vercel.app/blog.html"/>
+  <meta property="og:image" content="https://baggedup.vercel.app/icons/icon-512x512.png"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f97316; --bg: #080b12; --bg2: #0d1117;
+      --card: #111827; --border: #1e293b;
+      --text: #f1f5f9; --muted: #64748b; --muted2: #334155;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(8,11,18,0.9); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo-icon { width: 30px; height: 30px; background: var(--orange); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.05em; color: var(--text); }
+    .nav-logo-text span { color: var(--orange); }
+    .nav-right { display: flex; gap: 1rem; align-items: center; }
+    .nav-link { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; }
+
+    .page-header {
+      padding: 6rem 2rem 3rem;
+      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.07) 0%, transparent 60%);
+      text-align: center;
+    }
+
+    .page-header h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3rem, 8vw, 5.5rem);
+      line-height: 1; letter-spacing: 0.02em; margin-bottom: 1rem;
+    }
+
+    .page-header h1 em { font-style: normal; color: var(--orange); }
+    .page-header p { font-size: 1rem; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; }
+
+    /* FEATURED POST */
+    .featured-post {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1.8rem; padding: 2.5rem;
+      display: grid; grid-template-columns: 1fr auto;
+      gap: 2rem; align-items: center;
+      margin-bottom: 3rem;
+      position: relative; overflow: hidden;
+      transition: border-color 0.2s;
+      text-decoration: none; color: inherit;
+    }
+
+    .featured-post::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--orange), #fb923c, transparent);
+    }
+
+    .featured-post:hover { border-color: rgba(249,115,22,0.4); }
+
+    .featured-label {
+      font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--orange); margin-bottom: 0.8rem;
+    }
+
+    .featured-post h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(1.8rem, 4vw, 2.8rem);
+      letter-spacing: 0.02em; line-height: 1.1;
+      margin-bottom: 0.8rem;
+    }
+
+    .featured-post p { font-size: 0.92rem; color: var(--muted); line-height: 1.7; max-width: 600px; }
+
+    .featured-meta {
+      display: flex; align-items: center; gap: 1rem;
+      margin-top: 1.2rem;
+    }
+
+    .post-tag {
+      background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2);
+      color: var(--orange); padding: 0.25rem 0.8rem;
+      border-radius: 999px; font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.08em;
+    }
+
+    .post-read-time { font-size: 0.75rem; color: var(--muted2); font-weight: 600; }
+
+    .featured-emoji {
+      font-size: 5rem; opacity: 0.6;
+    }
+
+    /* POSTS GRID */
+    .posts-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .post-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1.4rem; padding: 1.8rem;
+      text-decoration: none; color: inherit;
+      transition: border-color 0.2s, transform 0.2s;
+      display: flex; flex-direction: column;
+    }
+
+    .post-card:hover { border-color: rgba(249,115,22,0.3); transform: translateY(-3px); }
+
+    .post-card-icon { font-size: 2rem; margin-bottom: 1rem; }
+
+    .post-card-tags { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
+
+    .post-card h3 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem; letter-spacing: 0.03em;
+      line-height: 1.1; margin-bottom: 0.7rem;
+    }
+
+    .post-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; flex: 1; }
+
+    .post-card-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 1.2rem; padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .post-card-footer span { font-size: 0.72rem; color: var(--muted2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+    .post-card-arrow { color: var(--orange); font-size: 1rem; }
+
+    /* SECTION LABEL */
+    .section-label {
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.15em; color: var(--muted2); margin-bottom: 1.5rem;
+    }
+
+    /* CTA */
+    .blog-cta {
+      background: var(--card); border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 1.5rem; padding: 2.5rem; text-align: center;
+      margin-top: 4rem;
+    }
+
+    .blog-cta h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem; margin-bottom: 0.6rem;
+    }
+
+    .blog-cta h2 em { font-style: normal; color: var(--orange); }
+    .blog-cta p { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.5rem; }
+
+    .btn-primary {
+      display: inline-block; background: var(--orange); color: #fff;
+      padding: 0.85rem 2.2rem; border-radius: 999px;
+      font-size: 0.85rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.1em; text-decoration: none;
+      box-shadow: 0 0 24px rgba(249,115,22,0.3);
+    }
+
+    footer {
+      background: var(--bg2); border-top: 1px solid var(--border);
+      padding: 2rem; text-align: center;
+    }
+    .footer-links { display: flex; gap: 2rem; justify-content: center; list-style: none; margin-bottom: 1rem; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+    .footer-copy { font-size: 0.75rem; color: var(--muted2); }
+
+    @media (max-width: 640px) {
+      .featured-post { grid-template-columns: 1fr; }
+      .featured-emoji { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🥏</div>
+      <span class="nav-logo-text">Bagged<span>Up</span></span>
+    </a>
+    <div class="nav-right">
+      <a href="/guide.html" class="nav-link">Bag Guide</a>
+      <a href="/about.html" class="nav-link">About</a>
+      <a href="/app" class="btn-nav">Open App →</a>
+    </div>
+  </nav>
+
+  <div class="page-header">
+    <h1>Disc Golf <em>Tips</em><br/>& Guides</h1>
+    <p>Bag building advice, flight number explainers, AI training tips, and everything else you need to improve your game.</p>
+  </div>
+
+  <div class="container">
+
+    <!-- FEATURED -->
+    <div class="section-label">📌 Start Here</div>
+
+    <a href="/guide.html" class="featured-post">
+      <div>
+        <div class="featured-label">⭐ Featured Guide</div>
+        <h2>How to Build Your First Disc Golf Bag</h2>
+        <p>Most beginners buy the wrong discs. This complete guide covers flight numbers, disc types, stability, arm speed matching, and exactly which discs to buy first — at every budget.</p>
+        <div class="featured-meta">
+          <span class="post-tag">Beginner</span>
+          <span class="post-tag">Bag Building</span>
+          <span class="post-read-time">📖 8 min read</span>
+        </div>
+      </div>
+      <div class="featured-emoji">🎒</div>
+    </a>
+
+    <!-- ALL POSTS -->
+    <div class="section-label">All Articles</div>
+
+    <div class="posts-grid">
+
+      <a href="/guide.html#flight-numbers" class="post-card">
+        <div class="post-card-icon">📊</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Beginner</span>
+        </div>
+        <h3>Disc Flight Numbers Explained</h3>
+        <p>Speed, glide, turn, and fade — what they mean, how to read them, and how to use them to choose the right disc for any shot.</p>
+        <div class="post-card-footer">
+          <span>5 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/guide.html#arm-speed" class="post-card">
+        <div class="post-card-icon">⚡</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Technique</span>
+        </div>
+        <h3>Why Your Arm Speed Matters More Than Your Discs</h3>
+        <p>The single biggest mistake in disc golf is buying discs rated for arm speeds you don't have yet. Here's how to match your bag to your actual ability.</p>
+        <div class="post-card-footer">
+          <span>4 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/guide.html#stability" class="post-card">
+        <div class="post-card-icon">↔️</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Intermediate</span>
+        </div>
+        <h3>Overstable vs Understable — When to Use Each</h3>
+        <p>Understanding disc stability is what separates recreational players from competitive ones. Learn when to reach for each type and why.</p>
+        <div class="post-card-footer">
+          <span>5 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/app" class="post-card">
+        <div class="post-card-icon">🌬️</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Advanced</span>
+          <span class="post-tag">Strategy</span>
+        </div>
+        <h3>Disc Selection in Wind: A Complete Playbook</h3>
+        <p>Headwind, tailwind, crosswind — each requires a completely different approach. Learn how wind changes your disc selection and how to simulate it in BaggedUp.</p>
+        <div class="post-card-footer">
+          <span>6 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/app" class="post-card">
+        <div class="post-card-icon">🤖</div>
+        <div class="post-card-tags">
+          <span class="post-tag">AI Tools</span>
+        </div>
+        <h3>How to Use AI to Build a Better Disc Golf Bag</h3>
+        <p>BaggedUp's AI bag coach can analyse your current setup and recommend exactly which discs to add, swap, or remove. Here's how to get the most out of it.</p>
+        <div class="post-card-footer">
+          <span>4 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/app" class="post-card">
+        <div class="post-card-icon">🔥</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Intermediate</span>
+          <span class="post-tag">Bag Building</span>
+        </div>
+        <h3>How to Spot Gaps in Your Disc Golf Bag</h3>
+        <p>Most players have overlapping discs doing the same job while missing entire shot shapes. Learn how to audit your bag and fix the holes before your next round.</p>
+        <div class="post-card-footer">
+          <span>5 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/guide.html#plastic" class="post-card">
+        <div class="post-card-icon">💿</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Gear</span>
+        </div>
+        <h3>Disc Golf Plastic Guide: Which Type Should You Buy?</h3>
+        <p>Base, premium, metal flake, glow — disc plastic affects grip, durability, and how the disc flies as it wears. A plain-language guide for every budget.</p>
+        <div class="post-card-footer">
+          <span>4 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/app" class="post-card">
+        <div class="post-card-icon">📍</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Tips</span>
+        </div>
+        <h3>Never Lose a Disc Again: Using GPS Tracking in BaggedUp</h3>
+        <p>BaggedUp's lost disc GPS feature pins the exact location where you last had a disc and saves the Google Maps link to your account. Here's how to use it.</p>
+        <div class="post-card-footer">
+          <span>3 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+      <a href="/app" class="post-card">
+        <div class="post-card-icon">🏆</div>
+        <div class="post-card-tags">
+          <span class="post-tag">Advanced</span>
+        </div>
+        <h3>Tournament Bag vs Practice Bag — Should You Run Two?</h3>
+        <p>Many competitive players maintain separate bags for different scenarios. Here's when it makes sense, and how BaggedUp makes managing multiple bags effortless.</p>
+        <div class="post-card-footer">
+          <span>4 min read</span>
+          <span class="post-card-arrow">→</span>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- CTA -->
+    <div class="blog-cta">
+      <h2>Put It Into <em>Practice</em></h2>
+      <p>Everything in these guides comes to life inside BaggedUp. Simulate flightpaths, analyse your bag gaps, and ask the AI coach — all free.</p>
+      <a href="/app" class="btn-primary">Open BaggedUp Free →</a>
+    </div>
+
+  </div>
+
+  <footer>
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="/guide.html">Bag Guide</a></li>
+      <li><a href="/about.html">About</a></li>
+      <li><a href="/app">Open App</a></li>
+    </ul>
+    <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+  </footer>
+
+</body>
+</html>

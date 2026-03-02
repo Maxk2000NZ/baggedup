@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BaggedUp – AI Disc Golf Trainer & Bag Planner</title>
+  <meta name="description" content="Plan your perfect disc golf bag, simulate flightpaths, and train smarter with AI-powered tools. Free for disc golfers of all skill levels."/>
+  <meta name="google-site-verification" content="D9naY-eWRZFlV5HmEmMK6u-pTfob6boPF3SAc95j9B4"/>
+  <link rel="canonical" href="https://baggedup.vercel.app/"/>
+  <meta property="og:title" content="BaggedUp – AI Disc Golf Trainer & Bag Planner"/>
+  <meta property="og:description" content="Plan your disc golf bag, simulate flightpaths, and train smarter with AI-powered tools."/>
+  <meta property="og:url" content="https://baggedup.vercel.app/"/>
+  <meta property="og:image" content="https://baggedup.vercel.app/icons/icon-512x512.png"/>
+  <meta property="og:type" content="website"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --orange: #f97316;
+      --orange-dim: #c2510f;
+      --bg: #080b12;
+      --bg2: #0d1117;
+      --card: #111827;
+      --border: #1e293b;
+      --text: #f1f5f9;
+      --muted: #64748b;
+      --muted2: #334155;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE OVERLAY ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(8,11,18,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      text-decoration: none;
+    }
+
+    .nav-logo-icon {
+      width: 32px; height: 32px;
+      background: var(--orange);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+
+    .nav-logo-text {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      letter-spacing: 0.05em;
+      color: var(--text);
+    }
+
+    .nav-logo-text span { color: var(--orange); }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--text); }
+
+    .btn-nav {
+      background: var(--orange);
+      color: #fff;
+      padding: 0.55rem 1.4rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s;
+    }
+
+    .btn-nav:hover { background: #ea6c0a; transform: translateY(-1px); }
+
+    .nav-mobile-btn { display: none; }
+
+    /* ── HERO ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 8rem 2rem 4rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Radial glow behind hero */
+    .hero::after {
+      content: '';
+      position: absolute;
+      top: 10%; left: 50%;
+      transform: translateX(-50%);
+      width: 700px; height: 700px;
+      background: radial-gradient(circle, rgba(249,115,22,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Animated disc rings */
+    .hero-rings {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .hero-rings span {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px solid rgba(249,115,22,0.08);
+      transform: translate(-50%, -50%);
+      animation: pulse-ring 4s ease-out infinite;
+    }
+
+    .hero-rings span:nth-child(1) { width: 300px; height: 300px; animation-delay: 0s; }
+    .hero-rings span:nth-child(2) { width: 500px; height: 500px; animation-delay: 0.8s; }
+    .hero-rings span:nth-child(3) { width: 700px; height: 700px; animation-delay: 1.6s; }
+    .hero-rings span:nth-child(4) { width: 900px; height: 900px; animation-delay: 2.4s; }
+
+    @keyframes pulse-ring {
+      0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+      40% { opacity: 1; }
+      100% { opacity: 0; transform: translate(-50%, -50%) scale(1.1); }
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(249,115,22,0.1);
+      border: 1px solid rgba(249,115,22,0.3);
+      color: var(--orange);
+      padding: 0.35rem 1rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 1.5rem;
+      position: relative; z-index: 1;
+      animation: fade-up 0.6s ease both;
+    }
+
+    .hero h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(4rem, 12vw, 9rem);
+      line-height: 0.9;
+      letter-spacing: 0.02em;
+      position: relative; z-index: 1;
+      animation: fade-up 0.6s 0.1s ease both;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--orange);
+    }
+
+    .hero-sub {
+      max-width: 560px;
+      font-size: 1.1rem;
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 1.5rem auto 2.5rem;
+      font-weight: 400;
+      position: relative; z-index: 1;
+      animation: fade-up 0.6s 0.2s ease both;
+    }
+
+    .hero-ctas {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      position: relative; z-index: 1;
+      animation: fade-up 0.6s 0.3s ease both;
+    }
+
+    .btn-primary {
+      background: var(--orange);
+      color: #fff;
+      padding: 0.9rem 2.4rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 32px rgba(249,115,22,0.3);
+    }
+
+    .btn-primary:hover {
+      background: #ea6c0a;
+      transform: translateY(-2px);
+      box-shadow: 0 0 48px rgba(249,115,22,0.5);
+    }
+
+    .btn-secondary {
+      color: var(--muted);
+      padding: 0.9rem 1.6rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid var(--border);
+      transition: color 0.2s, border-color 0.2s;
+    }
+
+    .btn-secondary:hover { color: var(--text); border-color: var(--muted2); }
+
+    .hero-stats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3rem;
+      margin-top: 4rem;
+      position: relative; z-index: 1;
+      animation: fade-up 0.6s 0.4s ease both;
+    }
+
+    .hero-stat { text-align: center; }
+
+    .hero-stat-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.4rem;
+      color: var(--orange);
+      line-height: 1;
+    }
+
+    .hero-stat-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    .hero-stat-divider {
+      width: 1px; height: 40px;
+      background: var(--border);
+    }
+
+    /* ── FEATURES STRIP ── */
+    .features-strip {
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: var(--bg2);
+      padding: 1.2rem 2rem;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .features-strip-inner {
+      display: flex;
+      gap: 3rem;
+      animation: marquee 30s linear infinite;
+      white-space: nowrap;
+      width: max-content;
+    }
+
+    .features-strip-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+    }
+
+    .features-strip-item span { color: var(--orange); font-size: 0.9rem; }
+
+    @keyframes marquee {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+
+    /* ── SECTIONS ── */
+    section { padding: 6rem 2rem; position: relative; }
+
+    .container { max-width: 1100px; margin: 0 auto; }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--orange);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      line-height: 1;
+      letter-spacing: 0.02em;
+      margin-bottom: 1.2rem;
+    }
+
+    .section-title em { font-style: normal; color: var(--orange); }
+
+    .section-body {
+      font-size: 1rem;
+      color: var(--muted);
+      line-height: 1.8;
+      max-width: 560px;
+    }
+
+    /* ── FEATURE CARDS ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-top: 4rem;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.5rem;
+      padding: 2rem;
+      transition: border-color 0.2s, transform 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--orange), transparent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(249,115,22,0.3);
+      transform: translateY(-3px);
+    }
+
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      display: block;
+    }
+
+    .feature-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+      color: var(--text);
+    }
+
+    .feature-desc {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── HOW IT WORKS ── */
+    .how-bg {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 2rem;
+      margin-top: 4rem;
+      counter-reset: steps;
+    }
+
+    .step {
+      position: relative;
+      padding-left: 1rem;
+    }
+
+    .step-num {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 4rem;
+      color: rgba(249,115,22,0.15);
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-title {
+      font-weight: 800;
+      font-size: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 0.5rem;
+    }
+
+    .step-desc {
+      font-size: 0.875rem;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    /* ── SKILL LEVELS ── */
+    .levels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.2rem;
+      margin-top: 3rem;
+    }
+
+    .level-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 1.2rem;
+      padding: 1.6rem;
+    }
+
+    .level-icon { font-size: 1.6rem; margin-bottom: 0.8rem; }
+
+    .level-title {
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: var(--orange);
+      margin-bottom: 0.4rem;
+    }
+
+    .level-desc {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── CTA BAND ── */
+    .cta-band {
+      background: linear-gradient(135deg, rgba(249,115,22,0.12) 0%, transparent 60%);
+      border-top: 1px solid rgba(249,115,22,0.2);
+      border-bottom: 1px solid rgba(249,115,22,0.2);
+      text-align: center;
+      padding: 6rem 2rem;
+    }
+
+    .cta-band h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.5rem, 7vw, 5rem);
+      line-height: 1;
+      margin-bottom: 1rem;
+    }
+
+    .cta-band p {
+      color: var(--muted);
+      font-size: 1rem;
+      margin-bottom: 2.5rem;
+      max-width: 480px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      padding: 3rem 2rem;
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1.5rem;
+    }
+
+    .footer-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.4rem;
+      letter-spacing: 0.05em;
+    }
+
+    .footer-brand span { color: var(--orange); }
+
+    .footer-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover { color: var(--text); }
+
+    .footer-copy {
+      font-size: 0.75rem;
+      color: var(--muted2);
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 1rem; }
+      .nav-links { display: none; }
+      .nav-mobile-btn { display: flex; }
+      .hero-stats { gap: 1.5rem; }
+      .hero-stat-num { font-size: 1.8rem; }
+      .footer-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a href="/" class="nav-logo">
+      <div class="nav-logo-icon">🥏</div>
+      <span class="nav-logo-text">Bagged<span>Up</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/guide.html">Bag Guide</a></li>
+      <li><a href="/blog.html">Blog</a></li>
+      <li><a href="/about.html">About</a></li>
+    </ul>
+    <a href="/app" class="btn-nav">Open App →</a>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-rings">
+      <span></span><span></span><span></span><span></span>
+    </div>
+
+    <div class="hero-badge">🤖 AI-Powered · Free Forever</div>
+
+    <h1>Your Bag.<br/><em>Optimised.</em></h1>
+
+    <p class="hero-sub">
+      BaggedUp is the AI disc golf trainer and bag planner that simulates every disc's flightpath, finds gaps in your bag, and coaches you to throw better — completely free.
+    </p>
+
+    <div class="hero-ctas">
+      <a href="/app" class="btn-primary">Start Building My Bag →</a>
+      <a href="/guide.html" class="btn-secondary">Beginner's Guide</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-num">100+</div>
+        <div class="hero-stat-label">Features</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">∞</div>
+        <div class="hero-stat-label">Disc Database</div>
+      </div>
+      <div class="hero-stat-divider"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-num">Free</div>
+        <div class="hero-stat-label">Always</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MARQUEE STRIP -->
+  <div class="features-strip">
+    <div class="features-strip-inner">
+      <div class="features-strip-item"><span>📊</span> Flightpath Simulator</div>
+      <div class="features-strip-item"><span>🤖</span> AI Bag Coach</div>
+      <div class="features-strip-item"><span>📍</span> Lost Disc GPS</div>
+      <div class="features-strip-item"><span>🌬</span> Wind Simulation</div>
+      <div class="features-strip-item"><span>🏆</span> Bag Leaderboard</div>
+      <div class="features-strip-item"><span>🔥</span> Mold Heatmap</div>
+      <div class="features-strip-item"><span>🤝</span> Card Mates</div>
+      <div class="features-strip-item"><span>📤</span> PDF Export</div>
+      <div class="features-strip-item"><span>🧠</span> AI Throw Coach</div>
+      <div class="features-strip-item"><span>⚡</span> Arm Speed Advisor</div>
+      <!-- Duplicate for seamless loop -->
+      <div class="features-strip-item"><span>📊</span> Flightpath Simulator</div>
+      <div class="features-strip-item"><span>🤖</span> AI Bag Coach</div>
+      <div class="features-strip-item"><span>📍</span> Lost Disc GPS</div>
+      <div class="features-strip-item"><span>🌬</span> Wind Simulation</div>
+      <div class="features-strip-item"><span>🏆</span> Bag Leaderboard</div>
+      <div class="features-strip-item"><span>🔥</span> Mold Heatmap</div>
+      <div class="features-strip-item"><span>🤝</span> Card Mates</div>
+      <div class="features-strip-item"><span>📤</span> PDF Export</div>
+      <div class="features-strip-item"><span>🧠</span> AI Throw Coach</div>
+      <div class="features-strip-item"><span>⚡</span> Arm Speed Advisor</div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section>
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">What BaggedUp Does</div>
+        <h2 class="section-title">Every tool a disc<br/>golfer needs. <em>Free.</em></h2>
+        <p class="section-body">From your first putter to a fully optimised tournament bag — BaggedUp grows with your game.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card reveal">
+          <span class="feature-icon">📊</span>
+          <div class="feature-title">Flightpath Simulator</div>
+          <p class="feature-desc">See exactly how every disc in your bag flies — adjusted for your arm speed, throwing hand, and wind conditions. Path mode and stability matrix included.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">🤖</span>
+          <div class="feature-title">AI Bag Coach</div>
+          <p class="feature-desc">Describe your game in plain English. The AI analyses your skill level, arm speed, and bag gaps then recommends exactly the right discs to add or swap.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">🧠</span>
+          <div class="feature-title">My Coach — AI Trainer</div>
+          <p class="feature-desc">Ask anything about technique, shot shaping, course strategy, or grip. A personal AI disc golf coach that understands your game and answers instantly.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">🔍</span>
+          <div class="feature-title">Bag Gap Analysis</div>
+          <p class="feature-desc">Automatically detects missing shot shapes — understable fairways, overstable approach, dedicated putter — and suggests discs from the full database to fill them.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">🌬</span>
+          <div class="feature-title">Wind Simulation</div>
+          <p class="feature-desc">Set headwind, tailwind, or crosswind speed and watch every flightpath in your bag update instantly. Know which disc to throw before you step up to the tee.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">📍</span>
+          <div class="feature-title">Lost Disc GPS</div>
+          <p class="feature-desc">Pin the exact location where you last had a disc. The coordinates are saved to your account and open in Google Maps with one tap. Never lose a disc for good again.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">🤝</span>
+          <div class="feature-title">Card Mates</div>
+          <p class="feature-desc">Search for other BaggedUp users, add them as Card Mates, and view their full bag and disc collection. Compare setups and bag scores on the leaderboard.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">📤</span>
+          <div class="feature-title">PDF & Image Export</div>
+          <p class="feature-desc">Export your full bag to a branded PDF or PNG — complete with disc list, flight numbers, and your flightpath chart. Share it anywhere.</p>
+        </div>
+        <div class="feature-card reveal">
+          <span class="feature-icon">🔥</span>
+          <div class="feature-title">Mold Slot Heatmap</div>
+          <p class="feature-desc">A visual 14×3 grid shows which speed and stability combinations you're covering — and where you have dangerous gaps or wasteful overlaps.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how-bg">
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">How It Works</div>
+        <h2 class="section-title">Set up in <em>minutes.</em></h2>
+        <p class="section-body">No app store. No credit card. Works on any phone or desktop. Install it like an app or use it in your browser.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step reveal">
+          <div class="step-num">01</div>
+          <div class="step-title">Create Your Account</div>
+          <p class="step-desc">Sign up free with your email. Set your skill level, throwing hand, and arm speed in settings. Takes under 2 minutes.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">02</div>
+          <div class="step-title">Add Your Discs</div>
+          <p class="step-desc">Search the factory disc database or add community discs. Every disc you own goes into your collection — then assign them to bags.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">03</div>
+          <div class="step-title">Simulate Your Flights</div>
+          <p class="step-desc">Watch your flightpath chart populate instantly. Toggle wind, BH/FH view, and stability matrix to understand every disc in your bag.</p>
+        </div>
+        <div class="step reveal">
+          <div class="step-num">04</div>
+          <div class="step-title">Ask the AI Coach</div>
+          <p class="step-desc">Get personalised disc recommendations, technique tips, and bag optimisation from an AI that knows your exact setup and skill level.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHO IT'S FOR -->
+  <section>
+    <div class="container">
+      <div class="reveal">
+        <div class="section-label">Built For Every Player</div>
+        <h2 class="section-title">Beginner to <em>Pro.</em></h2>
+        <p class="section-body">BaggedUp adapts to your skill level — the tools, suggestions, and AI coaching all adjust based on where you are in your disc golf journey.</p>
+      </div>
+
+      <div class="levels-grid">
+        <div class="level-card reveal">
+          <div class="level-icon">🌱</div>
+          <div class="level-title">Beginner</div>
+          <p class="level-desc">Learn which discs to start with, why flight numbers matter, and how to build a simple 3–5 disc bag that actually works for your arm speed.</p>
+        </div>
+        <div class="level-card reveal">
+          <div class="level-icon">⚡</div>
+          <div class="level-title">Intermediate</div>
+          <p class="level-desc">Fill the gaps in your bag, identify discs you can't yet throw fast enough, and start building shot shape variety across all distances.</p>
+        </div>
+        <div class="level-card reveal">
+          <div class="level-icon">🔥</div>
+          <div class="level-title">Advanced</div>
+          <p class="level-desc">Optimise for specific course conditions, fine-tune wind disc selection, track your entire collection across multiple tournament bags.</p>
+        </div>
+        <div class="level-card reveal">
+          <div class="level-icon">🏆</div>
+          <div class="level-title">Pro</div>
+          <p class="level-desc">Full bag management, leaderboard comparisons with Card Mates, PDF bag sheets, and AI-powered analysis of every slot in your setup.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA BAND -->
+  <div class="cta-band reveal">
+    <div class="container">
+      <h2>Ready to build<br/>your best bag?</h2>
+      <p>Free forever. No app store required. Works on any device.</p>
+      <a href="/app" class="btn-primary">Open BaggedUp Free →</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand">Bagged<span>Up</span></div>
+      <ul class="footer-links">
+        <li><a href="/guide.html">Bag Guide</a></li>
+        <li><a href="/blog.html">Blog</a></li>
+        <li><a href="/about.html">About</a></li>
+        <li><a href="/app">Open App</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    </div>
+  </footer>
+
+  <script>
+    // Scroll reveal
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) {
+          setTimeout(() => e.target.classList.add('visible'), i * 80);
+        }
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
