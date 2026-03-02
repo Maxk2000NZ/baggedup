@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v32-AI';
+const APP_VERSION = 'v37.02-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -1184,7 +1184,7 @@ ${responseFormat}`;
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { temperature: 0.4, maxOutputTokens: 1000 },
+                        generationConfig: { temperature: 0.4, maxOutputTokens: 2000 },
                     }),
                 }
             );
@@ -1193,9 +1193,47 @@ ${responseFormat}`;
                 throw new Error(err?.error?.message || `API error ${res.status}`);
             }
             const data = await res.json();
-            const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-            const clean = raw.replace(/```json|```/g, '').trim();
-            const parsed = JSON.parse(clean);
+            let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            
+            // Robust JSON cleanup
+            // Remove markdown code blocks
+            raw = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+            
+            // Remove any text before first { and after last }
+            const firstBrace = raw.indexOf('{');
+            const lastBrace = raw.lastIndexOf('}');
+            if (firstBrace !== -1 && lastBrace !== -1) {
+                raw = raw.substring(firstBrace, lastBrace + 1);
+            }
+            
+            // Fix common JSON issues
+            raw = raw
+                .replace(/,(\s*[}\]])/g, '$1') // Remove trailing commas
+                .replace(/\n/g, ' ') // Remove newlines that might break strings
+                .replace(/\r/g, '') // Remove carriage returns
+                .trim();
+            
+            // Try parsing
+            let parsed;
+            try {
+                parsed = JSON.parse(raw);
+            } catch (parseErr) {
+                // If parsing fails, try to fix truncated strings
+                console.error('JSON parse error, attempting fix:', parseErr);
+                console.log('Raw response:', raw);
+                
+                // Try adding closing quotes and braces if needed
+                if (!raw.endsWith('}')) {
+                    raw = raw + '"}]}';
+                }
+                
+                try {
+                    parsed = JSON.parse(raw);
+                } catch (secondErr) {
+                    throw new Error('AI returned invalid response. Please try again with a simpler prompt.');
+                }
+            }
+            
             setAIResult(parsed);
         } catch (err) {
             console.error('Bag builder error:', err);
