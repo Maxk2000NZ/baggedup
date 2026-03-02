@@ -32,16 +32,22 @@
       border-bottom: 1px solid var(--border);
     }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
-    .nav-logo-icon { width: 30px; height: 30px; background: var(--orange); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
+    .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
     .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.05em; color: var(--text); }
     .nav-logo-text span { color: var(--orange); }
-    .nav-right { display: flex; gap: 1rem; align-items: center; }
-    .nav-link { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-    .nav-link:hover { color: var(--text); }
-    .btn-nav { background: var(--orange); color: #fff; padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; }
+    .nav-links { display: flex; gap: 1.4rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; white-space: nowrap; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); position: sticky; top: 57px; z-index: 99; }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
 
     /* LAYOUT */
     .page-wrap { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; display: grid; grid-template-columns: 1fr 280px; gap: 4rem; }
+    @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
     @media (max-width: 900px) { .page-wrap { grid-template-columns: 1fr; } .sidebar { display: none; } }
 
     /* ARTICLE */
@@ -183,15 +189,29 @@
 
   <nav>
     <a href="/" class="nav-logo">
-      <div class="nav-logo-icon">🥏</div>
+      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;"/>
       <span class="nav-logo-text">Bagged<span>Up</span></span>
     </a>
-    <div class="nav-right">
-      <a href="/blog.html" class="nav-link">Blog</a>
-      <a href="/about.html" class="nav-link">About</a>
-      <a href="/app" class="btn-nav">Open App →</a>
-    </div>
+    <ul class="nav-links">
+      <li><a href="/guide.html" class="active">Bag Guide</a></li>
+      <li><a href="/blog.html">Blog</a></li>
+      <li><a href="/flightpath.html">Flight Science</a></li>
+      <li><a href="/plastics.html">Plastics</a></li>
+      <li><a href="/games.html">Games</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+    <a href="/app" class="btn-nav">Get Started →</a>
+    <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
   </nav>
+  <div id="mobile-menu" class="mobile-menu">
+    <a href="/guide.html">Bag Guide</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/flightpath.html">Flight Science</a>
+    <a href="/plastics.html">Plastics</a>
+    <a href="/games.html">Games</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app" class="mobile-cta">Get Started Free →</a>
+  </div>
 
   <div class="page-wrap">
     <article>
@@ -365,13 +385,23 @@
   </div>
 
   <footer>
-    <ul class="footer-links">
-      <li><a href="/">Home</a></li>
-      <li><a href="/blog.html">Blog</a></li>
-      <li><a href="/about.html">About</a></li>
-      <li><a href="/app">Open App</a></li>
-    </ul>
-    <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    <div style="max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:0.05em;display:flex;align-items:center;gap:0.5rem;">
+        <img src="/baggedup.logo.png" alt="" style="height:26px;width:26px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'"/>
+        Bagged<span style="color:var(--orange)">Up</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/guide.html">Bag Guide</a></li>
+        <li><a href="/blog.html">Blog</a></li>
+        <li><a href="/flightpath.html">Flight Science</a></li>
+        <li><a href="/plastics.html">Plastics</a></li>
+        <li><a href="/games.html">Games</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/app">Open App</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    </div>
   </footer>
 
 </body>

@@ -22,39 +22,63 @@
       --text: #f1f5f9; --muted: #64748b; --muted2: #334155;
     }
     html { scroll-behavior: smooth; }
-    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
 
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* NAV */
     nav {
       position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 1rem 2rem;
-      background: rgba(8,11,18,0.9); backdrop-filter: blur(16px);
+      background: rgba(8,11,18,0.92); backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
     }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
-    .nav-logo-icon { width: 30px; height: 30px; background: var(--orange); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; }
-    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 0.05em; color: var(--text); }
+    .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
+    .nav-logo-fallback { width: 32px; height: 32px; background: var(--orange); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1rem; }
+    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; color: var(--text); }
     .nav-logo-text span { color: var(--orange); }
-    .nav-right { display: flex; gap: 1rem; align-items: center; }
-    .nav-link { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-    .btn-nav { background: var(--orange); color: #fff; padding: 0.5rem 1.2rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; }
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; transition: color 0.2s; }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a.active { color: var(--orange); }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.55rem 1.4rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
+    .btn-nav:hover { background: #ea6c0a; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
 
-    .page-header {
-      padding: 6rem 2rem 3rem;
-      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.07) 0%, transparent 60%);
-      text-align: center;
+    .mobile-menu { display: none; flex-direction: column; gap: 0; background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); transition: color 0.2s; }
+    .mobile-menu a:hover { color: var(--text); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .nav-mobile-btn { display: flex; }
     }
 
+    /* PAGE HEADER */
+    .page-header {
+      padding: 6rem 2rem 3rem;
+      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%);
+      text-align: center; position: relative; z-index: 1;
+    }
     .page-header h1 {
       font-family: 'Bebas Neue', sans-serif;
       font-size: clamp(3rem, 8vw, 5.5rem);
       line-height: 1; letter-spacing: 0.02em; margin-bottom: 1rem;
+      animation: fade-up 0.6s ease both;
     }
-
     .page-header h1 em { font-style: normal; color: var(--orange); }
-    .page-header p { font-size: 1rem; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; }
+    .page-header p { font-size: 1rem; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; animation: fade-up 0.6s 0.1s ease both; }
 
-    .container { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 4rem 2rem; position: relative; z-index: 1; }
 
     /* FEATURED POST */
     .featured-post {
@@ -64,123 +88,125 @@
       gap: 2rem; align-items: center;
       margin-bottom: 3rem;
       position: relative; overflow: hidden;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, transform 0.2s;
       text-decoration: none; color: inherit;
     }
-
     .featured-post::before {
       content: '';
       position: absolute; top: 0; left: 0; right: 0; height: 3px;
       background: linear-gradient(90deg, var(--orange), #fb923c, transparent);
     }
-
-    .featured-post:hover { border-color: rgba(249,115,22,0.4); }
-
-    .featured-label {
-      font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
-      letter-spacing: 0.12em; color: var(--orange); margin-bottom: 0.8rem;
-    }
-
+    .featured-post:hover { border-color: rgba(249,115,22,0.4); transform: translateY(-2px); }
+    .featured-label { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--orange); margin-bottom: 0.8rem; }
     .featured-post h2 {
       font-family: 'Bebas Neue', sans-serif;
       font-size: clamp(1.8rem, 4vw, 2.8rem);
-      letter-spacing: 0.02em; line-height: 1.1;
-      margin-bottom: 0.8rem;
+      letter-spacing: 0.02em; line-height: 1.1; margin-bottom: 0.8rem;
     }
-
     .featured-post p { font-size: 0.92rem; color: var(--muted); line-height: 1.7; max-width: 600px; }
-
-    .featured-meta {
-      display: flex; align-items: center; gap: 1rem;
-      margin-top: 1.2rem;
-    }
-
+    .featured-meta { display: flex; align-items: center; gap: 1rem; margin-top: 1.2rem; flex-wrap: wrap; }
     .post-tag {
       background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.2);
       color: var(--orange); padding: 0.25rem 0.8rem;
       border-radius: 999px; font-size: 0.7rem; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.08em;
     }
-
     .post-read-time { font-size: 0.75rem; color: var(--muted2); font-weight: 600; }
+    .featured-emoji { font-size: 5rem; opacity: 0.6; }
 
-    .featured-emoji {
-      font-size: 5rem; opacity: 0.6;
-    }
+    /* SECTION LABEL */
+    .section-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--muted2); margin-bottom: 1.5rem; }
 
     /* POSTS GRID */
-    .posts-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 1.5rem;
-    }
+    .posts-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; }
 
+    /* EXPANDABLE POST CARD */
     .post-card {
       background: var(--card); border: 1px solid var(--border);
-      border-radius: 1.4rem; padding: 1.8rem;
-      text-decoration: none; color: inherit;
+      border-radius: 1.4rem; overflow: hidden;
       transition: border-color 0.2s, transform 0.2s;
       display: flex; flex-direction: column;
     }
-
     .post-card:hover { border-color: rgba(249,115,22,0.3); transform: translateY(-3px); }
-
-    .post-card-icon { font-size: 2rem; margin-bottom: 1rem; }
-
+    .post-card-header { padding: 1.8rem 1.8rem 0; cursor: pointer; }
+    .post-card-icon { font-size: 2rem; margin-bottom: 1rem; display: block; }
     .post-card-tags { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
-
     .post-card h3 {
       font-family: 'Bebas Neue', sans-serif;
       font-size: 1.5rem; letter-spacing: 0.03em;
       line-height: 1.1; margin-bottom: 0.7rem;
     }
+    .post-card .intro { font-size: 0.85rem; color: var(--muted); line-height: 1.7; padding: 0 1.8rem; }
 
-    .post-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.7; flex: 1; }
-
+    /* EXPANDABLE CONTENT */
+    .post-body {
+      max-height: 0; overflow: hidden;
+      transition: max-height 0.5s ease, opacity 0.4s ease;
+      opacity: 0; padding: 0 1.8rem;
+    }
+    .post-body.open { max-height: 1000px; opacity: 1; padding: 1rem 1.8rem; }
+    .post-body p { font-size: 0.85rem; color: var(--muted); line-height: 1.8; margin-bottom: 0.8rem; }
+    .post-body h4 { font-weight: 800; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text); margin: 1rem 0 0.4rem; }
+    .post-body ul { list-style: none; padding: 0; }
+    .post-body ul li { font-size: 0.83rem; color: var(--muted); line-height: 1.7; padding: 0.2rem 0 0.2rem 1.2rem; position: relative; }
+    .post-body ul li::before { content: '›'; position: absolute; left: 0; color: var(--orange); }
+    .key-point {
+      background: rgba(249,115,22,0.06); border-left: 3px solid var(--orange);
+      border-radius: 0 8px 8px 0; padding: 0.8rem 1rem; margin: 1rem 0;
+      font-size: 0.83rem; color: var(--text); line-height: 1.6; font-weight: 600;
+    }
     .post-card-footer {
       display: flex; align-items: center; justify-content: space-between;
-      margin-top: 1.2rem; padding-top: 1rem;
+      padding: 1rem 1.8rem; margin-top: auto;
       border-top: 1px solid var(--border);
+      cursor: pointer;
     }
-
     .post-card-footer span { font-size: 0.72rem; color: var(--muted2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-    .post-card-arrow { color: var(--orange); font-size: 1rem; }
-
-    /* SECTION LABEL */
-    .section-label {
-      font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
-      letter-spacing: 0.15em; color: var(--muted2); margin-bottom: 1.5rem;
+    .toggle-btn {
+      display: flex; align-items: center; gap: 0.4rem;
+      color: var(--orange); font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      background: none; border: none; cursor: pointer;
+      transition: gap 0.2s;
     }
+    .toggle-btn .arrow { transition: transform 0.3s; font-size: 0.9rem; }
+    .toggle-btn.open .arrow { transform: rotate(90deg); }
 
     /* CTA */
     .blog-cta {
       background: var(--card); border: 1px solid rgba(249,115,22,0.2);
-      border-radius: 1.5rem; padding: 2.5rem; text-align: center;
-      margin-top: 4rem;
+      border-radius: 1.5rem; padding: 2.5rem; text-align: center; margin-top: 4rem;
     }
-
-    .blog-cta h2 {
-      font-family: 'Bebas Neue', sans-serif;
-      font-size: 2rem; margin-bottom: 0.6rem;
-    }
-
+    .blog-cta h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; margin-bottom: 0.6rem; }
     .blog-cta h2 em { font-style: normal; color: var(--orange); }
     .blog-cta p { color: var(--muted); font-size: 0.92rem; margin-bottom: 1.5rem; }
-
     .btn-primary {
       display: inline-block; background: var(--orange); color: #fff;
       padding: 0.85rem 2.2rem; border-radius: 999px;
       font-size: 0.85rem; font-weight: 800; text-transform: uppercase;
       letter-spacing: 0.1em; text-decoration: none;
-      box-shadow: 0 0 24px rgba(249,115,22,0.3);
+      box-shadow: 0 0 24px rgba(249,115,22,0.3); transition: background 0.2s, transform 0.15s;
     }
+    .btn-primary:hover { background: #ea6c0a; transform: translateY(-2px); }
 
-    footer {
-      background: var(--bg2); border-top: 1px solid var(--border);
-      padding: 2rem; text-align: center;
-    }
-    .footer-links { display: flex; gap: 2rem; justify-content: center; list-style: none; margin-bottom: 1rem; flex-wrap: wrap; }
-    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+    /* FOOTER */
+    footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 3rem 2rem; position: relative; z-index: 1; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; }
+    .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
+    .footer-brand span { color: var(--orange); }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
     .footer-copy { font-size: 0.75rem; color: var(--muted2); }
+    @media (max-width: 640px) { .footer-inner { flex-direction: column; } }
+
+    /* ANIMATIONS */
+    @keyframes fade-up {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
 
     @media (max-width: 640px) {
       .featured-post { grid-template-columns: 1fr; }
@@ -192,27 +218,40 @@
 
   <nav>
     <a href="/" class="nav-logo">
-      <div class="nav-logo-icon">🥏</div>
+      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;" />
       <span class="nav-logo-text">Bagged<span>Up</span></span>
     </a>
-    <div class="nav-right">
-      <a href="/guide.html" class="nav-link">Bag Guide</a>
-      <a href="/about.html" class="nav-link">About</a>
-      <a href="/app" class="btn-nav">Open App →</a>
-    </div>
+    <ul class="nav-links">
+      <li><a href="/guide.html">Bag Guide</a></li>
+      <li><a href="/blog.html" class="active">Blog</a></li>
+      <li><a href="/flightpath.html">Flight Science</a></li>
+      <li><a href="/plastics.html">Plastics</a></li>
+      <li><a href="/games.html">Games</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+    <a href="/app" class="btn-nav">Get Started →</a>
+    <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
   </nav>
+  <div id="mobile-menu" class="mobile-menu">
+    <a href="/guide.html">Bag Guide</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/flightpath.html">Flight Science</a>
+    <a href="/plastics.html">Plastics</a>
+    <a href="/games.html">Games</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app" class="mobile-cta">Get Started Free →</a>
+  </div>
 
   <div class="page-header">
     <h1>Disc Golf <em>Tips</em><br/>& Guides</h1>
-    <p>Bag building advice, flight number explainers, AI training tips, and everything else you need to improve your game.</p>
+    <p>Bag building advice, flight number explainers, AI training tips, and everything you need to level up your game.</p>
   </div>
 
   <div class="container">
 
-    <!-- FEATURED -->
-    <div class="section-label">📌 Start Here</div>
+    <div class="section-label reveal">📌 Start Here</div>
 
-    <a href="/guide.html" class="featured-post">
+    <a href="/guide.html" class="featured-post reveal">
       <div>
         <div class="featured-label">⭐ Featured Guide</div>
         <h2>How to Build Your First Disc Golf Bag</h2>
@@ -226,134 +265,356 @@
       <div class="featured-emoji">🎒</div>
     </a>
 
-    <!-- ALL POSTS -->
-    <div class="section-label">All Articles</div>
+    <div class="section-label reveal">All Articles</div>
 
     <div class="posts-grid">
 
-      <a href="/guide.html#flight-numbers" class="post-card">
-        <div class="post-card-icon">📊</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Beginner</span>
+      <!-- POST 1 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">📊</span>
+          <div class="post-card-tags"><span class="post-tag">Beginner</span></div>
+          <h3>Disc Flight Numbers Explained</h3>
         </div>
-        <h3>Disc Flight Numbers Explained</h3>
-        <p>Speed, glide, turn, and fade — what they mean, how to read them, and how to use them to choose the right disc for any shot.</p>
-        <div class="post-card-footer">
+        <p class="intro">Speed, glide, turn, and fade — what they mean, how to read them, and how to use them to pick the right disc for any shot.</p>
+        <div class="post-body">
+          <p>Every disc has four numbers printed on it. These numbers — called flight ratings — describe exactly how that disc will behave in the air when thrown at the appropriate speed. Understanding them changes everything.</p>
+          <h4>Speed (1–14)</h4>
+          <p>Speed is how fast the disc needs to travel to fly as rated. A speed 13 driver needs serious arm speed to work properly. Beginners should stay at speed 7 or below — anything faster just goes right into the ground if you can't generate enough spin and velocity.</p>
+          <h4>Glide (1–7)</h4>
+          <p>Glide describes how long the disc stays airborne. High glide (6–7) equals more distance in calm conditions. Low glide means the disc drops quickly — useful for windy days or short shots where you don't want the disc to float.</p>
+          <h4>Turn (-5 to +1)</h4>
+          <p>Turn is what the disc does at the start of its flight. Negative numbers mean the disc turns right (for right-hand backhand). A -3 disc will arc right before fading back. Beginners love high-turn discs because they're easier to throw far.</p>
+          <h4>Fade (0–5)</h4>
+          <p>Fade is the hard left hook at the end of the flight. A 5 fade disc will make a strong, reliable finish left — great for getting around obstacles. A 0 fade disc lands almost straight.</p>
+          <div class="key-point">🎯 Quick rule: Low speed + high turn = beginner-friendly. High speed + high fade = advanced overstable.</div>
+          <ul>
+            <li>A 9/5/-2/1 fairway driver: fast, floaty, slight right turn, minimal fade</li>
+            <li>A 7/5/0/1 midrange: moderate speed, very controllable, predictable</li>
+            <li>A 3/4/0/2 putter: slow, grippy, reliable short-range approach disc</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>5 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/guide.html#arm-speed" class="post-card">
-        <div class="post-card-icon">⚡</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Technique</span>
+      <!-- POST 2 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">⚡</span>
+          <div class="post-card-tags"><span class="post-tag">Technique</span></div>
+          <h3>Why Arm Speed Matters More Than Your Discs</h3>
         </div>
-        <h3>Why Your Arm Speed Matters More Than Your Discs</h3>
-        <p>The single biggest mistake in disc golf is buying discs rated for arm speeds you don't have yet. Here's how to match your bag to your actual ability.</p>
-        <div class="post-card-footer">
+        <p class="intro">The biggest mistake in disc golf is buying discs rated for arm speeds you don't have. Here's how to match your bag to your actual ability.</p>
+        <div class="post-body">
+          <p>Walk into any disc golf shop and you'll see walls of drivers rated speed 10, 11, 12, 13. These are marketed as distance machines. And they are — but only if you can throw them fast enough. Most recreational players can't.</p>
+          <h4>What arm speed actually means</h4>
+          <p>Arm speed is the velocity you generate through your reach-back and pull-through. It directly determines whether a high-speed disc will fly as rated or simply roll over and crash. A speed 12 disc needs somewhere around 65-70mph at release to fly properly. Most beginners throw closer to 40-45mph.</p>
+          <h4>The damage a wrong disc does</h4>
+          <p>When you throw an overstable high-speed driver too slowly, it doesn't just go shorter. It actively turns and crashes to the ground early, often going less distance than your midrange. Worse, it teaches your body wrong release habits as you unconsciously compensate.</p>
+          <div class="key-point">📏 Rule of thumb: If you're throwing under 250 feet, keep your drivers below speed 9. If under 200 feet, stick to midranges and putters.</div>
+          <h4>How to find your actual speed range</h4>
+          <ul>
+            <li>Throw a very understable disc (like an Innova Leopard). If it goes left on a RHBH throw, you're throwing hard enough for that speed</li>
+            <li>Work up in speed only when your current max driver is turning over reliably</li>
+            <li>Use BaggedUp's arm speed setting to see discs calibrated to your actual ability</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>4 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/guide.html#stability" class="post-card">
-        <div class="post-card-icon">↔️</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Intermediate</span>
+      <!-- POST 3 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">↔️</span>
+          <div class="post-card-tags"><span class="post-tag">Intermediate</span></div>
+          <h3>Overstable vs Understable — When to Use Each</h3>
         </div>
-        <h3>Overstable vs Understable — When to Use Each</h3>
-        <p>Understanding disc stability is what separates recreational players from competitive ones. Learn when to reach for each type and why.</p>
-        <div class="post-card-footer">
+        <p class="intro">Understanding disc stability is what separates recreational players from competitive ones. Learn when to reach for each type and why.</p>
+        <div class="post-body">
+          <p>Stability describes a disc's tendency to fade left (overstable) or turn right (understable) during flight, for a right-handed backhand thrower. Every disc sits somewhere on this spectrum, and knowing when to use each is a genuine skill.</p>
+          <h4>Overstable discs</h4>
+          <p>Overstable discs want to fade hard left. They're reliable in the wind (headwinds won't flip them over), great for hyzer-line shots, and useful for getting around obstacles on the left side of a fairway. They're predictable — where you release them is roughly where they'll end up, just left.</p>
+          <h4>Understable discs</h4>
+          <p>Understable discs turn right before fading. This makes them ideal for long distance throws (the turn adds rollout), roller shots, and right-side lines that would be hard to hit with an overstable disc. They're also much easier for beginners to throw far because they don't fight the slower arm speed.</p>
+          <h4>Neutral discs</h4>
+          <p>The sweet spot — a disc that goes mostly straight with a gentle fade. These are the workhorses of a good bag. Your go-to midrange and main fairway driver should probably be neutral.</p>
+          <div class="key-point">💡 In a headwind, reach for overstable. In a tailwind, go understable. In calm conditions, neutral is your friend.</div>
+          <ul>
+            <li>Overstable examples: Discraft Buzzz OS, Innova Firebird, Dynamic Discs Felon</li>
+            <li>Understable examples: Innova Leopard, Latitude 64 River, Westside Harp (for putters)</li>
+            <li>Neutral examples: Discraft Buzzz, Innova Roc3, Dynamic Discs Justice</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>5 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/app" class="post-card">
-        <div class="post-card-icon">🌬️</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Advanced</span>
-          <span class="post-tag">Strategy</span>
+      <!-- POST 4 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🌬️</span>
+          <div class="post-card-tags"><span class="post-tag">Advanced</span><span class="post-tag">Strategy</span></div>
+          <h3>Disc Selection in Wind: A Complete Playbook</h3>
         </div>
-        <h3>Disc Selection in Wind: A Complete Playbook</h3>
-        <p>Headwind, tailwind, crosswind — each requires a completely different approach. Learn how wind changes your disc selection and how to simulate it in BaggedUp.</p>
-        <div class="post-card-footer">
+        <p class="intro">Headwind, tailwind, crosswind — each requires a completely different approach. Learn how wind changes your disc selection.</p>
+        <div class="post-body">
+          <p>Wind is the great equaliser in disc golf. Even pros regularly make the wrong disc choice in tricky conditions. Here's a systematic way to think about it.</p>
+          <h4>Headwinds (wind in your face)</h4>
+          <p>Headwinds amplify the disc's high-speed characteristics. An understable disc that would normally turn just a bit in calm conditions will flip completely over in a headwind. The solution: throw more overstable than you think you need. Hyzer angles also help fight the headwind. Reduce power slightly — a smoother release beats a muscled throw in a headwind every time.</p>
+          <h4>Tailwinds (wind behind you)</h4>
+          <p>Tailwinds are deceptive. They feel like they should help, and they can — but they also make overstable discs fade harder and faster. Your go-to driver might finish hard left before it should. Counter this with slightly understable discs and flat or anhyzer release angles.</p>
+          <h4>Crosswinds</h4>
+          <p>Wind from the left pushes the disc right — you want something with extra fade to counteract drift. Wind from the right is trickier; use an understable disc and let the wind help rather than fight it.</p>
+          <div class="key-point">🌬 Use BaggedUp's wind simulation to see exactly how your current bag responds — before you're standing on the tee wondering.</div>
+          <h4>Quick reference</h4>
+          <ul>
+            <li>Headwind: more overstable, hyzer release, less power</li>
+            <li>Tailwind: more understable, flat or anny release, let it fly</li>
+            <li>Left crosswind: more overstable to counteract drift</li>
+            <li>Right crosswind: understable and let the wind work for you</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>6 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/app" class="post-card">
-        <div class="post-card-icon">🤖</div>
-        <div class="post-card-tags">
-          <span class="post-tag">AI Tools</span>
+      <!-- POST 5 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🤖</span>
+          <div class="post-card-tags"><span class="post-tag">AI Tools</span></div>
+          <h3>How to Use AI to Build a Better Bag</h3>
         </div>
-        <h3>How to Use AI to Build a Better Disc Golf Bag</h3>
-        <p>BaggedUp's AI bag coach can analyse your current setup and recommend exactly which discs to add, swap, or remove. Here's how to get the most out of it.</p>
-        <div class="post-card-footer">
+        <p class="intro">BaggedUp's AI coach can analyse your setup and recommend exactly which discs to add, swap, or remove. Here's how to get the most out of it.</p>
+        <div class="post-body">
+          <p>The AI bag coach in BaggedUp isn't a generic chatbot. It has full visibility of your current bag — every disc's flight numbers, your arm speed, your skill level, and your throwing hand. Every recommendation it makes is based on your actual setup, not a generic template.</p>
+          <h4>How to get good recommendations</h4>
+          <p>Be specific when describing your game. "I miss shots right" is useful. "I struggle with hyzer shots above 250 feet on tight fairways" is better. The more context you give the AI, the more targeted its response will be.</p>
+          <h4>Gap analysis mode</h4>
+          <p>Rather than asking open-ended questions, try "find gaps in my bag." The AI will look at your speed and stability coverage, identify missing shot shapes, and recommend specific discs to fill them — pulling from the full disc database.</p>
+          <h4>Full bag build mode</h4>
+          <p>Starting from scratch or rebuilding? The "Full Bag Build" mode lets the AI design a complete balanced bag from 9 to 15 discs. It considers your existing collection and flags which discs to keep, which to replace, and what to buy next.</p>
+          <div class="key-point">🤖 Tip: After getting a recommendation, ask "why?" — the AI will explain its reasoning based on your specific flight numbers and gaps.</div>
+          <ul>
+            <li>Use "My Coach" for technique questions and course strategy</li>
+            <li>Use "AI Bag Coach" specifically for disc recommendations</li>
+            <li>Re-run analysis after adding new discs to see updated gaps</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>4 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/app" class="post-card">
-        <div class="post-card-icon">🔥</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Intermediate</span>
-          <span class="post-tag">Bag Building</span>
+      <!-- POST 6 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🔥</span>
+          <div class="post-card-tags"><span class="post-tag">Intermediate</span><span class="post-tag">Bag Building</span></div>
+          <h3>How to Spot Gaps in Your Disc Golf Bag</h3>
         </div>
-        <h3>How to Spot Gaps in Your Disc Golf Bag</h3>
-        <p>Most players have overlapping discs doing the same job while missing entire shot shapes. Learn how to audit your bag and fix the holes before your next round.</p>
-        <div class="post-card-footer">
+        <p class="intro">Most players have overlapping discs doing the same job while missing entire shot shapes. Learn how to audit your bag and fix it.</p>
+        <div class="post-body">
+          <p>A bag gap isn't just about missing discs — it's about missing shot shapes. You might have 14 discs and still be completely defenceless on a hyzer flip line or a 200-foot forced right-to-left shot.</p>
+          <h4>The 4 shot shapes every bag needs</h4>
+          <ul>
+            <li><strong>Straight with fade</strong> — your reliable workhorse for straight fairways</li>
+            <li><strong>Hyzer line</strong> — for shots that need to go left and stay left</li>
+            <li><strong>Anhyzer / flip</strong> — for long right-curving shots or big turnover lines</li>
+            <li><strong>Finesse / approach</strong> — a slow, accurate disc for 80-150 feet</li>
+          </ul>
+          <h4>The distance ladder</h4>
+          <p>A well-built bag covers a range of distances in roughly equal steps. If you jump from a 50-foot putter to a 300-foot driver with nothing in between, you'll always be throwing either too hard or too easy on approach shots.</p>
+          <h4>Using BaggedUp's heatmap</h4>
+          <p>The mold slot heatmap shows a 14×3 grid of all possible speed/stability combinations. Dark squares mean you have coverage there. Empty squares are gaps. A good bag should fill the grid without too many duplicates in the same zone.</p>
+          <div class="key-point">🔥 The most common gap: intermediate players almost always lack a dedicated 100-180 foot overstable approach disc. A beat-up midrange or dedicated approach disc fixes most short-game struggles overnight.</div>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>5 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/guide.html#plastic" class="post-card">
-        <div class="post-card-icon">💿</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Gear</span>
+      <!-- POST 7 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">💿</span>
+          <div class="post-card-tags"><span class="post-tag">Gear</span></div>
+          <h3>Disc Golf Plastic Guide: Which Type Should You Buy?</h3>
         </div>
-        <h3>Disc Golf Plastic Guide: Which Type Should You Buy?</h3>
-        <p>Base, premium, metal flake, glow — disc plastic affects grip, durability, and how the disc flies as it wears. A plain-language guide for every budget.</p>
-        <div class="post-card-footer">
+        <p class="intro">Base, premium, metal flake, glow — plastic affects grip, durability, and how the disc flies as it wears. A plain-language guide for every budget.</p>
+        <div class="post-body">
+          <p>Disc plastic is one of the most confusing parts of buying discs because every manufacturer uses different names for the same basic types. Innova calls their premium plastic "Star." Discraft calls theirs "Z." Discmania calls it "S-Line." They're all doing roughly the same thing.</p>
+          <h4>Base plastic (DX, Pro-D, D-Line)</h4>
+          <p>The most affordable option. Grippy in cold weather, flexible, and wears in quickly — which actually makes overstable discs more understable over time. Great for beginners who want to try lots of molds cheaply. Not ideal for tournament play.</p>
+          <h4>Premium plastic (Star, Z, S-Line, Gold)</h4>
+          <p>More durable, holds its flight characteristics longer, better grip in all conditions. The standard for serious players. If you find a disc you love, buy it in premium so it stays consistent.</p>
+          <h4>Metal flake / sparkle plastics</h4>
+          <p>Premium plastic with added metallic flakes for aesthetics. Fly identically to standard premium. Usually slightly pricier but worth it if you want to show off a bit.</p>
+          <h4>Special blends (Halo, Plasma, Neo)</h4>
+          <p>These are manufacturer-specific premium blends that often feel slightly stiffer or more grippy than standard premium. Largely preference-based — try a few and decide what you like in your hand.</p>
+          <div class="key-point">💡 For your first disc: buy base plastic to learn the mold cheaply. Once you love it, upgrade to premium for consistency. See our full plastic comparison chart at <a href="/plastics.html" style="color:var(--orange)">baggedup.vercel.app/plastics.html</a></div>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>4 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/app" class="post-card">
-        <div class="post-card-icon">📍</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Tips</span>
+      <!-- POST 8 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">📍</span>
+          <div class="post-card-tags"><span class="post-tag">Tips</span></div>
+          <h3>Never Lose a Disc Again: Lost Disc GPS</h3>
         </div>
-        <h3>Never Lose a Disc Again: Using GPS Tracking in BaggedUp</h3>
-        <p>BaggedUp's lost disc GPS feature pins the exact location where you last had a disc and saves the Google Maps link to your account. Here's how to use it.</p>
-        <div class="post-card-footer">
+        <p class="intro">BaggedUp's lost disc GPS pins the exact location where you last had a disc and saves the Google Maps link to your account.</p>
+        <div class="post-body">
+          <p>Every disc golfer has lost a disc they really loved. Maybe it was a beat-in midrange that flew exactly right, or a limited-run stamp of your favourite mold. The Lost Disc GPS feature in BaggedUp was built specifically for this.</p>
+          <h4>How it works</h4>
+          <p>When you realise you've lost a disc, open BaggedUp and tap "Lost Disc GPS" on the disc in your collection. The app pins your current GPS coordinates — where you are when you last had it. That location is saved to your account permanently, so you can come back the next day and open it straight in Google Maps.</p>
+          <h4>Tips for using it effectively</h4>
+          <ul>
+            <li>Pin the location immediately when you notice the disc is missing — don't wait until the end of the round</li>
+            <li>Add a note when pinning: "went into the pond on the left" or "tree line right of basket"</li>
+            <li>Use Google Maps satellite view to identify exact landmarks when searching</li>
+            <li>Remember that GPS accuracy varies — the pin may be 10-20 metres off in dense tree cover</li>
+          </ul>
+          <div class="key-point">🗺 Found discs can also be added to BaggedUp's community database with their location — returning discs to owners is a proud disc golf tradition.</div>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>3 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
 
-      <a href="/app" class="post-card">
-        <div class="post-card-icon">🏆</div>
-        <div class="post-card-tags">
-          <span class="post-tag">Advanced</span>
+      <!-- POST 9 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🏆</span>
+          <div class="post-card-tags"><span class="post-tag">Advanced</span></div>
+          <h3>Tournament Bag vs Practice Bag — Should You Run Two?</h3>
         </div>
-        <h3>Tournament Bag vs Practice Bag — Should You Run Two?</h3>
-        <p>Many competitive players maintain separate bags for different scenarios. Here's when it makes sense, and how BaggedUp makes managing multiple bags effortless.</p>
-        <div class="post-card-footer">
+        <p class="intro">Many competitive players maintain separate bags for different scenarios. Here's when it makes sense, and how to manage it.</p>
+        <div class="post-body">
+          <p>Running two bags isn't just for pros. Any player who plays both competitive rounds and casual practice can benefit from a dedicated setup for each — because the disc selection priorities are genuinely different.</p>
+          <h4>The tournament bag</h4>
+          <p>Optimised for reliability and shot coverage. Every disc should have a defined role. You want your most consistent, premium-plastic versions of your favourite molds. Nothing experimental. Nothing you haven't thrown hundreds of times. Typically 9–12 discs.</p>
+          <h4>The practice bag</h4>
+          <p>Where you experiment. Beat-in base plastics to learn how different stabilities feel. New molds you're testing. Shots you wouldn't risk in a tournament round. This bag can be a mess — it's supposed to be.</p>
+          <h4>Managing both in BaggedUp</h4>
+          <p>BaggedUp supports unlimited bags. Create a "Tournament — [Course Name]" bag and a "Practice" bag. Assign discs to both, and use the flightpath simulator to compare your tournament setup across conditions before every round. The AI bag coach will analyse each separately.</p>
+          <div class="key-point">🏆 Competitive tip: create a course-specific bag before every tournament. Review the layout, identify the key shot shapes you'll need, and build your 9–12 disc setup around those specific shots.</div>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
           <span>4 min read</span>
-          <span class="post-card-arrow">→</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
         </div>
-      </a>
+      </div>
+
+      <!-- POST 10 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🎯</span>
+          <div class="post-card-tags"><span class="post-tag">Technique</span><span class="post-tag">Beginner</span></div>
+          <h3>Hyzer vs Anhyzer: Mastering Release Angles</h3>
+        </div>
+        <p class="intro">Your release angle is one of the most powerful tools in disc golf — and most beginners don't know they have control over it.</p>
+        <div class="post-body">
+          <p>When you throw a disc, the angle of your wrist and forearm at release determines what the disc does first. This isn't about power or technique — it's a deliberate choice that unlocks a massive range of shot shapes.</p>
+          <h4>Flat release</h4>
+          <p>The disc is perfectly level at release. It will fly according to its natural flight numbers. This is your baseline throw — learn this before anything else.</p>
+          <h4>Hyzer</h4>
+          <p>The outside edge of the disc is tilted down at release. The disc naturally wants to stay on that angle and fade harder left. Hyzer releases are reliable and predictable — the disc is fighting to go one way and you're helping it. Great for shots that need to go left and stay there.</p>
+          <h4>Anhyzer (anny)</h4>
+          <p>The outside edge is tilted up at release. The disc goes right first before fading back. An anny release with an understable disc can go very far right. An anny release with a neutral disc gives you a long sweeping right curve that comes back left at the end. This shot is called a "hyzer flip" when executed perfectly.</p>
+          <div class="key-point">🎯 The hyzer flip: throw a mildly understable disc on a steep anhyzer angle. The disc "flips" up to flat and then glides straight with maximum distance. It's the shot pros use for big drives in open conditions.</div>
+          <ul>
+            <li>Hyzer + overstable = hard left, very reliable in wind</li>
+            <li>Flat + neutral = straight with gentle fade</li>
+            <li>Anhyzer + understable = big right-to-left sweeping shot</li>
+            <li>Anhyzer + overstable = straight shot (the two cancel out)</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
+          <span>5 min read</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
+        </div>
+      </div>
+
+      <!-- POST 11 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🧠</span>
+          <div class="post-card-tags"><span class="post-tag">Strategy</span></div>
+          <h3>Course Management: Score Lower Without Throwing Further</h3>
+        </div>
+        <p class="intro">The biggest scoring improvements rarely come from more distance. They come from smarter decisions with the discs you already have.</p>
+        <div class="post-body">
+          <p>Watch a scratch player and a 10+ handicap player throw together and you'll often notice they throw similar distances. The difference is almost entirely decision-making. The scratch player rarely goes for the hero shot. They play to their strengths, avoid trouble, and make putts.</p>
+          <h4>Play to the fat part of the fairway</h4>
+          <p>Every hole has a "safe zone" — the widest, clearest path that avoids OB, trees, and water. Aim for that zone even if it's not the most direct line. A bogey from the safe zone beats a double from the hero line.</p>
+          <h4>Know your miss</h4>
+          <p>Every disc you throw has a characteristic miss. Your main driver might reliably miss slightly right on a tight release. Use that knowledge — aim left of your target so your miss still ends up in a good spot.</p>
+          <h4>Putt to make, not to impress</h4>
+          <p>From outside circle 1 (10 metres), the goal is a "stress-free" putt — hit the chains or land in the basket. Don't always throw for the hero ace from 25 metres when a controlled shot to 4 metres gives you a tap-in bogey.</p>
+          <div class="key-point">🧠 BaggedUp tip: use the AI coach and describe a specific hole you're struggling with. Give it the layout, your bag, and the problem. It will suggest both disc selection and a strategic game plan.</div>
+          <ul>
+            <li>Eliminate the double bogey — it destroys scorecards</li>
+            <li>Know the hole before the round — walk it if you can</li>
+            <li>Pick a specific landing zone, not just "down there"</li>
+            <li>Count your birdies on holes where you have distance advantage</li>
+          </ul>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
+          <span>5 min read</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
+        </div>
+      </div>
+
+      <!-- POST 12 -->
+      <div class="post-card reveal">
+        <div class="post-card-header" onclick="togglePost(this)">
+          <span class="post-card-icon">🌊</span>
+          <div class="post-card-tags"><span class="post-tag">Technique</span><span class="post-tag">Advanced</span></div>
+          <h3>Forehand vs Backhand: When to Use Each</h3>
+        </div>
+        <p class="intro">Most disc golfers have a dominant throw — but the best players use both hands of the clock. Here's when to choose forehand.</p>
+        <div class="post-body">
+          <p>A strong forehand (sidearm) is arguably the biggest competitive advantage you can develop after your first year of disc golf. It opens up shot shapes that are impossible or very difficult with a pure backhand game.</p>
+          <h4>When forehand wins</h4>
+          <ul>
+            <li>Right-side obstacles that a backhand would have to hyzer around</li>
+            <li>Tight right-to-left dogleg holes where a forehand natural fade lines up perfectly</li>
+            <li>Low ceiling shots — forehands can stay low without fighting hyzer physics</li>
+            <li>Quick approach shots where winding up a full backhand isn't practical</li>
+          </ul>
+          <h4>Disc selection for forehands</h4>
+          <p>Forehands put more torque on the disc than backhands. Understable discs will flip badly with a forehand. You want overstable or at least neutral discs for forehand throws — the same "overstable" disc that's reliable on a forehand might be too overstable to use backhand.</p>
+          <h4>Building your forehand</h4>
+          <p>Start with a midrange, not a driver. A speed 5-7 disc with a slight overstable bias (0/1 to 0/3) will teach your forehand release without the disc rolling over. The Discraft Comet and Innova Mako3 are popular learning tools.</p>
+          <div class="key-point">🌊 In BaggedUp, toggle between RHBH and RHFH (or left-handed) in the flightpath simulator to see exactly how your bag performs with each throw type.</div>
+        </div>
+        <div class="post-card-footer" onclick="togglePost(this.previousElementSibling.previousElementSibling.previousElementSibling)">
+          <span>4 min read</span>
+          <button class="toggle-btn">Read More <span class="arrow">›</span></button>
+        </div>
+      </div>
 
     </div>
 
-    <!-- CTA -->
-    <div class="blog-cta">
+    <div class="blog-cta reveal">
       <h2>Put It Into <em>Practice</em></h2>
       <p>Everything in these guides comes to life inside BaggedUp. Simulate flightpaths, analyse your bag gaps, and ask the AI coach — all free.</p>
       <a href="/app" class="btn-primary">Open BaggedUp Free →</a>
@@ -362,14 +623,42 @@
   </div>
 
   <footer>
-    <ul class="footer-links">
-      <li><a href="/">Home</a></li>
-      <li><a href="/guide.html">Bag Guide</a></li>
-      <li><a href="/about.html">About</a></li>
-      <li><a href="/app">Open App</a></li>
-    </ul>
-    <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img src="/baggedup.logo.png" alt="" style="height:28px;width:28px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'" />
+        Bagged<span>Up</span>
+      </div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/guide.html">Bag Guide</a></li>
+        <li><a href="/flightpath.html">Flight Science</a></li>
+        <li><a href="/plastics.html">Plastics</a></li>
+        <li><a href="/games.html">Games</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/app">Open App</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    </div>
   </footer>
+
+  <script>
+    function togglePost(header) {
+      const card = header.closest('.post-card');
+      const body = card.querySelector('.post-body');
+      const btn = card.querySelector('.toggle-btn');
+      const isOpen = body.classList.contains('open');
+      body.classList.toggle('open', !isOpen);
+      btn.classList.toggle('open', !isOpen);
+      btn.innerHTML = isOpen ? 'Read More <span class="arrow">›</span>' : 'Close <span class="arrow" style="transform:rotate(90deg)">›</span>';
+    }
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 80);
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
 
 </body>
 </html>

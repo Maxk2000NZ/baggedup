@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>The Physics of Disc Golf Flight | BaggedUp</title>
+  <meta name="description" content="How disc golf discs actually fly — lift, drag, gyroscopic stability, hyzer, anhyzer, and how wind changes everything. The science explained simply."/>
+  <link rel="canonical" href="https://baggedup.vercel.app/flightpath.html"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f97316; --bg: #080b12; --bg2: #0d1117;
+      --card: #111827; --border: #1e293b;
+      --text: #f1f5f9; --muted: #64748b; --muted2: #334155;
+      --blue: #3b82f6; --green: #22c55e;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* NAV */
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: rgba(8,11,18,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
+    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; color: var(--text); }
+    .nav-logo-text span { color: var(--orange); }
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--orange); }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.55rem 1.4rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
+    .btn-nav:hover { background: #ea6c0a; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+    @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
+
+    /* HERO */
+    .page-hero {
+      padding: 6rem 2rem 4rem; text-align: center; position: relative; z-index: 1;
+      background: radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.08) 0%, transparent 60%);
+    }
+    .page-hero .badge { display: inline-flex; align-items: center; gap: 0.4rem; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3); color: #60a5fa; padding: 0.35rem 1rem; border-radius: 999px; font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 1.5rem; animation: fade-up 0.5s ease both; }
+    .page-hero h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3rem, 8vw, 6rem); line-height: 0.95; letter-spacing: 0.02em; margin-bottom: 1.2rem; animation: fade-up 0.5s 0.1s ease both; }
+    .page-hero h1 em { font-style: normal; color: var(--orange); }
+    .page-hero p { font-size: 1.05rem; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.8; animation: fade-up 0.5s 0.2s ease both; }
+
+    /* LAYOUT */
+    .content-wrap { max-width: 1100px; margin: 0 auto; padding: 2rem 2rem 5rem; display: grid; grid-template-columns: 1fr 260px; gap: 4rem; position: relative; z-index: 1; }
+    @media (max-width: 900px) { .content-wrap { grid-template-columns: 1fr; } .sidebar { display: none; } }
+
+    /* ARTICLE */
+    article { min-width: 0; }
+
+    /* SECTION */
+    .section-block { margin-bottom: 4rem; }
+    .section-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--orange); margin-bottom: 0.6rem; }
+    .section-block h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; letter-spacing: 0.03em; margin-bottom: 1rem; line-height: 1; }
+    .section-block h2 em { font-style: normal; color: var(--orange); }
+    .section-block p { font-size: 0.95rem; color: var(--muted); line-height: 1.85; margin-bottom: 1rem; }
+    .section-block p strong { color: var(--text); }
+
+    /* KEY POINT */
+    .callout { background: rgba(249,115,22,0.07); border-left: 3px solid var(--orange); border-radius: 0 12px 12px 0; padding: 1rem 1.2rem; margin: 1.5rem 0; }
+    .callout p { font-size: 0.9rem; color: var(--text); font-weight: 600; margin: 0; line-height: 1.6; }
+    .callout.blue { background: rgba(59,130,246,0.07); border-color: var(--blue); }
+    .callout.green { background: rgba(34,197,94,0.07); border-color: var(--green); }
+
+    /* FLIGHT PATH DIAGRAM */
+    .diagram-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 1.5rem; overflow: hidden; margin: 2rem 0; }
+    .diagram-label { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); }
+    canvas.diagram { display: block; width: 100%; }
+
+    /* PHYSICS CARDS */
+    .physics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1.5rem 0; }
+    @media (max-width: 600px) { .physics-grid { grid-template-columns: 1fr; } }
+    .physics-card { background: var(--card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.4rem; }
+    .physics-card .icon { font-size: 1.8rem; margin-bottom: 0.6rem; }
+    .physics-card h3 { font-weight: 800; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 0.4rem; color: var(--text); }
+    .physics-card p { font-size: 0.82rem; color: var(--muted); line-height: 1.7; }
+
+    /* WIND TABLE */
+    .wind-table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; }
+    .wind-table th { background: rgba(249,115,22,0.1); padding: 0.8rem 1rem; text-align: left; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); border-bottom: 1px solid var(--border); }
+    .wind-table td { padding: 0.8rem 1rem; font-size: 0.85rem; color: var(--muted); border-bottom: 1px solid rgba(30,41,59,0.5); vertical-align: top; line-height: 1.6; }
+    .wind-table tr:last-child td { border-bottom: none; }
+    .wind-table td:first-child { color: var(--text); font-weight: 700; white-space: nowrap; }
+    .wind-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+    /* ANGLE DIAGRAM */
+    .angle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1.5rem 0; }
+    @media (max-width: 600px) { .angle-grid { grid-template-columns: 1fr; } }
+    .angle-card { background: var(--card); border: 1px solid var(--border); border-radius: 1rem; padding: 1.2rem; text-align: center; }
+    .angle-card canvas { display: block; margin: 0 auto 0.8rem; }
+    .angle-card h4 { font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text); margin-bottom: 0.3rem; }
+    .angle-card p { font-size: 0.75rem; color: var(--muted); line-height: 1.5; }
+
+    /* SIDEBAR */
+    .sidebar { position: sticky; top: 80px; height: fit-content; }
+    .sidebar-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.2rem; padding: 1.4rem; margin-bottom: 1.2rem; }
+    .sidebar-card h3 { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.05em; margin-bottom: 1rem; color: var(--text); }
+    .sidebar-card ul { list-style: none; }
+    .sidebar-card ul li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); }
+    .sidebar-card ul li:last-child { border-bottom: none; }
+    .sidebar-card ul li a { color: var(--muted); text-decoration: none; font-size: 0.82rem; font-weight: 600; transition: color 0.2s; }
+    .sidebar-card ul li a:hover { color: var(--orange); }
+    .sidebar-cta { background: linear-gradient(135deg, rgba(249,115,22,0.15), rgba(249,115,22,0.05)); border: 1px solid rgba(249,115,22,0.25); border-radius: 1.2rem; padding: 1.4rem; text-align: center; }
+    .sidebar-cta p { font-size: 0.82rem; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+    .btn-sm { display: inline-block; background: var(--orange); color: #fff; padding: 0.6rem 1.4rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; transition: all 0.2s; }
+    .btn-sm:hover { background: #ea6c0a; transform: translateY(-1px); }
+
+    /* DIVIDER */
+    hr { border: none; border-top: 1px solid var(--border); margin: 3rem 0; }
+
+    /* FOOTER */
+    footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 3rem 2rem; position: relative; z-index: 1; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; }
+    .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
+    .footer-brand span { color: var(--orange); }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 0.75rem; color: var(--muted2); }
+    @media (max-width: 640px) { .footer-inner { flex-direction: column; } }
+
+    @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">
+      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;"/>
+      <span class="nav-logo-text">Bagged<span>Up</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/guide.html">Bag Guide</a></li>
+      <li><a href="/blog.html">Blog</a></li>
+      <li><a href="/flightpath.html" class="active">Flight Science</a></li>
+      <li><a href="/plastics.html">Plastics</a></li>
+      <li><a href="/games.html">Games</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+    <a href="/app" class="btn-nav">Get Started →</a>
+    <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
+  </nav>
+  <div id="mobile-menu" class="mobile-menu">
+    <a href="/guide.html">Bag Guide</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/flightpath.html">Flight Science</a>
+    <a href="/plastics.html">Plastics</a>
+    <a href="/games.html">Games</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app" class="mobile-cta">Get Started Free →</a>
+  </div>
+
+  <div class="page-hero">
+    <div class="badge">✈ The Science of Flight</div>
+    <h1>Why Discs Fly<br/><em>The Way They Do</em></h1>
+    <p>Lift, drag, gyroscopic precession, hyzer, anhyzer, and the surprisingly complex aerodynamics of a spinning plastic disc — explained in plain language.</p>
+  </div>
+
+  <div class="content-wrap">
+    <article>
+
+      <!-- SECTION 1: BASIC FORCES -->
+      <div class="section-block reveal">
+        <div class="section-badge">01 — The Basics</div>
+        <h2>Four Forces Acting on Every <em>Disc</em></h2>
+        <p>Every disc in flight is governed by the same four aerodynamic forces that act on any airfoil — a wing, a plane, or a frisbee. Understanding these forces is the foundation of everything else.</p>
+
+        <div class="physics-grid">
+          <div class="physics-card">
+            <div class="icon">⬆️</div>
+            <h3>Lift</h3>
+            <p>Generated by the pressure difference between the top and bottom surfaces of the disc. The curved top surface accelerates airflow, creating low pressure above — this pushes the disc up.</p>
+          </div>
+          <div class="physics-card">
+            <div class="icon">⬇️</div>
+            <h3>Gravity</h3>
+            <p>Pulls the disc toward the ground at 9.8 m/s². Lift must exceed gravity for the disc to maintain altitude. As the disc slows, lift decreases, and gravity wins — the disc descends.</p>
+          </div>
+          <div class="physics-card">
+            <div class="icon">➡️</div>
+            <h3>Thrust</h3>
+            <p>The initial velocity from your throw. A disc has no engine — all its energy comes from your release. Once airborne, the disc is constantly losing speed (and thus lift) to drag.</p>
+          </div>
+          <div class="physics-card">
+            <div class="icon">⬅️</div>
+            <h3>Drag</h3>
+            <p>Air resistance opposing forward movement. Every disc shape has a drag coefficient — rounder, deeper rims have more drag. High drag = shorter flight, but also more predictable slow-speed behaviour.</p>
+          </div>
+        </div>
+
+        <div class="callout blue">
+          <p>🔬 The spin you put on a disc is what makes this more complex than a ball. Spin creates gyroscopic stability — without it, the disc would simply tumble end-over-end immediately after release.</p>
+        </div>
+      </div>
+
+      <hr/>
+
+      <!-- SECTION 2: GYROSCOPIC PRECESSION -->
+      <div class="section-block reveal">
+        <div class="section-badge">02 — The Spin Effect</div>
+        <h2>Gyroscopic Precession: Why Discs <em>Turn Then Fade</em></h2>
+
+        <p>This is the most important — and least understood — concept in disc golf. The characteristic <strong>"turn then fade"</strong> flight path isn't random. It's a direct consequence of gyroscopic precession.</p>
+
+        <p>When a spinning object experiences a force, it responds not in the direction of that force — but 90 degrees later in the direction of spin. This is precession.</p>
+
+        <p>For a right-hand backhand throw:</p>
+        <p>At high speed early in flight, the nose of the disc is angled slightly upward due to the release. Aerodynamic forces push upward on the disc's front edge. Precession translates this into a <strong>rightward roll</strong> — this is "turn." The disc goes right.</p>
+        <p>As the disc slows, the force reverses direction (the nose drops). Precession now translates this into a <strong>leftward roll</strong> — this is "fade." The disc hooks left at the end.</p>
+
+        <div class="diagram-wrap">
+          <div class="diagram-label">📊 Standard RHBH flight path (top view) — turn phase then fade phase</div>
+          <canvas id="flight-canvas" class="diagram" width="680" height="200"></canvas>
+        </div>
+
+        <div class="callout">
+          <p>💡 Flight numbers are a direct map of this physics: Turn (-5 to 0) quantifies how far right the disc goes at high speed. Fade (0–5) quantifies how hard left it finishes. The more spin you generate, the more pronounced both phases become.</p>
+        </div>
+      </div>
+
+      <hr/>
+
+      <!-- SECTION 3: HYZER AND ANHYZER -->
+      <div class="section-block reveal">
+        <div class="section-badge">03 — Release Angles</div>
+        <h2>Hyzer, Flat & <em>Anhyzer</em></h2>
+        <p>Your release angle changes the initial orientation of the disc relative to the ground. Combined with the disc's own stability, this gives you a huge range of shot shapes from the same disc.</p>
+
+        <div class="angle-grid">
+          <div class="angle-card">
+            <canvas id="hyzer-canvas" width="140" height="110"></canvas>
+            <h4>Hyzer</h4>
+            <p>Outside edge tilted down. Disc wants to fade harder and stay left. Reliable, predictable, wind-resistant.</p>
+          </div>
+          <div class="angle-card">
+            <canvas id="flat-canvas" width="140" height="110"></canvas>
+            <h4>Flat Release</h4>
+            <p>Disc is level at release. Flies according to its rated flight numbers. Your baseline.</p>
+          </div>
+          <div class="angle-card">
+            <canvas id="anny-canvas" width="140" height="110"></canvas>
+            <h4>Anhyzer (Anny)</h4>
+            <p>Outside edge tilted up. Disc turns right first. More distance potential in open conditions.</p>
+          </div>
+        </div>
+
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.04em;margin:2rem 0 0.8rem">The Hyzer Flip</h3>
+        <p>The hyzer flip is one of the most efficient shots in disc golf. Throw a mildly understable disc on a steep anhyzer angle. Two things happen:</p>
+        <p><strong>1.</strong> The disc "flips" — precession fights the anhyzer angle and brings the disc up to flat or slightly above flat mid-flight.</p>
+        <p><strong>2.</strong> Once flat, the disc is flying at optimal lift angle and glides straight with maximum distance before a gentle fade.</p>
+
+        <div class="callout green">
+          <p>🎯 The hyzer flip is how pros maximise distance in open conditions. The understable disc + steep anny = the disc spends most of its flight completely flat, generating maximum lift and glide.</p>
+        </div>
+
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.04em;margin:2rem 0 0.8rem">Hyzer + Overstable = The Utility Shot</h3>
+        <p>Release a very overstable disc on a steep hyzer angle. The disc launches hard left, stays left, and finishes left. This is the "hyzer bomb" — almost no lateral spread, highly predictable for tight corridors, gets around obstacles on the right side of a fairway.</p>
+      </div>
+
+      <hr/>
+
+      <!-- SECTION 4: WIND -->
+      <div class="section-block reveal">
+        <div class="section-badge">04 — Wind Effects</div>
+        <h2>How Wind Changes <em>Everything</em></h2>
+        <p>Wind doesn't just move your disc sideways. It fundamentally changes the effective stability of your disc — making an understable disc flip in a headwind, or making an overstable disc fly almost straight in the right crosswind.</p>
+
+        <p>The key principle: <strong>wind changes the airspeed over the disc's surface</strong>, which changes the aerodynamic forces acting on it — exactly as if the disc were flying faster or slower than it actually is.</p>
+
+        <table class="wind-table">
+          <thead>
+            <tr>
+              <th>Wind Direction</th>
+              <th>Effect on Disc</th>
+              <th>Disc Selection</th>
+              <th>Release Tip</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>🌬 Headwind</td>
+              <td>Increases effective airspeed. Amplifies turn — even stable discs may flip. Also pushes nose up, adding lift then crashing disc faster.</td>
+              <td>More overstable than normal. If you'd throw neutral in calm, go overstable in a headwind.</td>
+              <td>Hyzer release + slightly lower power. Don't fight it.</td>
+            </tr>
+            <tr>
+              <td>💨 Tailwind</td>
+              <td>Reduces effective airspeed. Disc behaves as if thrown slower. Fade activates sooner and harder. Less distance than expected.</td>
+              <td>More understable than normal. The tailwind "overstabilises" your disc, so compensate with understable selection.</td>
+              <td>Flat or slight anhyzer to counteract early fade. Let the tailwind add distance.</td>
+            </tr>
+            <tr>
+              <td>↙ Left Crosswind</td>
+              <td>Pushes disc right (for RHBH). Forces you to aim left of target. Also increases lift on the upwind side, causing the disc to roll upwind.</td>
+              <td>Slightly overstable to counteract rightward drift. The disc's fade will help fight the wind.</td>
+              <td>Aim left of your target by the wind's estimated push. Use slightly more fade disc.</td>
+            </tr>
+            <tr>
+              <td>↘ Right Crosswind</td>
+              <td>Pushes disc left (for RHBH). Can work with your fade — or fight your turn. Tricky for maximum distance shots.</td>
+              <td>Use understable disc and let the wind carry it — or overstable if you need it to fight back left.</td>
+              <td>Slightly higher release point. An understable disc with right crosswind can give massive distance with a sweeping right-then-left path.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout">
+          <p>🌬 BaggedUp's wind simulator adjusts every disc in your bag in real time — toggle headwind/tailwind/crosswind to see which disc is safest before you step on the tee.</p>
+        </div>
+
+        <h3 style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:0.04em;margin:2rem 0 0.8rem">Wind Speed Thresholds</h3>
+        <p>Not all wind is equal. The effects described above scale with wind speed. Here's a rough guide:</p>
+        <p><strong>Under 10 km/h (light breeze):</strong> Minimal effect. Treat as calm for disc selection.</p>
+        <p><strong>10–25 km/h (moderate):</strong> Noticeable effect. Go one step more overstable in headwinds. Adjust aim by 5–10 metres in crosswinds.</p>
+        <p><strong>25–40 km/h (strong):</strong> Major effect. Overstable discs only in headwinds. Significant aim adjustment required. Hyzer releases in most directions.</p>
+        <p><strong>Over 40 km/h (severe):</strong> Distance is severely compromised. Play conservatively. Every disc behaves unpredictably — prioritise accuracy over distance.</p>
+      </div>
+
+      <hr/>
+
+      <!-- SECTION 5: DISC SHAPE PHYSICS -->
+      <div class="section-block reveal">
+        <div class="section-badge">05 — Disc Design</div>
+        <h2>How Disc Shape Affects <em>Flight</em></h2>
+        <p>Not all discs are the same shape, and those differences in rim width, dome height, and edge profile have measurable effects on flight physics — separate from the flight numbers printed on the disc.</p>
+
+        <div class="physics-grid">
+          <div class="physics-card">
+            <div class="icon">🥏</div>
+            <h3>Rim Width</h3>
+            <p>Wider rims (speed 10+) require more angular momentum to stabilise. They generate more lift at speed but are more sensitive to release angle. Narrow rims (putters, mids) are more forgiving.</p>
+          </div>
+          <div class="physics-card">
+            <div class="icon">🔵</div>
+            <h3>Dome Height</h3>
+            <p>A high dome increases lift by creating more pressure differential between top and bottom. Low-profile discs glide less but are more predictable in wind. Most modern discs are medium-dome.</p>
+          </div>
+          <div class="physics-card">
+            <div class="icon">⚡</div>
+            <h3>Rim Depth</h3>
+            <p>Deep rims fill your hand more and increase drag slightly. Shallow rims are more aerodynamic but harder to release cleanly at high power. Affects feel as much as flight.</p>
+          </div>
+          <div class="physics-card">
+            <div class="icon">🎯</div>
+            <h3>Nose Profile</h3>
+            <p>A blunt nose generates more lift at the front edge (increasing turn). A sharp nose reduces aerodynamic lift on the leading edge — making the disc more overstable. This is why "flight plate angle" matters.</p>
+          </div>
+        </div>
+
+        <div class="callout blue">
+          <p>🔬 Worn-in discs fly differently than new ones. As the rim gets beat up, the plastic subtly changes shape — typically making overstable discs more understable over time. This "seasoning" effect is why pros keep beat-in discs for specific shots.</p>
+        </div>
+      </div>
+
+      <hr/>
+
+      <!-- SECTION 6: SUMMARY -->
+      <div class="section-block reveal">
+        <div class="section-badge">06 — Putting It Together</div>
+        <h2>From Physics to <em>Practice</em></h2>
+        <p>Understanding the physics makes you a better disc golfer because it turns guesswork into deliberate decisions. You stop asking "why did my disc do that?" and start predicting it.</p>
+        <p>When you know that a headwind amplifies turn, you don't panic when your understable fairway driver rolls over — you grab a more overstable disc. When you understand hyzer flip geometry, you can shape shots around obstacles that would otherwise be impossible.</p>
+        <p>BaggedUp's flightpath simulator models these physics for every disc in your bag. Set wind speed and direction, toggle between hyzer/flat/anny release, and see exactly how each disc will behave before you're standing on the tee.</p>
+        <div class="callout">
+          <p>✈ Every path in BaggedUp's simulator accounts for speed decay, precession, release angle, and wind — giving you a physics-accurate prediction for each disc in your current bag setup.</p>
+        </div>
+        <a href="/app" style="display:inline-block;background:var(--orange);color:#fff;padding:0.85rem 2.2rem;border-radius:999px;font-size:0.85rem;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;text-decoration:none;box-shadow:0 0 24px rgba(249,115,22,0.3);margin-top:1rem;">Simulate Your Bag →</a>
+      </div>
+
+    </article>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="sidebar-card">
+        <h3>On This Page</h3>
+        <ul>
+          <li><a href="#">Four Forces of Flight</a></li>
+          <li><a href="#">Gyroscopic Precession</a></li>
+          <li><a href="#">Hyzer, Flat & Anhyzer</a></li>
+          <li><a href="#">Wind Effects</a></li>
+          <li><a href="#">Disc Shape Physics</a></li>
+          <li><a href="#">From Physics to Practice</a></li>
+        </ul>
+      </div>
+      <div class="sidebar-cta">
+        <p>See these physics applied to your actual bag in BaggedUp's flight simulator.</p>
+        <a href="/app" class="btn-sm">Open Simulator →</a>
+      </div>
+      <div class="sidebar-card" style="margin-top:1rem">
+        <h3>Related Reading</h3>
+        <ul>
+          <li><a href="/blog.html">Disc Selection in Wind</a></li>
+          <li><a href="/blog.html">Hyzer vs Anhyzer Explained</a></li>
+          <li><a href="/plastics.html">Plastic Comparison Chart</a></li>
+          <li><a href="/guide.html">Beginner's Bag Guide</a></li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand"><img src="/baggedup.logo.png" alt="" style="height:28px;width:28px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'" />Bagged<span>Up</span></div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/guide.html">Bag Guide</a></li>
+        <li><a href="/blog.html">Blog</a></li>
+        <li><a href="/plastics.html">Plastics</a></li>
+        <li><a href="/games.html">Games</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/app">Open App</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    </div>
+  </footer>
+
+  <script>
+  // Flight path diagram
+  (function() {
+    const canvas = document.getElementById('flight-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+
+    ctx.fillStyle = '#0d1117';
+    ctx.fillRect(0, 0, W, H);
+
+    // Grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < W; x += 60) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+    for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+    // Labels
+    ctx.fillStyle = 'rgba(100,116,139,0.8)';
+    ctx.font = '700 10px DM Sans, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('← THROW', 10, H - 8);
+    ctx.textAlign = 'right';
+    ctx.fillText('LANDING →', W - 10, H - 8);
+    ctx.textAlign = 'left';
+    ctx.fillText('RIGHT ↑', 10, 14);
+    ctx.fillText('LEFT ↓', 10, H/2 + 14);
+
+    // Centre line
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // RHBH flight path — turn right then fade left
+    const points = [];
+    const totalPts = 120;
+    for (let i = 0; i <= totalPts; i++) {
+      const t = i / totalPts;
+      const x = t * (W - 40) + 20;
+      // Turn phase (first 60%) then fade
+      let y;
+      if (t < 0.55) {
+        // Right turn
+        y = H/2 - Math.sin(t * Math.PI * 0.9) * 55;
+      } else {
+        // Fade back left and past centre
+        const t2 = (t - 0.55) / 0.45;
+        const peakY = H/2 - Math.sin(0.55 * Math.PI * 0.9) * 55;
+        y = peakY + (t2 * t2) * (H/2 + 30 - peakY);
+      }
+      points.push({ x, y });
+    }
+
+    // Glow
+    ctx.shadowColor = 'rgba(249,115,22,0.5)';
+    ctx.shadowBlur = 8;
+
+    // Draw path
+    const gradient = ctx.createLinearGradient(20, 0, W - 20, 0);
+    gradient.addColorStop(0, '#f97316');
+    gradient.addColorStop(0.55, '#fb923c');
+    gradient.addColorStop(1, '#60a5fa');
+    ctx.strokeStyle = gradient;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    // Phase labels
+    ctx.fillStyle = 'rgba(249,115,22,0.8)';
+    ctx.font = '700 11px DM Sans, sans-serif';
+    ctx.fillText('TURN PHASE →', 60, 28);
+    ctx.fillStyle = 'rgba(96,165,250,0.8)';
+    ctx.fillText('← FADE PHASE', W - 160, H - 20);
+
+    // Start/end dots
+    ctx.beginPath(); ctx.arc(20, H/2, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#22c55e'; ctx.fill();
+    ctx.fillStyle = '#f1f5f9'; ctx.font = '700 9px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText('T', 20, H/2 + 3.5);
+
+    const last = points[points.length - 1];
+    ctx.beginPath(); ctx.arc(last.x, last.y, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#3b82f6'; ctx.fill();
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fillText('L', last.x, last.y + 3.5);
+  })();
+
+  // Angle diagrams
+  function drawAngle(canvasId, angle, color, label) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.fillStyle = '#111827'; ctx.fillRect(0, 0, W, H);
+
+    const cx = W/2, cy = H/2 + 10;
+    const len = 50;
+
+    // Ground line
+    ctx.strokeStyle = 'rgba(100,116,139,0.3)'; ctx.lineWidth = 1;
+    ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(10, cy + 15); ctx.lineTo(W-10, cy + 15);
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Disc
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(angle);
+    const diskGrad = ctx.createLinearGradient(-len, -6, len, 6);
+    diskGrad.addColorStop(0, color + '80');
+    diskGrad.addColorStop(0.5, color);
+    diskGrad.addColorStop(1, color + '80');
+    ctx.fillStyle = diskGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, len, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Arrow showing throw direction
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath();
+    ctx.moveTo(len + 8, 0);
+    ctx.lineTo(len, -5);
+    ctx.lineTo(len, 5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Angle arc
+    if (angle !== 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy + 15, 20, -Math.PI/2, -Math.PI/2 + angle, angle > 0);
+      ctx.strokeStyle = 'rgba(249,115,22,0.5)'; ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  drawAngle('hyzer-canvas', 0.35, '#f97316', 'Hyzer');
+  drawAngle('flat-canvas', 0, '#22c55e', 'Flat');
+  drawAngle('anny-canvas', -0.35, '#3b82f6', 'Anny');
+
+  // Scroll reveal
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 100);
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>

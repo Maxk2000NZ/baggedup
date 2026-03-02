@@ -1,0 +1,1110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Disc Golf Mini Games | BaggedUp</title>
+  <meta name="description" content="Play Guess the Disc — the hangman-style disc golf mould guessing game. Plus mini putting challenge. Free disc golf games by BaggedUp."/>
+  <link rel="canonical" href="https://baggedup.vercel.app/games.html"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f97316; --bg: #080b12; --bg2: #0d1117;
+      --card: #111827; --border: #1e293b;
+      --text: #f1f5f9; --muted: #64748b; --muted2: #334155;
+      --green: #22c55e; --red: #ef4444;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1rem 2rem;
+      background: rgba(8,11,18,0.92); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
+    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; color: var(--text); }
+    .nav-logo-text span { color: var(--orange); }
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--orange); }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.55rem 1.4rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
+    .btn-nav:hover { background: #ea6c0a; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+    @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
+
+    /* PAGE HEADER */
+    .page-header {
+      padding: 5rem 2rem 3rem; text-align: center; position: relative; z-index: 1;
+      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%);
+    }
+    .page-header h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3rem, 8vw, 5.5rem); line-height: 1; letter-spacing: 0.02em; margin-bottom: 0.8rem; animation: fade-up 0.6s ease both; }
+    .page-header h1 em { font-style: normal; color: var(--orange); }
+    .page-header p { font-size: 1rem; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; animation: fade-up 0.6s 0.1s ease both; }
+
+    /* GAME SELECTOR */
+    .game-tabs {
+      display: flex; gap: 1rem; justify-content: center; padding: 2rem 2rem 0;
+      position: relative; z-index: 1;
+    }
+    .game-tab {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 999px; padding: 0.7rem 1.8rem;
+      font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      cursor: pointer; transition: all 0.2s; color: var(--muted);
+    }
+    .game-tab:hover { color: var(--text); border-color: var(--muted2); }
+    .game-tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+
+    /* GAMES CONTAINER */
+    .games-container { max-width: 860px; margin: 0 auto; padding: 2rem 2rem 5rem; position: relative; z-index: 1; }
+    .game-panel { display: none; }
+    .game-panel.active { display: block; animation: fade-up 0.4s ease both; }
+
+    /* ═══════════════════════════════════════
+       GUESS THE DISC GAME
+    ═══════════════════════════════════════ */
+    .gtd-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1.8rem; padding: 2.5rem; margin-bottom: 1.5rem;
+      position: relative; overflow: hidden;
+    }
+    .gtd-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, var(--orange), #fb923c, transparent);
+    }
+    .gtd-game-label {
+      font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em;
+      color: var(--orange); margin-bottom: 0.5rem;
+    }
+    .gtd-title {
+      font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.04em;
+      margin-bottom: 0.3rem;
+    }
+    .gtd-subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 2rem; line-height: 1.6; }
+
+    /* CLUES */
+    .clues-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .clue-box {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem;
+      padding: 1rem; text-align: center; transition: all 0.4s ease;
+      opacity: 0.3; transform: scale(0.95);
+    }
+    .clue-box.revealed { opacity: 1; transform: scale(1); border-color: rgba(249,115,22,0.4); }
+    .clue-box.revealed .clue-value { color: var(--orange); }
+    .clue-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.3rem; }
+    .clue-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.05em; color: var(--muted2); }
+    .clue-desc { font-size: 0.7rem; color: var(--muted2); margin-top: 0.2rem; }
+
+    /* WORD DISPLAY */
+    .word-display { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 2rem 0; min-height: 60px; align-items: center; }
+    .letter-slot {
+      width: 36px; height: 44px; border-bottom: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.05em;
+      transition: all 0.3s ease;
+    }
+    .letter-slot.space { width: 16px; border: none; }
+    .letter-slot.revealed { color: var(--text); border-color: var(--orange); }
+    .letter-slot.wrong-guess { color: var(--red); }
+    .letter-slot.correct-guess { color: var(--green); animation: pop 0.3s ease; }
+
+    /* GUESSES / LIVES */
+    .lives-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: center; }
+    .life-dot { font-size: 1.3rem; transition: all 0.3s; }
+    .life-dot.lost { opacity: 0.2; filter: grayscale(1); transform: scale(0.8); }
+    .lives-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-left: 0.5rem; }
+
+    /* KEYBOARD */
+    .keyboard { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; margin: 1.5rem 0; }
+    .key-row { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
+    .key-btn {
+      width: 38px; height: 42px; border-radius: 8px;
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--text); font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .key-btn:hover:not(:disabled) { background: var(--border); }
+    .key-btn:disabled { opacity: 0.3; cursor: default; }
+    .key-btn.hit { background: rgba(34,197,94,0.2); border-color: var(--green); color: var(--green); }
+    .key-btn.miss { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: rgba(239,68,68,0.5); }
+
+    /* REVEAL PROGRESS BAR */
+    .reveal-progress {
+      height: 4px; background: var(--border); border-radius: 999px;
+      overflow: hidden; margin-bottom: 1rem;
+    }
+    .reveal-progress-fill {
+      height: 100%; background: var(--orange); border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    /* RESULT */
+    .game-result {
+      display: none; text-align: center; padding: 2rem; animation: fade-up 0.5s ease;
+    }
+    .game-result.show { display: block; }
+    .result-emoji { font-size: 3.5rem; margin-bottom: 0.5rem; }
+    .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+    .result-answer { font-size: 1rem; color: var(--muted); margin-bottom: 1.5rem; }
+    .result-answer strong { color: var(--orange); }
+    .btn-play-again {
+      background: var(--orange); color: #fff; border: none; padding: 0.85rem 2.2rem;
+      border-radius: 999px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s;
+      box-shadow: 0 0 24px rgba(249,115,22,0.3);
+    }
+    .btn-play-again:hover { background: #ea6c0a; transform: translateY(-2px); }
+
+    /* SCORE DISPLAY */
+    .score-strip {
+      display: flex; gap: 2rem; justify-content: center;
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem;
+      padding: 1rem 2rem; margin-bottom: 1.5rem;
+    }
+    .score-item { text-align: center; }
+    .score-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--orange); line-height: 1; }
+    .score-lbl { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); }
+
+    /* ═══════════════════════════════════════
+       MINI PUTTING GAME
+    ═══════════════════════════════════════ */
+    .putting-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 1.8rem; padding: 2.5rem; position: relative; overflow: hidden;
+    }
+    .putting-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #22c55e, #16a34a, transparent);
+    }
+
+    .putting-header { text-align: center; margin-bottom: 2rem; }
+    .putting-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+    .putting-header p { font-size: 0.88rem; color: var(--muted); line-height: 1.5; }
+
+    /* CANVAS */
+    #putting-canvas {
+      display: block; margin: 0 auto; border-radius: 1rem;
+      border: 1px solid var(--border); cursor: crosshair;
+      max-width: 100%;
+    }
+
+    /* POWER METER */
+    .power-section { display: flex; align-items: center; gap: 1rem; margin: 1.2rem 0; }
+    .power-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+    .power-track { flex: 1; height: 12px; background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; cursor: pointer; position: relative; }
+    .power-fill { height: 100%; border-radius: 999px; transition: width 0.05s; background: linear-gradient(90deg, #22c55e, #f97316, #ef4444); pointer-events: none; }
+    .power-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.2rem; color: var(--orange); min-width: 3ch; text-align: right; }
+
+    /* PUTTING CONTROLS */
+    .putting-controls { display: flex; gap: 1rem; justify-content: center; margin-top: 1.2rem; flex-wrap: wrap; }
+    .putt-btn {
+      padding: 0.8rem 2rem; border-radius: 999px; font-size: 0.85rem; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; border: none; transition: all 0.2s;
+    }
+    .putt-btn-primary { background: var(--orange); color: #fff; box-shadow: 0 0 20px rgba(249,115,22,0.3); }
+    .putt-btn-primary:hover { background: #ea6c0a; transform: translateY(-2px); }
+    .putt-btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--muted); }
+    .putt-btn-secondary:hover { color: var(--text); }
+
+    /* HOLE STATUS */
+    .hole-status { display: flex; gap: 1.5rem; justify-content: center; margin: 1rem 0; flex-wrap: wrap; }
+    .hole-badge {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .hole-badge span { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--orange); }
+
+    .putt-result-msg {
+      text-align: center; padding: 0.5rem; min-height: 1.8rem;
+      font-size: 1.1rem; font-weight: 700; transition: all 0.3s;
+    }
+
+    /* SCORECARD */
+    .scorecard {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 1rem; overflow: hidden; margin-top: 1.5rem;
+    }
+    .scorecard-header {
+      display: grid; background: rgba(249,115,22,0.1);
+      border-bottom: 1px solid var(--border); padding: 0.6rem 1rem;
+      font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2);
+    }
+    .scorecard-row { display: grid; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; align-items: center; }
+    .scorecard-row:last-child { border-bottom: none; }
+    .sc-grid { grid-template-columns: 2rem repeat(9, 1fr) 2.5rem; gap: 0.3rem; }
+    .sc-cell { text-align: center; color: var(--muted); }
+    .sc-cell.active { color: var(--orange); font-weight: 800; }
+    .sc-cell.birdie { color: var(--green); }
+    .sc-cell.bogey { color: var(--red); }
+    .sc-cell.par { color: var(--text); }
+    .sc-cell.total { font-weight: 800; color: var(--text); }
+
+    /* ANIMATIONS */
+    @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+    .shake { animation: shake 0.3s ease; }
+
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    /* FOOTER */
+    footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 3rem 2rem; position: relative; z-index: 1; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; }
+    .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
+    .footer-brand span { color: var(--orange); }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 0.75rem; color: var(--muted2); }
+    @media (max-width: 640px) { .footer-inner { flex-direction: column; } .sc-grid { grid-template-columns: 1.5rem repeat(9, 1fr) 2rem; } }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">
+      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;" />
+      <span class="nav-logo-text">Bagged<span>Up</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/guide.html">Bag Guide</a></li>
+      <li><a href="/blog.html">Blog</a></li>
+      <li><a href="/flightpath.html">Flight Science</a></li>
+      <li><a href="/plastics.html">Plastics</a></li>
+      <li><a href="/games.html" class="active">Games</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+    <a href="/app" class="btn-nav">Get Started →</a>
+    <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
+  </nav>
+  <div id="mobile-menu" class="mobile-menu">
+    <a href="/guide.html">Bag Guide</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/flightpath.html">Flight Science</a>
+    <a href="/plastics.html">Plastics</a>
+    <a href="/games.html">Games</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app" class="mobile-cta">Get Started Free →</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Disc Golf <em>Mini Games</em></h1>
+    <p>Test your disc knowledge — and your putting nerve. Two free disc golf mini games built to sharpen your game IQ.</p>
+  </div>
+
+  <div class="game-tabs">
+    <button class="game-tab active" onclick="switchGame('gtd')">🥏 Guess The Disc</button>
+    <button class="game-tab" onclick="switchGame('putting')">⛳ Mini Putting</button>
+  </div>
+
+  <div class="games-container">
+
+    <!-- ═══ GUESS THE DISC ═══ -->
+    <div id="panel-gtd" class="game-panel active">
+
+      <div class="gtd-card reveal">
+        <div class="gtd-game-label">🥏 Mini Game 1</div>
+        <div class="gtd-title">Guess The Disc</div>
+        <div class="gtd-subtitle">Clues reveal one at a time. Guess the disc mould name before you run out of lives. Think Wordle meets Hangman — for disc golfers.</div>
+
+        <div class="score-strip">
+          <div class="score-item"><div class="score-num" id="gtd-score">0</div><div class="score-lbl">Score</div></div>
+          <div class="score-item"><div class="score-num" id="gtd-streak">0</div><div class="score-lbl">Streak</div></div>
+          <div class="score-item"><div class="score-num" id="gtd-best">0</div><div class="score-lbl">Best</div></div>
+        </div>
+
+        <div id="gtd-game-area">
+          <!-- Clues -->
+          <div class="reveal-progress"><div class="reveal-progress-fill" id="clue-progress" style="width:16%"></div></div>
+          <div class="clues-grid" id="clues-grid">
+            <div class="clue-box revealed" id="clue-type"><div class="clue-label">Disc Type</div><div class="clue-value" id="cv-type">?</div><div class="clue-desc" id="cd-type">Loading...</div></div>
+            <div class="clue-box" id="clue-speed"><div class="clue-label">Speed</div><div class="clue-value" id="cv-speed">?</div><div class="clue-desc">Flight rating</div></div>
+            <div class="clue-box" id="clue-glide"><div class="clue-label">Glide</div><div class="clue-value" id="cv-glide">?</div><div class="clue-desc">Flight rating</div></div>
+            <div class="clue-box" id="clue-turn"><div class="clue-label">Turn</div><div class="clue-value" id="cv-turn">?</div><div class="clue-desc">Flight rating</div></div>
+            <div class="clue-box" id="clue-fade"><div class="clue-label">Fade</div><div class="clue-value" id="cv-fade">?</div><div class="clue-desc">Flight rating</div></div>
+            <div class="clue-box" id="clue-brand"><div class="clue-label">Brand</div><div class="clue-value" id="cv-brand" style="font-size:1rem;padding-top:0.5rem">?</div><div class="clue-desc">Manufacturer</div></div>
+          </div>
+
+          <!-- Lives -->
+          <div class="lives-row">
+            <div class="life-dot" id="life-1">🥏</div>
+            <div class="life-dot" id="life-2">🥏</div>
+            <div class="life-dot" id="life-3">🥏</div>
+            <div class="life-dot" id="life-4">🥏</div>
+            <div class="life-dot" id="life-5">🥏</div>
+            <div class="life-dot" id="life-6">🥏</div>
+            <span class="lives-label" id="lives-label">6 lives remaining</span>
+          </div>
+
+          <!-- Word slots -->
+          <div class="word-display" id="word-display"></div>
+
+          <!-- Keyboard -->
+          <div class="keyboard" id="keyboard">
+            <div class="key-row" id="key-row-1"></div>
+            <div class="key-row" id="key-row-2"></div>
+            <div class="key-row" id="key-row-3"></div>
+          </div>
+        </div>
+
+        <!-- Result overlay -->
+        <div class="game-result" id="gtd-result">
+          <div class="result-emoji" id="result-emoji">🎉</div>
+          <div class="result-title" id="result-title">Nice Throw!</div>
+          <div class="result-answer" id="result-answer">The disc was the <strong>Innova Destroyer</strong></div>
+          <button class="btn-play-again" onclick="startNewDisc()">Next Disc →</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ═══ MINI PUTTING ═══ -->
+    <div id="panel-putting" class="game-panel">
+
+      <div class="putting-card reveal">
+        <div class="putting-header">
+          <h2>⛳ Mini Putting Challenge</h2>
+          <p>9 holes. Aim your shot, set your power, and sink every putt. Each hole gets harder — longer distance, tricky pin positions.</p>
+        </div>
+
+        <div class="hole-status">
+          <div class="hole-badge">Hole <span id="hole-num">1</span> of 9</div>
+          <div class="hole-badge">Par <span id="par-num">2</span></div>
+          <div class="hole-badge">Distance <span id="dist-num">5m</span></div>
+          <div class="hole-badge">Score <span id="total-score-display">E</span></div>
+        </div>
+
+        <canvas id="putting-canvas" width="580" height="340"></canvas>
+
+        <div class="putt-result-msg" id="putt-msg"></div>
+
+        <div class="power-section">
+          <span class="power-label">Power</span>
+          <div class="power-track" id="power-track">
+            <div class="power-fill" id="power-fill" style="width:50%"></div>
+          </div>
+          <span class="power-val" id="power-val">50</span>
+        </div>
+
+        <div class="putting-controls">
+          <button class="putt-btn putt-btn-secondary" onclick="resetPutt()">↺ Reset Hole</button>
+          <button class="putt-btn putt-btn-primary" id="throw-btn" onclick="throwDisc()">🥏 Throw!</button>
+        </div>
+
+        <!-- Scorecard -->
+        <div class="scorecard">
+          <div class="scorecard-header sc-grid">
+            <div class="sc-cell">H</div>
+            <div class="sc-cell">1</div><div class="sc-cell">2</div><div class="sc-cell">3</div>
+            <div class="sc-cell">4</div><div class="sc-cell">5</div><div class="sc-cell">6</div>
+            <div class="sc-cell">7</div><div class="sc-cell">8</div><div class="sc-cell">9</div>
+            <div class="sc-cell">TOT</div>
+          </div>
+          <div class="scorecard-row sc-grid">
+            <div class="sc-cell" style="font-size:0.65rem;color:var(--muted2)">Par</div>
+            <div class="sc-cell">2</div><div class="sc-cell">2</div><div class="sc-cell">2</div>
+            <div class="sc-cell">3</div><div class="sc-cell">3</div><div class="sc-cell">3</div>
+            <div class="sc-cell">4</div><div class="sc-cell">4</div><div class="sc-cell">4</div>
+            <div class="sc-cell total">27</div>
+          </div>
+          <div class="scorecard-row sc-grid" id="score-row">
+            <div class="sc-cell" style="font-size:0.65rem;color:var(--orange)">You</div>
+            <div class="sc-cell" id="sc-1">-</div><div class="sc-cell" id="sc-2">-</div><div class="sc-cell" id="sc-3">-</div>
+            <div class="sc-cell" id="sc-4">-</div><div class="sc-cell" id="sc-5">-</div><div class="sc-cell" id="sc-6">-</div>
+            <div class="sc-cell" id="sc-7">-</div><div class="sc-cell" id="sc-8">-</div><div class="sc-cell" id="sc-9">-</div>
+            <div class="sc-cell total" id="sc-total">-</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand"><img src="/baggedup.logo.png" alt="" style="height:28px;width:28px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'" />Bagged<span>Up</span></div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/guide.html">Bag Guide</a></li>
+        <li><a href="/blog.html">Blog</a></li>
+        <li><a href="/games.html">Games</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/app">Open App</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    </div>
+  </footer>
+
+  <script>
+  // ═══════════════════════════════════════
+  //  GAME TAB SWITCHER
+  // ═══════════════════════════════════════
+  function switchGame(id) {
+    document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('panel-' + id).classList.add('active');
+    event.target.classList.add('active');
+    if (id === 'putting' && !puttingInitialized) initPutting();
+  }
+
+  // ═══════════════════════════════════════
+  //  DISC DATABASE
+  // ═══════════════════════════════════════
+  const DISCS = [
+    { name: "DESTROYER", brand: "Innova", type: "Driver", speed: 12, glide: 5, turn: -1, fade: 3 },
+    { name: "BUZZZ", brand: "Discraft", type: "Midrange", speed: 5, glide: 4, turn: -1, fade: 1 },
+    { name: "AVIAR", brand: "Innova", type: "Putter", speed: 2, glide: 3, turn: 0, fade: 1 },
+    { name: "WRAITH", brand: "Innova", type: "Driver", speed: 11, glide: 5, turn: -1, fade: 3 },
+    { name: "BOSS", brand: "Innova", type: "Driver", speed: 13, glide: 5, turn: -1, fade: 3 },
+    { name: "LEOPARD", brand: "Innova", type: "Fairway", speed: 7, glide: 5, turn: -2, fade: 1 },
+    { name: "FIREBIRD", brand: "Innova", type: "Driver", speed: 9, glide: 3, turn: 0, fade: 4 },
+    { name: "ROC3", brand: "Innova", type: "Midrange", speed: 5, glide: 4, turn: 0, fade: 3 },
+    { name: "EAGLE", brand: "Innova", type: "Fairway", speed: 8, glide: 4, turn: -1, fade: 2 },
+    { name: "VALKYRIE", brand: "Innova", type: "Driver", speed: 9, glide: 4, turn: -2, fade: 2 },
+    { name: "JUSTICE", brand: "Dynamic Discs", type: "Midrange", speed: 5, glide: 4, turn: 0, fade: 3 },
+    { name: "FELON", brand: "Dynamic Discs", type: "Driver", speed: 9, glide: 3, turn: 0, fade: 4 },
+    { name: "RIVER", brand: "Latitude 64", type: "Fairway", speed: 7, glide: 6, turn: -2, fade: 1 },
+    { name: "COMET", brand: "Discraft", type: "Midrange", speed: 4, glide: 5, turn: -2, fade: 1 },
+    { name: "UNDERTAKER", brand: "Discraft", type: "Driver", speed: 9, glide: 5, turn: -1, fade: 2 },
+    { name: "LUNA", brand: "Paul McBeth", type: "Putter", speed: 3, glide: 3, turn: 0, fade: 3 },
+    { name: "ZONE", brand: "Discraft", type: "Putter", speed: 4, glide: 3, turn: 0, fade: 3 },
+    { name: "NUKE", brand: "Discraft", type: "Driver", speed: 13, glide: 5, turn: -1, fade: 3 },
+    { name: "SURGE", brand: "Discraft", type: "Driver", speed: 10, glide: 5, turn: -1, fade: 3 },
+    { name: "MAGIC", brand: "Discmania", type: "Midrange", speed: 4, glide: 5, turn: 0, fade: 1 },
+    { name: "FD", brand: "Discmania", type: "Fairway", speed: 7, glide: 6, turn: -1, fade: 1 },
+    { name: "PD", brand: "Discmania", type: "Driver", speed: 10, glide: 4, turn: 0, fade: 3 },
+    { name: "HALO", brand: "Innova", type: "Driver", speed: 11, glide: 4, turn: -2, fade: 3 },
+    { name: "PHANTOM", brand: "Latitude 64", type: "Driver", speed: 9, glide: 5, turn: -2, fade: 2 },
+    { name: "JUDGE", brand: "Dynamic Discs", type: "Putter", speed: 2, glide: 4, turn: 0, fade: 1 },
+    { name: "TEEBIRD", brand: "Innova", type: "Fairway", speed: 7, glide: 5, turn: 0, fade: 2 },
+    { name: "MAKO3", brand: "Innova", type: "Midrange", speed: 5, glide: 5, turn: 0, fade: 0 },
+    { name: "THUNDERBIRD", brand: "Innova", type: "Driver", speed: 10, glide: 5, turn: 0, fade: 3 },
+    { name: "COLOSSUS", brand: "Innova", type: "Driver", speed: 14, glide: 5, turn: -2, fade: 2 },
+    { name: "PRO KATANA", brand: "Innova", type: "Driver", speed: 13, glide: 5, turn: -2, fade: 2 },
+  ];
+
+  // Game state
+  let currentDisc = null;
+  let guessedLetters = [];
+  let livesLeft = 6;
+  let cluesRevealed = 1;
+  let score = 0;
+  let streak = 0;
+  let best = 0;
+  let gameOver = false;
+
+  const CLUE_ORDER = ['type','speed','glide','turn','fade','brand'];
+
+  function pickDisc() {
+    return DISCS[Math.floor(Math.random() * DISCS.length)];
+  }
+
+  function startNewDisc() {
+    currentDisc = pickDisc();
+    guessedLetters = [];
+    livesLeft = 6;
+    cluesRevealed = 1;
+    gameOver = false;
+
+    document.getElementById('gtd-result').classList.remove('show');
+    document.getElementById('gtd-game-area').style.display = '';
+
+    // Reset clues
+    document.querySelectorAll('.clue-box').forEach(b => b.classList.remove('revealed'));
+    document.getElementById('clue-type').classList.add('revealed');
+
+    document.getElementById('cv-type').textContent = currentDisc.type;
+    document.getElementById('cd-type').textContent = currentDisc.type === 'Driver' ? 'Distance driver' : currentDisc.type === 'Fairway' ? 'Fairway driver' : currentDisc.type;
+    document.getElementById('cv-speed').textContent = '?';
+    document.getElementById('cv-glide').textContent = '?';
+    document.getElementById('cv-turn').textContent = '?';
+    document.getElementById('cv-fade').textContent = '?';
+    document.getElementById('cv-brand').textContent = '?';
+
+    document.getElementById('clue-progress').style.width = '16%';
+
+    // Lives
+    for (let i = 1; i <= 6; i++) {
+      const d = document.getElementById('life-' + i);
+      d.classList.remove('lost');
+    }
+    document.getElementById('lives-label').textContent = '6 lives remaining';
+
+    renderWordDisplay();
+    renderKeyboard();
+  }
+
+  function renderWordDisplay() {
+    const container = document.getElementById('word-display');
+    container.innerHTML = '';
+    const name = currentDisc.name;
+    for (let i = 0; i < name.length; i++) {
+      const ch = name[i];
+      const slot = document.createElement('div');
+      if (ch === ' ') {
+        slot.className = 'letter-slot space';
+      } else {
+        slot.className = 'letter-slot';
+        slot.id = 'slot-' + i;
+        if (guessedLetters.includes(ch)) {
+          slot.textContent = ch;
+          slot.classList.add('revealed');
+        }
+      }
+      container.appendChild(slot);
+    }
+  }
+
+  function renderKeyboard() {
+    const rows = [
+      ['Q','W','E','R','T','Y','U','I','O','P'],
+      ['A','S','D','F','G','H','J','K','L'],
+      ['Z','X','C','V','B','N','M']
+    ];
+    rows.forEach((row, ri) => {
+      const rowEl = document.getElementById('key-row-' + (ri + 1));
+      rowEl.innerHTML = '';
+      row.forEach(letter => {
+        const btn = document.createElement('button');
+        btn.className = 'key-btn';
+        btn.id = 'key-' + letter;
+        btn.textContent = letter;
+        if (guessedLetters.includes(letter)) {
+          const isHit = currentDisc.name.includes(letter);
+          btn.classList.add(isHit ? 'hit' : 'miss');
+          btn.disabled = true;
+        } else {
+          btn.onclick = () => guessLetter(letter);
+        }
+        rowEl.appendChild(btn);
+      });
+    });
+  }
+
+  function guessLetter(letter) {
+    if (gameOver || guessedLetters.includes(letter)) return;
+    guessedLetters.push(letter);
+
+    const isHit = currentDisc.name.includes(letter);
+    const keyBtn = document.getElementById('key-' + letter);
+    keyBtn.classList.add(isHit ? 'hit' : 'miss');
+    keyBtn.disabled = true;
+
+    if (!isHit) {
+      livesLeft--;
+      const lifeDot = document.getElementById('life-' + (7 - livesLeft));
+      if (lifeDot) lifeDot.classList.add('lost');
+      document.getElementById('lives-label').textContent = livesLeft + ' ' + (livesLeft === 1 ? 'life' : 'lives') + ' remaining';
+
+      // Reveal a clue on wrong guess
+      if (cluesRevealed < 6) {
+        cluesRevealed++;
+        revealClue(cluesRevealed);
+      }
+    }
+
+    renderWordDisplay();
+    checkWin();
+  }
+
+  function revealClue(idx) {
+    const key = CLUE_ORDER[idx - 1];
+    const box = document.getElementById('clue-' + key);
+    const valEl = document.getElementById('cv-' + key);
+    box.classList.add('revealed');
+
+    const val = currentDisc[key];
+    valEl.textContent = val;
+
+    const pct = Math.round((idx / 6) * 100);
+    document.getElementById('clue-progress').style.width = pct + '%';
+  }
+
+  function checkWin() {
+    const name = currentDisc.name;
+    const allRevealed = [...name].every(ch => ch === ' ' || guessedLetters.includes(ch));
+
+    if (allRevealed) {
+      gameOver = true;
+      score++;
+      streak++;
+      if (streak > best) best = streak;
+      updateScoreDisplay();
+      showResult(true);
+    } else if (livesLeft <= 0) {
+      gameOver = true;
+      streak = 0;
+      updateScoreDisplay();
+      // Reveal the full word in red
+      for (let i = 0; i < name.length; i++) {
+        const slot = document.getElementById('slot-' + i);
+        if (slot && !guessedLetters.includes(name[i])) {
+          slot.textContent = name[i];
+          slot.classList.add('wrong-guess');
+        }
+      }
+      showResult(false);
+    }
+  }
+
+  function showResult(won) {
+    document.getElementById('gtd-game-area').style.display = 'none';
+    const res = document.getElementById('gtd-result');
+    res.classList.add('show');
+    document.getElementById('result-emoji').textContent = won ? '🎉' : '💀';
+    document.getElementById('result-title').textContent = won ? 'Aced It!' : 'Disc Lost';
+    document.getElementById('result-answer').innerHTML = 'The disc was the <strong>' + currentDisc.brand + ' ' + currentDisc.name + '</strong> (' + currentDisc.speed + '/' + currentDisc.glide + '/' + currentDisc.turn + '/' + currentDisc.fade + ')';
+  }
+
+  function updateScoreDisplay() {
+    document.getElementById('gtd-score').textContent = score;
+    document.getElementById('gtd-streak').textContent = streak;
+    document.getElementById('gtd-best').textContent = best;
+  }
+
+  // Keyboard input
+  document.addEventListener('keydown', (e) => {
+    const letter = e.key.toUpperCase();
+    if (/^[A-Z]$/.test(letter) && !gameOver) guessLetter(letter);
+  });
+
+  startNewDisc();
+
+  // ═══════════════════════════════════════
+  //  MINI PUTTING GAME
+  // ═══════════════════════════════════════
+  let puttingInitialized = false;
+
+  const HOLES = [
+    { par: 2, dist: 5,  pinX: 0.5,  pinY: 0.25, obstacles: [] },
+    { par: 2, dist: 7,  pinX: 0.3,  pinY: 0.2,  obstacles: [] },
+    { par: 2, dist: 9,  pinX: 0.7,  pinY: 0.3,  obstacles: [{x:0.5, y:0.5, r:20}] },
+    { par: 3, dist: 12, pinX: 0.5,  pinY: 0.15, obstacles: [{x:0.35, y:0.4, r:18}, {x:0.65, y:0.4, r:18}] },
+    { par: 3, dist: 14, pinX: 0.2,  pinY: 0.2,  obstacles: [{x:0.4, y:0.35, r:22}] },
+    { par: 3, dist: 16, pinX: 0.75, pinY: 0.18, obstacles: [{x:0.5, y:0.5, r:16}, {x:0.3, y:0.3, r:14}] },
+    { par: 4, dist: 20, pinX: 0.5,  pinY: 0.12, obstacles: [{x:0.4, y:0.45, r:20}, {x:0.6, y:0.45, r:20}, {x:0.5, y:0.3, r:14}] },
+    { par: 4, dist: 24, pinX: 0.25, pinY: 0.15, obstacles: [{x:0.55, y:0.4, r:24}] },
+    { par: 4, dist: 28, pinX: 0.5,  pinY: 0.1,  obstacles: [{x:0.3, y:0.35, r:18}, {x:0.7, y:0.35, r:18}, {x:0.5, y:0.55, r:16}] },
+  ];
+
+  let currentHole = 0;
+  let currentThrow = 0;
+  let scores = new Array(9).fill(null);
+  let power = 50;
+  let aimAngle = 0;
+  let discPos = { x: 0, y: 0 };
+  let discVel = { x: 0, y: 0 };
+  let isAnimating = false;
+  let aiming = false;
+  let canvas, ctx;
+  const W = 580, H = 340;
+
+  function initPutting() {
+    puttingInitialized = true;
+    canvas = document.getElementById('putting-canvas');
+    ctx = canvas.getContext('2d');
+
+    canvas.addEventListener('mousemove', onAim);
+    canvas.addEventListener('mousedown', onAim);
+    canvas.addEventListener('touchmove', onTouchAim, { passive: false });
+
+    const powerTrack = document.getElementById('power-track');
+    powerTrack.addEventListener('click', (e) => {
+      const rect = powerTrack.getBoundingClientRect();
+      power = Math.round(((e.clientX - rect.left) / rect.width) * 100);
+      power = Math.max(10, Math.min(100, power));
+      updatePowerDisplay();
+    });
+
+    resetPutt();
+  }
+
+  function onAim(e) {
+    if (isAnimating) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    const mx = (e.clientX - rect.left) * scaleX;
+    const my = (e.clientY - rect.top) * scaleY;
+    aimAngle = Math.atan2(my - discPos.y, mx - discPos.x);
+    drawHole();
+  }
+
+  function onTouchAim(e) {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    const mx = (touch.clientX - rect.left) * scaleX;
+    const my = (touch.clientY - rect.top) * scaleY;
+    aimAngle = Math.atan2(my - discPos.y, mx - discPos.x);
+    drawHole();
+  }
+
+  function updatePowerDisplay() {
+    document.getElementById('power-fill').style.width = power + '%';
+    document.getElementById('power-val').textContent = power;
+  }
+
+  function resetPutt() {
+    if (!canvas) { canvas = document.getElementById('putting-canvas'); ctx = canvas.getContext('2d'); }
+    const hole = HOLES[currentHole];
+    discPos = { x: W * 0.5, y: H * 0.88 };
+    discVel = { x: 0, y: 0 };
+    aimAngle = -Math.PI / 2;
+    isAnimating = false;
+    currentThrow = scores[currentHole] !== null ? scores[currentHole] : 0;
+    document.getElementById('throw-btn').disabled = false;
+    document.getElementById('putt-msg').textContent = '';
+    drawHole();
+    updateHoleInfo();
+  }
+
+  function updateHoleInfo() {
+    const hole = HOLES[currentHole];
+    document.getElementById('hole-num').textContent = currentHole + 1;
+    document.getElementById('par-num').textContent = hole.par;
+    document.getElementById('dist-num').textContent = hole.dist + 'm';
+
+    const totalStrokes = scores.reduce((s, v) => s + (v !== null ? v : 0), 0);
+    const totalPar = HOLES.slice(0, currentHole + 1).reduce((s, h, i) => s + (scores[i] !== null ? h.par : 0), 0);
+    const diff = totalStrokes - totalPar;
+    document.getElementById('total-score-display').textContent = diff === 0 ? 'E' : (diff > 0 ? '+' + diff : diff);
+
+    // Highlight active hole in scorecard
+    document.querySelectorAll('.scorecard-row:last-child .sc-cell').forEach((c, i) => c.classList.remove('active'));
+    const activeCell = document.getElementById('sc-' + (currentHole + 1));
+    if (activeCell) activeCell.classList.add('active');
+  }
+
+  function throwDisc() {
+    if (isAnimating || (currentHole >= 9)) return;
+    isAnimating = true;
+    currentThrow++;
+    document.getElementById('throw-btn').disabled = true;
+    document.getElementById('putt-msg').textContent = '';
+
+    const speed = (power / 100) * 14 + 3;
+    discVel = { x: Math.cos(aimAngle) * speed, y: Math.sin(aimAngle) * speed };
+
+    animateDisc();
+  }
+
+  function animateDisc() {
+    const hole = HOLES[currentHole];
+    const pinX = hole.pinX * W;
+    const pinY = hole.pinY * H;
+
+    // Apply drag
+    discVel.x *= 0.972;
+    discVel.y *= 0.972;
+    discPos.x += discVel.x;
+    discPos.y += discVel.y;
+
+    // Check basket hit
+    const dx = discPos.x - pinX;
+    const dy = discPos.y - pinY;
+    const distToPin = Math.sqrt(dx * dx + dy * dy);
+
+    // Check obstacle collision
+    let bounced = false;
+    hole.obstacles.forEach(obs => {
+      const ox = obs.x * W, oy = obs.y * H;
+      const ddx = discPos.x - ox, ddy = discPos.y - oy;
+      const dd = Math.sqrt(ddx * ddx + ddy * ddy);
+      if (dd < obs.r + 10) {
+        const nx = ddx / dd, ny = ddy / dd;
+        const dot = discVel.x * nx + discVel.y * ny;
+        discVel.x = (discVel.x - 2 * dot * nx) * 0.7;
+        discVel.y = (discVel.y - 2 * dot * ny) * 0.7;
+        discPos.x = ox + (obs.r + 11) * nx;
+        discPos.y = oy + (obs.r + 11) * ny;
+        bounced = true;
+      }
+    });
+
+    // Wall bounce
+    if (discPos.x < 10) { discPos.x = 10; discVel.x = Math.abs(discVel.x) * 0.6; }
+    if (discPos.x > W - 10) { discPos.x = W - 10; discVel.x = -Math.abs(discVel.x) * 0.6; }
+    if (discPos.y < 10) { discPos.y = 10; discVel.y = Math.abs(discVel.y) * 0.6; }
+    if (discPos.y > H - 10) { discPos.y = H - 10; discVel.y = -Math.abs(discVel.y) * 0.6; }
+
+    const speed = Math.sqrt(discVel.x * discVel.x + discVel.y * discVel.y);
+
+    if (distToPin < 22) {
+      // SUNK!
+      discPos = { x: pinX, y: pinY };
+      drawHole();
+      isAnimating = false;
+      scores[currentHole] = currentThrow;
+      updateScoreCard();
+      const par = HOLES[currentHole].par;
+      const label = currentThrow < par ? '🎉 ' + (currentThrow === 1 ? 'Hole in One!' : 'Birdie!') : currentThrow === par ? '👍 Par!' : '😬 Bogey!';
+      document.getElementById('putt-msg').textContent = label;
+      setTimeout(() => nextHole(), 1600);
+      return;
+    }
+
+    if (speed < 0.4) {
+      // Disc stopped without sinking
+      drawHole();
+      isAnimating = false;
+      document.getElementById('throw-btn').disabled = false;
+      if (currentThrow >= HOLES[currentHole].par + 2) {
+        document.getElementById('putt-msg').textContent = '😬 Max attempts — moving on...';
+        scores[currentHole] = currentThrow;
+        updateScoreCard();
+        setTimeout(() => nextHole(), 1600);
+        return;
+      }
+      document.getElementById('putt-msg').textContent = 'Missed — try again!';
+      return;
+    }
+
+    drawHole();
+    requestAnimationFrame(animateDisc);
+  }
+
+  function updateScoreCard() {
+    let total = 0;
+    scores.forEach((s, i) => {
+      if (s !== null) {
+        const cell = document.getElementById('sc-' + (i + 1));
+        cell.textContent = s;
+        const par = HOLES[i].par;
+        cell.className = 'sc-cell ' + (s < par ? 'birdie' : s === par ? 'par' : 'bogey');
+        total += s;
+      }
+    });
+    const totalPar = 27;
+    const diff = total - totalPar;
+    document.getElementById('sc-total').textContent = total > 0 ? (diff > 0 ? '+' + diff : diff === 0 ? 'E' : diff) : '-';
+    updateHoleInfo();
+  }
+
+  function nextHole() {
+    if (currentHole < 8) {
+      currentHole++;
+      currentThrow = 0;
+      resetPutt();
+    } else {
+      // Game over
+      currentHole = 0;
+      currentThrow = 0;
+      isAnimating = false;
+      const total = scores.reduce((s, v) => s + (v || 0), 0);
+      const diff = total - 27;
+      document.getElementById('putt-msg').textContent = '🏆 Round complete! ' + (diff === 0 ? 'Even par!' : diff > 0 ? '+' + diff : diff + ' under par!');
+      document.getElementById('throw-btn').disabled = true;
+      setTimeout(() => {
+        scores = new Array(9).fill(null);
+        document.querySelectorAll('[id^="sc-"]').forEach(c => { c.textContent = '-'; c.className = 'sc-cell'; });
+        document.getElementById('sc-total').textContent = '-';
+        resetPutt();
+      }, 3000);
+    }
+  }
+
+  function drawHole() {
+    if (!ctx) return;
+    const hole = HOLES[currentHole];
+    const pinX = hole.pinX * W;
+    const pinY = hole.pinY * H;
+
+    // Background — grass gradient
+    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W * 0.7);
+    bgGrad.addColorStop(0, '#0a1f0d');
+    bgGrad.addColorStop(1, '#060e08');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Grass texture dots
+    ctx.fillStyle = 'rgba(255,255,255,0.02)';
+    for (let gx = 20; gx < W; gx += 28) {
+      for (let gy = 20; gy < H; gy += 28) {
+        ctx.beginPath();
+        ctx.arc(gx, gy, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Border
+    ctx.strokeStyle = 'rgba(249,115,22,0.15)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(4, 4, W - 8, H - 8);
+
+    // Distance circles from disc
+    const distanceMeter = HOLES[currentHole].dist;
+    const maxPx = Math.sqrt((pinX - discPos.x)**2 + (pinY - discPos.y)**2);
+    [0.25, 0.5, 0.75, 1.0].forEach(f => {
+      const r = maxPx * f;
+      ctx.beginPath();
+      ctx.arc(discPos.x, discPos.y, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    // Aim line
+    if (!isAnimating) {
+      const aimLen = 80 + power * 0.6;
+      const tx = discPos.x + Math.cos(aimAngle) * aimLen;
+      const ty = discPos.y + Math.sin(aimAngle) * aimLen;
+      const grad = ctx.createLinearGradient(discPos.x, discPos.y, tx, ty);
+      grad.addColorStop(0, 'rgba(249,115,22,0.7)');
+      grad.addColorStop(1, 'rgba(249,115,22,0)');
+      ctx.beginPath();
+      ctx.moveTo(discPos.x, discPos.y);
+      ctx.lineTo(tx, ty);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Obstacles (trees)
+    hole.obstacles.forEach(obs => {
+      const ox = obs.x * W, oy = obs.y * H;
+      // Shadow
+      ctx.beginPath();
+      ctx.arc(ox + 4, oy + 4, obs.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,0,0,0.4)';
+      ctx.fill();
+      // Tree body
+      const treeGrad = ctx.createRadialGradient(ox - 3, oy - 3, 2, ox, oy, obs.r);
+      treeGrad.addColorStop(0, '#2d7a2d');
+      treeGrad.addColorStop(1, '#134013');
+      ctx.beginPath();
+      ctx.arc(ox, oy, obs.r, 0, Math.PI * 2);
+      ctx.fillStyle = treeGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      // 🌲
+      ctx.font = `${obs.r * 0.9}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🌲', ox, oy);
+    });
+
+    // Pin shadow
+    ctx.beginPath();
+    ctx.ellipse(pinX + 3, pinY + 5, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fill();
+
+    // Basket glow
+    ctx.beginPath();
+    ctx.arc(pinX, pinY, 30, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(34,197,94,0.06)';
+    ctx.fill();
+
+    // Basket
+    ctx.beginPath();
+    ctx.arc(pinX, pinY, 18, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(34,197,94,0.15)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(34,197,94,0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Basket chains
+    for (let ci = 0; ci < 8; ci++) {
+      const ca = (ci / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(pinX, pinY - 8);
+      ctx.lineTo(pinX + Math.cos(ca) * 14, pinY + Math.sin(ca) * 8);
+      ctx.strokeStyle = 'rgba(180,180,180,0.4)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Basket pole
+    ctx.beginPath();
+    ctx.moveTo(pinX, pinY);
+    ctx.lineTo(pinX, pinY + H * 0.12);
+    ctx.strokeStyle = 'rgba(180,180,180,0.7)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // ⛳ emoji
+    ctx.font = '18px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('⛳', pinX, pinY);
+
+    // Disc shadow
+    ctx.beginPath();
+    ctx.ellipse(discPos.x + 3, discPos.y + 3, 14, 7, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fill();
+
+    // Disc glow
+    if (isAnimating) {
+      ctx.beginPath();
+      ctx.arc(discPos.x, discPos.y, 20, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(249,115,22,0.12)';
+      ctx.fill();
+    }
+
+    // Disc
+    const discGrad = ctx.createRadialGradient(discPos.x - 3, discPos.y - 3, 2, discPos.x, discPos.y, 13);
+    discGrad.addColorStop(0, '#fb923c');
+    discGrad.addColorStop(1, '#c2510f');
+    ctx.beginPath();
+    ctx.arc(discPos.x, discPos.y, 12, 0, Math.PI * 2);
+    ctx.fillStyle = discGrad;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Disc centre dot
+    ctx.beginPath();
+    ctx.arc(discPos.x, discPos.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fill();
+
+    // Throw counter
+    ctx.font = '700 12px DM Sans, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillText('Throw ' + (currentThrow + (isAnimating ? 0 : 0)) + ' · Hole ' + (currentHole + 1) + '/9', 12, H - 12);
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 100);
+    });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Disc Golf Plastic Comparison Chart | BaggedUp</title>
+  <meta name="description" content="Complete plastic comparison chart for every major disc golf brand — Innova, Discraft, Dynamic Discs, Discmania, Latitude 64, MVP, and more. Base vs premium vs specialty."/>
+  <link rel="canonical" href="https://baggedup.vercel.app/plastics.html"/>
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #f97316; --bg: #080b12; --bg2: #0d1117;
+      --card: #111827; --border: #1e293b;
+      --text: #f1f5f9; --muted: #64748b; --muted2: #334155;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* NAV */
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: rgba(8,11,18,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
+    .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
+    .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
+    .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; color: var(--text); }
+    .nav-logo-text span { color: var(--orange); }
+    .nav-links { display: flex; gap: 1.6rem; list-style: none; align-items: center; }
+    .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; transition: color 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color: var(--orange); }
+    .btn-nav { background: var(--orange); color: #fff; padding: 0.55rem 1.4rem; border-radius: 999px; font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; text-decoration: none; transition: background 0.2s; white-space: nowrap; }
+    .btn-nav:hover { background: #ea6c0a; }
+    .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+    .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); }
+    .mobile-menu.open { display: flex; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+    @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
+
+    /* PAGE HEADER */
+    .page-header {
+      padding: 6rem 2rem 3rem; text-align: center; position: relative; z-index: 1;
+      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%);
+    }
+    .page-header h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3rem, 8vw, 5.5rem); line-height: 0.95; letter-spacing: 0.02em; margin-bottom: 1rem; animation: fade-up 0.5s ease both; }
+    .page-header h1 em { font-style: normal; color: var(--orange); }
+    .page-header p { font-size: 1rem; color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.7; animation: fade-up 0.5s 0.1s ease both; }
+
+    /* CONTENT */
+    .container { max-width: 1200px; margin: 0 auto; padding: 3rem 2rem 5rem; position: relative; z-index: 1; }
+
+    /* INTRO CARDS */
+    .tier-intro { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 3rem; }
+    @media (max-width: 700px) { .tier-intro { grid-template-columns: 1fr; } }
+    .tier-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.2rem; padding: 1.4rem; position: relative; overflow: hidden; }
+    .tier-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+    .tier-card.base::before { background: #64748b; }
+    .tier-card.premium::before { background: var(--orange); }
+    .tier-card.special::before { background: linear-gradient(90deg, #a855f7, #ec4899); }
+    .tier-label { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 0.5rem; }
+    .tier-card.base .tier-label { color: #64748b; }
+    .tier-card.premium .tier-label { color: var(--orange); }
+    .tier-card.special .tier-label { color: #a855f7; }
+    .tier-card h3 { font-weight: 800; font-size: 1rem; margin-bottom: 0.4rem; }
+    .tier-card p { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+
+    /* SECTION HEADING */
+    .brand-section { margin-bottom: 3rem; }
+    .brand-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; padding-bottom: 0.8rem; border-bottom: 1px solid var(--border); }
+    .brand-logo-wrap { width: 44px; height: 44px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; flex-shrink: 0; }
+    .brand-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.04em; }
+    .brand-tagline { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+
+    /* TABLE */
+    .plastic-table-wrap { overflow-x: auto; border-radius: 1.2rem; border: 1px solid var(--border); background: var(--card); }
+    .plastic-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    .plastic-table thead tr { background: rgba(249,115,22,0.06); }
+    .plastic-table th { padding: 0.8rem 1rem; text-align: left; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .plastic-table td { padding: 0.8rem 1rem; font-size: 0.82rem; color: var(--muted); border-bottom: 1px solid rgba(30,41,59,0.5); vertical-align: top; line-height: 1.5; }
+    .plastic-table tr:last-child td { border-bottom: none; }
+    .plastic-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .plastic-table td:first-child { font-weight: 800; color: var(--text); white-space: nowrap; }
+
+    /* TIER BADGE */
+    .tier-badge { display: inline-flex; align-items: center; padding: 0.15rem 0.6rem; border-radius: 999px; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; }
+    .tier-badge.base { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.3); }
+    .tier-badge.premium { background: rgba(249,115,22,0.1); color: var(--orange); border: 1px solid rgba(249,115,22,0.3); }
+    .tier-badge.special { background: rgba(168,85,247,0.1); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+    .tier-badge.glow { background: rgba(250,204,21,0.1); color: #fbbf24; border: 1px solid rgba(250,204,21,0.3); }
+
+    /* RATINGS */
+    .rating-dots { display: flex; gap: 3px; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); }
+    .dot.filled { background: var(--orange); }
+    .dot.half { background: linear-gradient(90deg, var(--orange) 50%, var(--border) 50%); }
+
+    /* CALLOUT */
+    .callout { background: rgba(249,115,22,0.07); border-left: 3px solid var(--orange); border-radius: 0 12px 12px 0; padding: 1rem 1.2rem; margin: 2rem 0; }
+    .callout p { font-size: 0.88rem; color: var(--text); font-weight: 600; line-height: 1.6; }
+
+    /* FOOTER */
+    footer { background: var(--bg2); border-top: 1px solid var(--border); padding: 3rem 2rem; position: relative; z-index: 1; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; }
+    .footer-brand { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.5rem; }
+    .footer-brand span { color: var(--orange); }
+    .footer-links { display: flex; gap: 1.5rem; list-style: none; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; transition: color 0.2s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: 0.75rem; color: var(--muted2); }
+    @media (max-width: 640px) { .footer-inner { flex-direction: column; } }
+
+    @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/" class="nav-logo">
+      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;"/>
+      <span class="nav-logo-text">Bagged<span>Up</span></span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="/guide.html">Bag Guide</a></li>
+      <li><a href="/blog.html">Blog</a></li>
+      <li><a href="/flightpath.html">Flight Science</a></li>
+      <li><a href="/plastics.html" class="active">Plastics</a></li>
+      <li><a href="/games.html">Games</a></li>
+      <li><a href="/contact.html">Contact</a></li>
+    </ul>
+    <a href="/app" class="btn-nav">Get Started →</a>
+    <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
+  </nav>
+  <div id="mobile-menu" class="mobile-menu">
+    <a href="/guide.html">Bag Guide</a>
+    <a href="/blog.html">Blog</a>
+    <a href="/flightpath.html">Flight Science</a>
+    <a href="/plastics.html">Plastics</a>
+    <a href="/games.html">Games</a>
+    <a href="/contact.html">Contact</a>
+    <a href="/app" class="mobile-cta">Get Started Free →</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Disc Golf<br/><em>Plastic Guide</em></h1>
+    <p>Every plastic type from every major manufacturer — grip, durability, flight characteristics, and recommended uses. The complete reference.</p>
+  </div>
+
+  <div class="container">
+
+    <div class="tier-intro reveal">
+      <div class="tier-card base">
+        <div class="tier-label">⬜ Base Plastic</div>
+        <h3>Entry Level</h3>
+        <p>Cheapest option. Grippy in cold. Wears in quickly — often making overstable discs more understable over time. Great for learning new moulds.</p>
+      </div>
+      <div class="tier-card premium">
+        <div class="tier-label">🟠 Premium Plastic</div>
+        <h3>Tournament Grade</h3>
+        <p>More durable, consistent flight characteristics, great grip in all conditions. Standard for serious play. Holds its stability much longer than base.</p>
+      </div>
+      <div class="tier-card special">
+        <div class="tier-label">🟣 Specialty Blends</div>
+        <h3>Special Edition</h3>
+        <p>Premium blends with unique feels, looks, or specific performance tuning. Glow plastics, metal flake, colour-shifting, extra-grippy formulas.</p>
+      </div>
+    </div>
+
+    <!-- INNOVA -->
+    <div class="brand-section reveal">
+      <div class="brand-header">
+        <div class="brand-logo-wrap">🦅</div>
+        <div>
+          <div class="brand-name">Innova</div>
+          <div class="brand-tagline">The world's largest disc golf manufacturer. Founded 1983.</div>
+        </div>
+      </div>
+      <div class="plastic-table-wrap">
+        <table class="plastic-table">
+          <thead>
+            <tr>
+              <th>Plastic Name</th>
+              <th>Tier</th>
+              <th>Durability</th>
+              <th>Grip</th>
+              <th>Wear-In</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>DX</td>
+              <td><span class="tier-badge base">Base</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Fast (5–20 rounds)</td>
+              <td>Most affordable Innova plastic. Excellent beginner grip, especially in cold. Becomes more understable as it wears. Ideal for learning mould.</td>
+            </tr>
+            <tr>
+              <td>Pro</td>
+              <td><span class="tier-badge base">Base+</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td>Medium (20–50 rounds)</td>
+              <td>Slightly more durable than DX. Still has great grip. Less common now but still used in putters like the Pro Aviar.</td>
+            </tr>
+            <tr>
+              <td>Star</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow (100+ rounds)</td>
+              <td>Innova's flagship premium. Excellent durability, consistent flight, slightly rubber-like grip. One of the most popular tournament plastics globally.</td>
+            </tr>
+            <tr>
+              <td>Champion</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow (200+ rounds)</td>
+              <td>Harder, more rigid plastic. Near zero wear-in — flies exactly as rated for a very long time. Less grip than Star, especially in cold. Used by pros for discs they want to stay overstable.</td>
+            </tr>
+            <tr>
+              <td>Halo Star</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Star plastic with striking Halo rim design. Two-tone look, premium feel, slightly stiffer than standard Star. Very popular collector/tournament series.</td>
+            </tr>
+            <tr>
+              <td>Glow Champion</td>
+              <td><span class="tier-badge glow">Glow</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>Champion plastic that glows in the dark after UV exposure. Practical for night rounds. Flies identical to standard Champion.</td>
+            </tr>
+            <tr>
+              <td>Blizzard Champion</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Ultra-lightweight Champion plastic with microbubbles. Can float on water. Often 1–2g lighter than standard — changes flight characteristics (more distance for slower arms). Popular for beginners who can't throw standard Destroyers far enough.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DISCRAFT -->
+    <div class="brand-section reveal">
+      <div class="brand-header">
+        <div class="brand-logo-wrap">🎯</div>
+        <div>
+          <div class="brand-name">Discraft</div>
+          <div class="brand-tagline">Michigan-made. Home of the Buzzz and the Z-line. Paul McBeth's brand.</div>
+        </div>
+      </div>
+      <div class="plastic-table-wrap">
+        <table class="plastic-table">
+          <thead>
+            <tr>
+              <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Pro-D / Putter Line</td>
+              <td><span class="tier-badge base">Base</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Fast</td>
+              <td>Soft, grippy, affordable. Very popular for putting in cold weather. Wears in quickly on drives.</td>
+            </tr>
+            <tr>
+              <td>Z Line</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Discraft's primary premium line. Glossy finish, translucent, great flight consistency. Equivalent to Innova Champion in feel and durability. Very popular for Buzzz, Zone, and drivers.</td>
+            </tr>
+            <tr>
+              <td>ESP</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Premium blend with more flexibility than Z-line. Excellent grip. Popular for the Buzzz OS and Zone. Feels more "premium" in hand than Z to many players.</td>
+            </tr>
+            <tr>
+              <td>Titanium (Ti)</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>Discraft's most durable plastic. Hard, rigid, excellent for overstable discs you want to keep overstable long-term. Less popular due to low grip in cold.</td>
+            </tr>
+            <tr>
+              <td>Z Glo</td>
+              <td><span class="tier-badge glow">Glow</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Z-line plastic that charges and glows under UV. Same flight properties as standard Z. Great for night events.</td>
+            </tr>
+            <tr>
+              <td>Cryztal Z</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td>Very slow</td>
+              <td>Crystal-clear Z plastic. Extremely translucent — you can see through it. Same durability as Z but more flexible with better cold-weather grip. Very eye-catching on the course.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DYNAMIC DISCS -->
+    <div class="brand-section reveal">
+      <div class="brand-header">
+        <div class="brand-logo-wrap">⚡</div>
+        <div>
+          <div class="brand-name">Dynamic Discs</div>
+          <div class="brand-tagline">Part of the Latitude 64 / Westside Discs family (Trilogy brands).</div>
+        </div>
+      </div>
+      <div class="plastic-table-wrap">
+        <table class="plastic-table">
+          <thead>
+            <tr>
+              <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Classic</td>
+              <td><span class="tier-badge base">Base</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Fast</td>
+              <td>Softest base-level plastic in the Trilogy lineup. Very grippy and flexible. Wears in quickly, good for putting practice.</td>
+            </tr>
+            <tr>
+              <td>Classic Blend</td>
+              <td><span class="tier-badge base">Base+</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td>Medium</td>
+              <td>Slightly more durable than Classic. Retains the excellent grip. Popular for Judge putters used for driving.</td>
+            </tr>
+            <tr>
+              <td>Lucid</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>DD's standard premium. Great consistency, translucent finish, popular with tournament players. Widely used for Felon, Defender, Sheriff.</td>
+            </tr>
+            <tr>
+              <td>Fuzion</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>More flexible than Lucid. Better grip especially in cold or wet conditions. Preferred by many players for approach and putter discs.</td>
+            </tr>
+            <tr>
+              <td>Lucid-X</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>DD's most durable plastic. Very hard and rigid. Used for discs you want to keep highly overstable. Less grip than Lucid/Fuzion.</td>
+            </tr>
+            <tr>
+              <td>Fuzion-X</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>Fuzion-X combines the durability of Lucid-X with slightly more grip. Best of both worlds for players who want max durability but need cold-weather grip.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- DISCMANIA -->
+    <div class="brand-section reveal">
+      <div class="brand-header">
+        <div class="brand-logo-wrap">🔵</div>
+        <div>
+          <div class="brand-name">Discmania</div>
+          <div class="brand-tagline">Finnish-born brand. Founded with Innova partnerships. Now independent.</div>
+        </div>
+      </div>
+      <div class="plastic-table-wrap">
+        <table class="plastic-table">
+          <thead>
+            <tr>
+              <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>D-Line</td>
+              <td><span class="tier-badge base">Base</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Fast</td>
+              <td>Equivalent to DX. Affordable, grippy base plastic. Very popular for the P2 putter in putting-focused bags.</td>
+            </tr>
+            <tr>
+              <td>C-Line</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>Very hard, rigid, max durability. Similar to Innova Champion. Great for overstable discs — they stay overstable for hundreds of rounds. Low grip in cold.</td>
+            </tr>
+            <tr>
+              <td>S-Line</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Discmania's equivalent of Innova Star. More flexible than C-line, better grip, slightly faster wear. Very popular choice for drivers and fairways.</td>
+            </tr>
+            <tr>
+              <td>Neo</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td>Very slow</td>
+              <td>Modern premium blend. Slightly translucent, excellent grip, very popular for the Magic putter. Great all-weather performance.</td>
+            </tr>
+            <tr>
+              <td>Exo Soft / Hard</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td>Medium–slow</td>
+              <td>Two variants — Soft for maximum grip and feel, Hard for more durability. Both are very popular for putting. One of the softest, grippiest putter plastics on the market.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MVP / AXIOM -->
+    <div class="brand-section reveal">
+      <div class="brand-header">
+        <div class="brand-logo-wrap">🔴</div>
+        <div>
+          <div class="brand-name">MVP / Axiom Discs</div>
+          <div class="brand-tagline">Michigan-made. Famous for overmould rim technology and "gyro" physics.</div>
+        </div>
+      </div>
+      <div class="plastic-table-wrap">
+        <table class="plastic-table">
+          <thead>
+            <tr>
+              <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Neutron</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>MVP's flagship premium. Excellent durability, consistent flight, available in many colours. Popular across their full lineup. The "standard" premium choice from MVP.</td>
+            </tr>
+            <tr>
+              <td>Proton</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>Hardest MVP plastic. Maximum durability and stability retention. Great for overstable discs in wind conditions.</td>
+            </tr>
+            <tr>
+              <td>Plasma</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td>Very slow</td>
+              <td>Swirling, marbled colours — one of the most visually striking plastics in disc golf. Premium-grade durability and excellent grip. Each disc is a unique colour combination.</td>
+            </tr>
+            <tr>
+              <td>Electron</td>
+              <td><span class="tier-badge base">Base</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td>Medium</td>
+              <td>Available in Soft and Medium variants. One of the grippiest putter plastics available. The Soft is particularly popular for wet-weather putting. More durable than typical base plastic.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LATITUDE 64 -->
+    <div class="brand-section reveal">
+      <div class="brand-header">
+        <div class="brand-logo-wrap">🌍</div>
+        <div>
+          <div class="brand-name">Latitude 64</div>
+          <div class="brand-tagline">Swedish manufacturer. Part of Trilogy alongside Dynamic Discs and Westside.</div>
+        </div>
+      </div>
+      <div class="plastic-table-wrap">
+        <table class="plastic-table">
+          <thead>
+            <tr>
+              <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Zero Hard / Soft</td>
+              <td><span class="tier-badge base">Base</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td>Fast</td>
+              <td>Excellent putter plastic. Soft version is ultra grippy — preferred in cold, wet weather. Hard has more structure for driving putters. Very popular for the Compass and Pure.</td>
+            </tr>
+            <tr>
+              <td>Gold</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div><div class="dot"></div></div></td>
+              <td>Extremely slow</td>
+              <td>Hard, durable, excellent for drivers. Very stable flight characteristics that hold for a long time. Equivalent to Innova Champion.</td>
+            </tr>
+            <tr>
+              <td>Opto</td>
+              <td><span class="tier-badge premium">Premium</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>More flexible than Gold with better grip. Lat 64's primary tournament plastic. Excellent all-condition performance. Popular for River, Culverin, Saint Pro.</td>
+            </tr>
+            <tr>
+              <td>Royal</td>
+              <td><span class="tier-badge special">Specialty</span></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot half"></div></div></td>
+              <td><div class="rating-dots"><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot filled"></div><div class="dot"></div></div></td>
+              <td>Very slow</td>
+              <td>Premium blend with metallic sheen. Great grip and excellent durability. Popular collector series. Flies identically to standard Opto.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="callout reveal">
+      <p>💡 All disc brands in the BaggedUp app can be filtered by plastic type. When comparing discs, keep plastic in mind — the same mould in base plastic vs premium can fly noticeably differently, especially early in its life.</p>
+    </div>
+
+  </div>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-brand"><img src="/baggedup.logo.png" alt="" style="height:28px;width:28px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'" />Bagged<span>Up</span></div>
+      <ul class="footer-links">
+        <li><a href="/">Home</a></li>
+        <li><a href="/guide.html">Bag Guide</a></li>
+        <li><a href="/blog.html">Blog</a></li>
+        <li><a href="/flightpath.html">Flight Science</a></li>
+        <li><a href="/games.html">Games</a></li>
+        <li><a href="/contact.html">Contact</a></li>
+        <li><a href="/app">Open App</a></li>
+      </ul>
+      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
+    </div>
+  </footer>
+
+  <script>
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e, i) => {
+        if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 100);
+      });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  </script>
+
+</body>
+</html>
