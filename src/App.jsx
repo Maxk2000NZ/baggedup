@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v43.00-AI';
+const APP_VERSION = 'v44.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -677,6 +677,25 @@ export default function App() {
 
     // My Coach (AI coaching feature)
     const [showMyCoach, setShowMyCoach] = useState(false);
+    // ── ADMIN ──
+    const [showAdminLogin, setShowAdminLogin] = useState(false);
+    const [adminPassword, setAdminPassword] = useState('');
+    const [adminError, setAdminError] = useState('');
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [showAdmin, setShowAdmin] = useState(false);
+    const [adminTab, setAdminTab] = useState('inbox'); // inbox | discs | users
+    const [adminDiscs, setAdminDiscs] = useState([]);
+    const [adminUsers, setAdminUsers] = useState([]);
+    const [adminInbox, setAdminInbox] = useState([]);
+    const [adminLoading, setAdminLoading] = useState(false);
+    const [adminEditDisc, setAdminEditDisc] = useState(null); // disc being edited
+    const [adminNewDisc, setAdminNewDisc] = useState(null); // new disc form
+    const [adminAddDiscOpen, setAdminAddDiscOpen] = useState(false);
+    // ── HELP / FEEDBACK ──
+    const [showHelp, setShowHelp] = useState(false);
+    const [helpType, setHelpType] = useState('suggestion'); // suggestion | issue
+    const [helpText, setHelpText] = useState('');
+    const [helpSent, setHelpSent] = useState(false);
     const [coachMessages, setCoachMessages] = useState([]);
     const [coachInput, setCoachInput] = useState('');
     const [coachLoading, setCoachLoading] = useState(false);
@@ -1350,6 +1369,100 @@ Guidelines:
         setTimeout(() => coachEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     };
 
+    // --- ADMIN ---
+    const ADMIN_PASS = 'AdminPlayer35!';
+
+    const adminLogin = () => {
+        if (adminPassword === ADMIN_PASS) {
+            setIsAdmin(true); setShowAdminLogin(false); setAdminPassword(''); setAdminError('');
+            setShowAdmin(true); loadAdminData();
+        } else {
+            setAdminError('Incorrect password. Try again.');
+        }
+    };
+
+    const loadAdminData = async () => {
+        setAdminLoading(true);
+        // Pending discs
+        const { data: pendingDiscs } = await supabase.from('community_suggestions').select('*').order('created_at', { ascending: false });
+        setAdminDiscs(pendingDiscs || []);
+        // Inbox: help submissions + flagged
+        const { data: inbox } = await supabase.from('help_submissions').select('*').order('created_at', { ascending: false }).limit(100);
+        setAdminInbox(inbox || []);
+        // Users — read from profiles table
+        const { data: users } = await supabase.from('profiles').select('*').order('created_at', { ascending: false }).limit(200);
+        setAdminUsers(users || []);
+        setAdminLoading(false);
+    };
+
+    const adminApproveDisc = async (disc) => {
+        await supabase.from('community_suggestions').update({ approved: true, verified: true }).eq('id', disc.id);
+        setAdminDiscs(prev => prev.map(d => d.id === disc.id ? { ...d, approved: true, verified: true } : d));
+    };
+
+    const adminRejectDisc = async (disc) => {
+        if (!confirm(`Reject "${disc.model}" by ${disc.brand}? This will remove it from the community database.`)) return;
+        await supabase.from('community_suggestions').delete().eq('id', disc.id);
+        setAdminDiscs(prev => prev.filter(d => d.id !== disc.id));
+    };
+
+    const adminSaveDiscEdit = async (disc) => {
+        const { error } = await supabase.from('community_suggestions').update({
+            model: disc.model, brand: disc.brand,
+            speed: parseFloat(disc.speed), glide: parseFloat(disc.glide),
+            turn: parseFloat(disc.turn), fade: parseFloat(disc.fade),
+        }).eq('id', disc.id);
+        if (!error) {
+            setAdminDiscs(prev => prev.map(d => d.id === disc.id ? { ...d, ...disc } : d));
+            setAdminEditDisc(null);
+        }
+    };
+
+    const adminAddNewDisc = async (disc) => {
+        const payload = { model: disc.model, brand: disc.brand, speed: parseFloat(disc.speed), glide: parseFloat(disc.glide), turn: parseFloat(disc.turn), fade: parseFloat(disc.fade), added_by: session.user.id, approved: true, verified: true };
+        const { data } = await supabase.from('community_suggestions').insert(payload).select().single();
+        if (data) {
+            setAdminDiscs(prev => [data, ...prev]);
+            setCommunitySuggestions(prev => [data, ...prev]);
+            setAdminAddDiscOpen(false);
+            setAdminNewDisc(null);
+        }
+    };
+
+    const adminMarkInboxRead = async (item) => {
+        await supabase.from('help_submissions').update({ read: true }).eq('id', item.id);
+        setAdminInbox(prev => prev.map(i => i.id === item.id ? { ...i, read: true } : i));
+    };
+
+    const adminDeleteInboxItem = async (item) => {
+        await supabase.from('help_submissions').delete().eq('id', item.id);
+        setAdminInbox(prev => prev.filter(i => i.id !== item.id));
+    };
+
+    const adminBanUser = async (user) => {
+        if (!confirm(`Ban user @${user.username}? They will be locked out.`)) return;
+        await supabase.from('profiles').update({ banned: true }).eq('id', user.id);
+        setAdminUsers(prev => prev.map(u => u.id === user.id ? { ...u, banned: true } : u));
+    };
+
+    // --- HELP SUBMISSION ---
+    const submitHelp = async () => {
+        if (!helpText.trim()) return;
+        try {
+            await supabase.from('help_submissions').insert({
+                user_id: session?.user?.id || null,
+                username: myProfile?.username || 'anonymous',
+                type: helpType,
+                message: helpText.trim(),
+                email: session?.user?.email || '',
+                read: false,
+            });
+            setHelpSent(true);
+            setHelpText('');
+            setTimeout(() => { setShowHelp(false); setHelpSent(false); }, 2000);
+        } catch (err) { console.error('Help submit error:', err); }
+    };
+
     // --- LOST DISC GPS ---
     const captureGPS = (discId) => {
         if (!navigator.geolocation) { alert('GPS not available on this device'); return; }
@@ -1608,7 +1721,7 @@ Guidelines:
         if (active.length === 0) {
             // Show ALL slots as suggestions when bag is empty
             const ALL_DISCS_EMPTY = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Glide:d.Glide, Turn:d.Turn, Fade:d.Fade, source:'factory' })),
-                ...communitySuggestions.map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community' }))];
+                ...communitySuggestions.filter(d => d.approved !== false).map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community', approved: d.approved }))];
             const stabBucketE = (turn, fade) => { const s=parseFloat(turn)+parseFloat(fade); return s>=2?'OS':s<=-1?'US':'ST'; };
             const SLOT_FILTER_E = {
                 putter_ST:d=>d.Speed<=3&&stabBucketE(d.Turn,d.Fade)==='ST',
@@ -1643,7 +1756,7 @@ Guidelines:
         }
 
         const ALL_DISCS = [...FACTORY_DB.map(d => ({ Model:d.Model, Manufacturer:d.Manufacturer, Speed:d.Speed, Glide:d.Glide, Turn:d.Turn, Fade:d.Fade, source:'factory' })),
-            ...communitySuggestions.map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community' }))];
+            ...communitySuggestions.filter(d => d.approved !== false).map(d => ({ Model:d.model, Manufacturer:d.brand, Speed:d.speed, Glide:d.glide, Turn:d.turn, Fade:d.fade, source:'community', approved: d.approved }))];
 
         const stabBucket = (turn, fade) => { const s=parseFloat(turn)+parseFloat(fade); return s>=2?'OS':s<=-1?'US':'ST'; };
         const slotKey = (speed, turn, fade) => {
@@ -2359,8 +2472,14 @@ Guidelines:
                         >✎</button>
                     </div>
 
-                    {/* Right: Coach + Add Disc */}
+                    {/* Right: Help + Coach + Add Disc */}
                     <div className="flex items-center gap-2 shrink-0">
+                        {/* Help button */}
+                        <button
+                            onClick={() => { setShowHelp(true); setHelpSent(false); setHelpText(''); setHelpType('suggestion'); }}
+                            className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-white flex items-center justify-center text-base transition"
+                            title="Help & Feedback"
+                        >?</button>
                         {/* My Coach — bigger, always visible text on sm+ */}
                         <button
                             onClick={() => setShowMyCoach(true)}
@@ -2371,7 +2490,6 @@ Guidelines:
                             className="sm:hidden w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-cyan-600 border border-emerald-500/30 flex items-center justify-center text-lg shadow-lg shadow-emerald-900/30"
                             title="My Coach"
                         >🧑‍🏫</button>
-
                         {/* Add disc — desktop: pill with text, mobile: square */}
                         <button
                             onClick={() => setShowSearch(true)}
@@ -2902,25 +3020,26 @@ Guidelines:
                                 ))}
                                 {communityFiltered.map(d => {
                                     const isMyDisc = d.added_by === session?.user?.id;
+                                    const isPending = !d.approved;
                                     return (
                                         <div key={d.id}
                                             onClick={() => {
-                                                if (!isMyDisc && !d.verified) {
-                                                    setVerifyName(d.model); setVerifyBrand(d.brand); setVerifySpeed(d.speed); setVerifyGlide(d.glide); setVerifyTurn(d.turn); setVerifyFade(d.fade); setVerifyCorrecting(false); setShowVerifyDisc({ ...d, _fromSearch: true }); setShowSearch(false);
-                                                } else {
-                                                    addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: true });
-                                                    setShowSearch(false); setSearchFilter('all');
-                                                }
+                                                // Add directly — no more user verification. Admin handles approval.
+                                                addDiscToDB({ name: d.model, brand: d.brand, speed: d.speed, glide: d.glide, turn: d.turn, fade: d.fade, wear: 0, bag_id: activeBagId, status: 'active', color: `hsl(${Math.random() * 360},70%,60%)`, max_dist: 0, aces: 0, is_idea: false });
+                                                setShowSearch(false); setSearchFilter('all');
                                             }}
-                                            className={`p-5 rounded-2xl border flex justify-between items-center cursor-pointer hover:border-emerald-500 transition ${d.verified ? 'bg-slate-900 border-slate-800' : 'bg-emerald-900/20 border-emerald-600/30'}`}>
+                                            className={`p-5 rounded-2xl border flex justify-between items-center cursor-pointer hover:border-orange-500 transition ${isPending ? 'bg-slate-900/60 border-slate-700/60' : 'bg-emerald-900/10 border-emerald-600/20'}`}>
                                             <div>
-                                                <div className={`font-black uppercase italic text-lg ${d.verified ? 'text-white' : 'text-emerald-400'}`}>{d.model}</div>
-                                                <div className={`text-[10px] font-bold uppercase ${d.verified ? 'text-slate-500' : 'text-emerald-600'}`}>
+                                                <div className="font-black uppercase italic text-lg text-white">{d.model}</div>
+                                                <div className="text-[10px] font-bold uppercase text-slate-500 flex items-center gap-2">
                                                     {d.brand} • {d.speed}/{d.glide}/{d.turn}/{d.fade}
-                                                    {d.verified ? ' • ✓ Verified' : ' • Community — Tap to Verify & Add'}
+                                                    {isPending
+                                                        ? <span className="bg-yellow-900/30 text-yellow-500 border border-yellow-500/20 px-1.5 py-0.5 rounded-md text-[8px]">⏳ Pending Approval</span>
+                                                        : <span className="bg-emerald-900/30 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded-md text-[8px]">✓ Approved</span>
+                                                    }
                                                 </div>
                                             </div>
-                                            <div className={`font-black text-xl ${d.verified ? 'text-orange-500' : 'text-emerald-500'}`}>+</div>
+                                            <div className="text-orange-500 font-black text-xl">+</div>
                                         </div>
                                     );
                                 })}
@@ -3045,7 +3164,12 @@ Guidelines:
                         <div className="px-8 pt-8 pb-0 shrink-0">
                             <div className="flex justify-between items-center mb-6">
                                 <h2 className="text-2xl font-black italic uppercase text-orange-500">Settings</h2>
-                                <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 border border-orange-500/40 rounded-xl font-black uppercase text-[10px] text-orange-300 hover:bg-orange-600/40 hover:border-orange-400/60 transition mr-2 shadow-sm">🎓 Teach me BaggedUp</button><button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => { setShowSettings(false); setTutorialStep(0); setShowTutorial(true); }} className="flex items-center gap-1.5 px-3 py-2 bg-orange-600/20 border border-orange-500/40 rounded-xl font-black uppercase text-[10px] text-orange-300 hover:bg-orange-600/40 transition">🎓 Teach me</button>
+                                    {!isAdmin && <button onClick={() => { setShowAdminLogin(true); setAdminError(''); setAdminPassword(''); }} className="flex items-center gap-1 px-2.5 py-2 bg-slate-800 border border-slate-700 rounded-xl font-black uppercase text-[9px] text-slate-600 hover:text-slate-400 hover:border-slate-500 transition">🔐</button>}
+                                    {isAdmin && <button onClick={() => { setShowSettings(false); setShowAdmin(true); loadAdminData(); }} className="flex items-center gap-1 px-2.5 py-2 bg-red-900/20 border border-red-500/30 rounded-xl font-black uppercase text-[9px] text-red-400 hover:bg-red-900/30 transition">🛡 Admin</button>}
+                                    <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                                </div>
                             </div>
                             <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
                                 <button
@@ -3888,7 +4012,7 @@ Guidelines:
                         <div className="text-center">
                             <div className="text-4xl mb-3">🔍</div>
                             <h2 className="text-2xl font-black italic uppercase text-emerald-400">Verify This Disc</h2>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">Another pilot added this disc. Please confirm the details are correct to help verify it for everyone!</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase mt-2">This disc isn't in our database yet. Confirm the flight numbers are correct, then add it — it'll be reviewed by our team.</p>
                         </div>
 
                         {verifyCorrecting ? (
@@ -5294,6 +5418,285 @@ Guidelines:
                             Clear Conversation
                         </button>
                     )}
+                </div>
+            </div>
+        )}
+
+        {/* =====================================================
+            ADMIN LOGIN MODAL
+        ===================================================== */}
+        {showAdminLogin && (
+            <div className="fixed inset-0 z-[600] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
+                <div className="bg-slate-900 border border-red-500/30 rounded-3xl w-full max-w-sm p-8 space-y-5">
+                    <div className="text-center">
+                        <div className="text-4xl mb-3">🛡</div>
+                        <h2 className="text-xl font-black uppercase italic text-red-400">Admin Login</h2>
+                        <p className="text-[10px] font-bold text-slate-600 uppercase mt-1">BaggedUp Administration</p>
+                    </div>
+                    {adminError && <div className="bg-red-900/30 border border-red-500/30 rounded-xl px-4 py-2 text-red-400 text-xs font-bold text-center">{adminError}</div>}
+                    <input
+                        type="password"
+                        value={adminPassword}
+                        onChange={e => setAdminPassword(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && adminLogin()}
+                        placeholder="Admin password"
+                        className="w-full bg-slate-800 border border-slate-700 focus:border-red-500 px-4 py-3 rounded-2xl text-white font-bold outline-none transition placeholder-slate-600"
+                        autoFocus
+                    />
+                    <div className="flex gap-3">
+                        <button onClick={() => setShowAdminLogin(false)} className="flex-1 py-3 bg-slate-800 rounded-2xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Cancel</button>
+                        <button onClick={adminLogin} className="flex-1 py-3 bg-red-600 hover:bg-red-500 rounded-2xl font-black uppercase text-xs text-white transition shadow-lg">Login →</button>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {/* =====================================================
+            ADMIN PANEL
+        ===================================================== */}
+        {showAdmin && isAdmin && (
+            <div className="fixed inset-0 z-[600] bg-slate-950 flex flex-col overflow-hidden">
+                {/* Admin Header */}
+                <div className="flex items-center gap-3 px-5 py-3 bg-slate-900 border-b border-red-500/20 shrink-0">
+                    <div className="text-xl">🛡</div>
+                    <div>
+                        <div className="font-black uppercase text-red-400 text-sm tracking-wide">BaggedUp Admin</div>
+                        <div className="text-[9px] font-bold text-slate-600 uppercase">Management Console</div>
+                    </div>
+                    <div className="ml-auto flex items-center gap-2">
+                        <span className="text-[9px] font-black uppercase text-slate-600">v44 • {adminUsers.length} users • {adminDiscs.length} community discs</span>
+                        <button onClick={loadAdminData} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-[9px] font-black uppercase text-slate-400 transition">↺ Refresh</button>
+                        <button onClick={() => setShowAdmin(false)} className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition">✕</button>
+                    </div>
+                </div>
+
+                {/* Tab bar */}
+                <div className="flex bg-slate-900 border-b border-slate-800 px-4 shrink-0">
+                    {[
+                        { id: 'inbox', label: '📬 Inbox', count: adminInbox.filter(i => !i.read).length },
+                        { id: 'discs', label: '💿 Discs', count: adminDiscs.filter(d => !d.approved).length },
+                        { id: 'users', label: '👥 Users', count: adminUsers.length },
+                    ].map(tab => (
+                        <button key={tab.id} onClick={() => setAdminTab(tab.id)}
+                            className={`px-5 py-3 font-black uppercase text-xs border-b-2 transition flex items-center gap-2 ${adminTab === tab.id ? 'border-red-500 text-red-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}>
+                            {tab.label}
+                            {tab.count > 0 && <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-full ${adminTab === tab.id ? 'bg-red-600 text-white' : 'bg-slate-700 text-slate-400'}`}>{tab.count}</span>}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Tab content */}
+                <div className="flex-1 overflow-y-auto p-5 space-y-3">
+                    {adminLoading && <div className="text-center py-20 text-slate-500 font-black uppercase text-sm">Loading...</div>}
+
+                    {/* ── INBOX TAB ── */}
+                    {!adminLoading && adminTab === 'inbox' && (<>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-black uppercase text-slate-400">User Submissions ({adminInbox.length})</h3>
+                            {adminInbox.filter(i => !i.read).length > 0 && <span className="text-[9px] font-black uppercase text-red-400">{adminInbox.filter(i => !i.read).length} unread</span>}
+                        </div>
+                        {adminInbox.length === 0 && <div className="text-center py-12 text-slate-600 font-bold text-sm">No submissions yet</div>}
+                        {adminInbox.map(item => (
+                            <div key={item.id} className={`rounded-2xl border p-4 space-y-2 ${item.read ? 'bg-slate-900/40 border-slate-800/40' : 'bg-slate-900 border-slate-700'}`}>
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${item.type === 'issue' ? 'bg-red-900/30 text-red-400 border border-red-500/20' : 'bg-blue-900/30 text-blue-400 border border-blue-500/20'}`}>
+                                            {item.type === 'issue' ? '🐛 Issue' : '💡 Suggestion'}
+                                        </span>
+                                        <span className="text-[9px] font-bold text-slate-500">@{item.username || 'anon'}</span>
+                                        {item.email && <span className="text-[9px] font-bold text-slate-600">{item.email}</span>}
+                                        {!item.read && <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />}
+                                    </div>
+                                    <span className="text-[8px] text-slate-700 font-bold shrink-0">{new Date(item.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-sm text-slate-300 font-medium leading-relaxed">{item.message}</p>
+                                <div className="flex gap-2">
+                                    {!item.read && <button onClick={() => adminMarkInboxRead(item)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-[9px] font-black uppercase text-slate-400 transition">✓ Mark Read</button>}
+                                    <button onClick={() => adminDeleteInboxItem(item)} className="px-3 py-1.5 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 rounded-xl text-[9px] font-black uppercase text-red-400 transition">✕ Delete</button>
+                                </div>
+                            </div>
+                        ))}
+                    </>)}
+
+                    {/* ── DISCS TAB ── */}
+                    {!adminLoading && adminTab === 'discs' && (<>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-black uppercase text-slate-400">Community Discs ({adminDiscs.length})</h3>
+                            <button onClick={() => { setAdminAddDiscOpen(true); setAdminNewDisc({ model: '', brand: '', speed: 7, glide: 5, turn: 0, fade: 2 }); }}
+                                className="flex items-center gap-1.5 px-4 py-2 bg-orange-600 hover:bg-orange-500 rounded-xl font-black uppercase text-[10px] text-white transition shadow-lg">
+                                + Add to Global DB
+                            </button>
+                        </div>
+
+                        {/* Add new disc form */}
+                        {adminAddDiscOpen && adminNewDisc && (
+                            <div className="bg-slate-900 border border-orange-500/30 rounded-2xl p-5 space-y-3 mb-4">
+                                <h4 className="text-[10px] font-black uppercase text-orange-400">Add to Global Disc Database</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">Disc Model</label>
+                                        <input value={adminNewDisc.model} onChange={e => setAdminNewDisc(d => ({...d, model: e.target.value}))} placeholder="e.g. Destroyer" className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-3 py-2 rounded-xl text-white font-bold text-sm outline-none transition" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">Manufacturer</label>
+                                        <input value={adminNewDisc.brand} onChange={e => setAdminNewDisc(d => ({...d, brand: e.target.value}))} placeholder="e.g. Innova" className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-3 py-2 rounded-xl text-white font-bold text-sm outline-none transition" />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2">
+                                    {[['Speed', 'speed', 1, 14], ['Glide', 'glide', 1, 7], ['Turn', 'turn', -5, 1], ['Fade', 'fade', 0, 5]].map(([label, key, min, max]) => (
+                                        <div key={key}>
+                                            <label className="text-[8px] font-black uppercase text-slate-500 block mb-1">{label}</label>
+                                            <input type="number" min={min} max={max} step="0.5" value={adminNewDisc[key]} onChange={e => setAdminNewDisc(d => ({...d, [key]: e.target.value}))} className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-2 py-2 rounded-xl text-white font-black text-sm text-center outline-none transition" />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setAdminAddDiscOpen(false)} className="px-4 py-2 bg-slate-800 rounded-xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Cancel</button>
+                                    <button onClick={() => adminAddNewDisc(adminNewDisc)} disabled={!adminNewDisc.model.trim() || !adminNewDisc.brand.trim()} className="flex-1 py-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 rounded-xl font-black uppercase text-xs text-white transition shadow-lg">✓ Add to Database</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Pending approval first */}
+                        {adminDiscs.filter(d => !d.approved).length > 0 && (
+                            <div className="text-[9px] font-black uppercase text-red-400 mb-2 px-1">⏳ Pending Approval ({adminDiscs.filter(d => !d.approved).length})</div>
+                        )}
+                        {adminDiscs.map(disc => (
+                            <div key={disc.id} className={`rounded-2xl border p-4 space-y-2 ${disc.approved ? 'bg-slate-900/40 border-slate-800/40' : 'bg-red-950/20 border-red-500/20'}`}>
+                                {adminEditDisc?.id === disc.id ? (
+                                    // Edit mode
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <input value={adminEditDisc.model} onChange={e => setAdminEditDisc(d => ({...d, model: e.target.value}))} className="bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl text-white font-bold text-sm outline-none border-orange-500" />
+                                            <input value={adminEditDisc.brand} onChange={e => setAdminEditDisc(d => ({...d, brand: e.target.value}))} className="bg-slate-800 border border-slate-700 px-3 py-2 rounded-xl text-white font-bold text-sm outline-none" />
+                                        </div>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {['speed','glide','turn','fade'].map(k => (
+                                                <div key={k}>
+                                                    <div className="text-[7px] font-black uppercase text-slate-600 mb-1">{k}</div>
+                                                    <input type="number" step="0.5" value={adminEditDisc[k]} onChange={e => setAdminEditDisc(d => ({...d, [k]: e.target.value}))} className="w-full bg-slate-800 border border-slate-700 px-2 py-2 rounded-xl text-white font-black text-sm text-center outline-none" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setAdminEditDisc(null)} className="px-3 py-1.5 bg-slate-800 rounded-xl font-black uppercase text-xs text-slate-400 hover:bg-slate-700 transition">Cancel</button>
+                                            <button onClick={() => adminSaveDiscEdit(adminEditDisc)} className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-xl font-black uppercase text-xs text-white transition">Save Changes</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-black uppercase text-white text-sm">{disc.model}</span>
+                                                <span className="text-slate-500 text-[10px] font-bold">{disc.brand}</span>
+                                                {!disc.approved && <span className="text-[8px] font-black uppercase bg-red-900/30 text-red-400 px-2 py-0.5 rounded-full border border-red-500/20">Pending</span>}
+                                                {disc.approved && <span className="text-[8px] font-black uppercase bg-emerald-900/30 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">✓ Approved</span>}
+                                            </div>
+                                            <div className="flex gap-2 mt-1">
+                                                {[['S', disc.speed], ['G', disc.glide], ['T', disc.turn], ['F', disc.fade]].map(([l, v]) => (
+                                                    <span key={l} className="text-[9px] font-bold text-slate-400">{l}:{v}</span>
+                                                ))}
+                                                {disc.added_by && <span className="text-[8px] text-slate-600 font-bold ml-2">added by user</span>}
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1.5 shrink-0">
+                                            <button onClick={() => setAdminEditDisc({...disc})} className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-xl text-[9px] font-black uppercase text-slate-400 transition">✏️ Edit</button>
+                                            {!disc.approved && <button onClick={() => adminApproveDisc(disc)} className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/40 border border-emerald-500/30 rounded-xl text-[9px] font-black uppercase text-emerald-400 transition">✓ Approve</button>}
+                                            <button onClick={() => adminRejectDisc(disc)} className="px-2.5 py-1.5 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 rounded-xl text-[9px] font-black uppercase text-red-400 transition">✕</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                        {adminDiscs.length === 0 && <div className="text-center py-12 text-slate-600 font-bold text-sm">No community discs yet</div>}
+                    </>)}
+
+                    {/* ── USERS TAB ── */}
+                    {!adminLoading && adminTab === 'users' && (<>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-black uppercase text-slate-400">All Users ({adminUsers.length})</h3>
+                        </div>
+                        {adminUsers.length === 0 && <div className="text-center py-12 text-slate-600 font-bold text-sm">No users found — check profiles table</div>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {adminUsers.map(user => (
+                                <div key={user.id} className={`rounded-2xl border p-4 flex items-center gap-3 ${user.banned ? 'bg-red-950/20 border-red-500/20 opacity-60' : 'bg-slate-900/60 border-slate-800'}`}>
+                                    <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0 border-2" style={{ backgroundColor: (user.colour || '#f97316') + '22', borderColor: user.colour || '#f97316' }}>
+                                        {user.icon || '🥏'}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-black uppercase text-white text-[11px] truncate">@{user.username || 'no username'}</div>
+                                        {user.email && <div className="text-[9px] font-bold text-slate-500 truncate">{user.email}</div>}
+                                        {user.pdga_number && <div className="text-[9px] font-bold text-cyan-500">PDGA #{user.pdga_number}</div>}
+                                        <div className="text-[8px] text-slate-700 font-bold mt-0.5">{user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</div>
+                                    </div>
+                                    <div className="flex flex-col gap-1 shrink-0">
+                                        {user.banned
+                                            ? <span className="text-[8px] font-black uppercase text-red-400">Banned</span>
+                                            : <button onClick={() => adminBanUser(user)} className="px-2 py-1 bg-red-900/20 hover:bg-red-900/40 border border-red-500/20 rounded-lg text-[8px] font-black uppercase text-red-400 transition">Ban</button>
+                                        }
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </>)}
+                </div>
+            </div>
+        )}
+
+        {/* =====================================================
+            HELP & FEEDBACK MODAL
+        ===================================================== */}
+        {showHelp && (
+            <div className="fixed inset-0 z-[400] bg-black/90 backdrop-blur-xl flex items-end sm:items-center justify-center p-4 pb-8 sm:pb-4">
+                <div className="w-full max-w-md bg-slate-900 border border-slate-700 rounded-3xl p-6 space-y-5 shadow-2xl">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-black italic uppercase text-white">Help & Feedback</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-0.5">Report issues or suggest improvements</p>
+                        </div>
+                        <button onClick={() => setShowHelp(false)} className="text-slate-500 hover:text-white text-xl transition">✕</button>
+                    </div>
+
+                    {helpSent ? (
+                        <div className="text-center py-8 space-y-3">
+                            <div className="text-5xl">🙏</div>
+                            <p className="text-emerald-400 font-black uppercase text-sm">Thank you!</p>
+                            <p className="text-slate-400 text-sm font-bold">Your feedback has been sent to the team.</p>
+                        </div>
+                    ) : (<>
+                        {/* Type toggle */}
+                        <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
+                            <button onClick={() => setHelpType('suggestion')} className={`flex-1 py-2.5 rounded-xl font-black uppercase text-xs transition ${helpType === 'suggestion' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                                💡 Suggestion
+                            </button>
+                            <button onClick={() => setHelpType('issue')} className={`flex-1 py-2.5 rounded-xl font-black uppercase text-xs transition ${helpType === 'issue' ? 'bg-red-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>
+                                🐛 Report Issue
+                            </button>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-[9px] font-black uppercase text-slate-500 tracking-wide">
+                                {helpType === 'suggestion' ? 'What feature or improvement would you love to see?' : 'What went wrong? What were you trying to do?'}
+                            </label>
+                            <textarea
+                                value={helpText}
+                                onChange={e => setHelpText(e.target.value)}
+                                placeholder={helpType === 'suggestion' ? 'e.g. "I\'d love to be able to track scores per round..."' : 'e.g. "Tapping Add Disc crashes the app on..."'}
+                                rows={4}
+                                className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-4 py-3 rounded-2xl text-white font-medium text-sm outline-none transition resize-none placeholder-slate-600"
+                            />
+                        </div>
+
+                        <div className="text-[9px] font-bold text-slate-600">Sent as @{myProfile?.username || 'anonymous'} · {session?.user?.email || 'not logged in'}</div>
+
+                        <button
+                            onClick={submitHelp}
+                            disabled={!helpText.trim()}
+                            className="w-full py-3.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 rounded-2xl font-black uppercase text-sm text-white shadow-xl transition"
+                        >
+                            Send {helpType === 'suggestion' ? 'Suggestion' : 'Bug Report'} →
+                        </button>
+                    </>)}
                 </div>
             </div>
         )}
