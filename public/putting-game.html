@@ -3,39 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NZ Putting Challenge | BaggedUp</title>
+    <title>BaggedUp Putting Pro | NZ</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --orange: #f97316; --bg: #080b12; --text: #f1f5f9; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'DM Sans', sans-serif; color: var(--text); }
-        canvas { display: block; }
+        :root { --orange: #f97316; --bg: #080b12; --sky: #0ea5e9; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'DM Sans', sans-serif; }
+        canvas { display: block; touch-action: none; }
         
-        .game-ui { position: absolute; top: 0; left: 0; right: 0; padding: 1.5rem; display: flex; justify-content: space-between; pointer-events: none; z-index: 5; }
-        .stats { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.05em; text-shadow: 0 2px 8px rgba(0,0,0,0.8); }
-        .stats span { color: var(--orange); }
+        /* Disc Golf Valley Style UI */
+        .game-ui { position: absolute; inset: 0; pointer-events: none; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; z-index: 10; }
+        .top-bar { display: flex; justify-content: space-between; align-items: flex-start; }
+        .hole-info { background: rgba(0,0,0,0.6); padding: 10px 20px; border-left: 4px solid var(--orange); }
+        .hole-name { font-family: 'Bebas Neue'; font-size: 2rem; margin: 0; line-height: 1; color: white; }
+        .hole-dist { font-size: 0.9rem; color: var(--orange); text-transform: uppercase; font-weight: bold; }
+        
+        .score-card { text-align: right; font-family: 'Bebas Neue'; font-size: 1.5rem; color: white; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .power-meter { position: absolute; left: 30px; bottom: 50px; width: 12px; height: 200px; background: rgba(255,255,255,0.2); border-radius: 10px; overflow: hidden; }
+        .power-fill { width: 100%; height: 0%; background: var(--orange); position: absolute; bottom: 0; transition: height 0.1s; }
 
-        .overlay { position: absolute; inset: 0; background: rgba(8,11,18,0.85); display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 10; backdrop-filter: blur(5px); }
-        .overlay h2 { font-family: 'Bebas Neue', sans-serif; font-size: 4rem; color: var(--orange); margin: 0; }
-        .btn { margin-top: 1.5rem; padding: 1rem 3rem; background: var(--orange); color: white; border: none; border-radius: 999px; cursor: pointer; font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; }
-        
-        .inst { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); opacity: 0.6; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.1em; pointer-events: none; }
+        .overlay { position: absolute; inset: 0; background: rgba(8,11,18,0.9); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 20; backdrop-filter: blur(10px); }
+        .overlay h2 { font-family: 'Bebas Neue'; font-size: 5rem; color: white; margin: 0; }
+        .overlay p { font-size: 1.2rem; color: var(--orange); margin-bottom: 20px; }
+        .btn { padding: 12px 40px; background: var(--orange); color: white; border: none; border-radius: 5px; cursor: pointer; font-family: 'Bebas Neue'; font-size: 1.8rem; }
     </style>
 </head>
 <body>
 
     <div class="game-ui">
-        <div class="stats">Hole: <span id="hole-num">1</span>/3</div>
-        <div class="stats">Throws: <span id="throw-num">0</span>/3</div>
-        <div class="stats">Score: <span id="total-score">0</span></div>
+        <div class="top-bar">
+            <div class="hole-info">
+                <p id="h-name" class="hole-name">LAKE TEKAPO</p>
+                <p id="h-dist" class="hole-dist">12 Meters</p>
+            </div>
+            <div class="score-card">
+                SCORE: <span id="total-score">0</span><br>
+                SHOT: <span id="throw-num">1</span>/3
+            </div>
+        </div>
+        <div class="power-meter"><div id="p-fill" class="power-fill"></div></div>
     </div>
 
     <div id="overlay" class="overlay">
-        <h2 id="msg-title">Chains!</h2>
-        <p id="msg-body">Great putt from the lakeside.</p>
-        <button class="btn" onclick="nextAction()">Next Shot</button>
+        <h2 id="msg-title">BIRDIE</h2>
+        <p id="msg-body">In the chains!</p>
+        <button class="btn" onclick="nextAction()">CONTINUE</button>
     </div>
-
-    <div class="inst">Swipe / Flick Up to Putt</div>
 
     <canvas id="gameCanvas"></canvas>
 
@@ -43,184 +55,221 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const overlay = document.getElementById('overlay');
+        const pFill = document.getElementById('p-fill');
 
         let width, height;
-        let hole = 1, throws = 0, score = 0;
+        let hole = 1, throws = 0, totalScore = 0;
         let isDragging = false, dragStart = {x:0, y:0};
         
-        // 3D Simulation State
-        let disc = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, size: 60, active: false, rotation: 0 };
-        let basket = { x: 0, z: 500, hit: false }; // z is distance
+        // Physics Consts
+        const GRAVITY = 0.15;
+        const AIR_RESISTANCE = 0.985;
 
-        const holeConfigs = [
-            { name: "Lake Tekapo", color: "#7dd3fc", basketDist: 450, basketSide: 0 },
-            { name: "Mount Cook Lookout", color: "#1e293b", basketDist: 700, basketSide: -100 },
-            { name: "Queenstown Forest", color: "#064e3b", basketDist: 350, basketSide: 150 }
+        let disc = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, active: false, tilt: 0, spin: 0 };
+        let basket = { x: 0, y: -120, z: 500 };
+
+        const holes = [
+            { name: "Lake Tekapo", sky: "#0ea5e9", ground: "#15803d", lake: "#7dd3fc", dist: 400, xOff: 0 },
+            { name: "Milford Sound", sky: "#334155", ground: "#064e3b", lake: "#0f172a", dist: 650, xOff: -80 },
+            { name: "Mount Cook", sky: "#bae6fd", ground: "#f1f5f9", lake: "#e2e8f0", dist: 350, xOff: 120 }
         ];
 
         function init() {
             width = canvas.width = window.innerWidth;
             height = canvas.height = window.innerHeight;
             resetDisc();
-            basket.z = holeConfigs[hole-1].basketDist;
-            basket.x = holeConfigs[hole-1].basketSide;
+            updateHoleUI();
+        }
+
+        function updateHoleUI() {
+            const h = holes[hole-1];
+            document.getElementById('h-name').innerText = h.name.toUpperCase();
+            document.getElementById('h-dist').innerText = (h.dist/40).toFixed(0) + " Meters";
+            basket.z = h.dist;
+            basket.x = h.xOff;
         }
 
         function resetDisc() {
             disc.x = 0; disc.y = 0; disc.z = 0;
             disc.vx = 0; disc.vy = 0; disc.vz = 0;
-            disc.active = false;
-            disc.size = 60;
+            disc.active = false; disc.tilt = 0; disc.spin = 0;
+            pFill.style.height = '0%';
         }
 
-        const handleStart = (e) => {
-            if (disc.active || overlay.style.display === 'flex') return;
-            isDragging = true;
-            dragStart = getPos(e);
-        };
+        const getInputPos = (e) => ({
+            x: e.touches ? e.touches[0].clientX : e.clientX,
+            y: e.touches ? e.touches[0].clientY : e.clientY
+        });
 
-        const handleEnd = (e) => {
+        window.addEventListener('mousedown', (e) => {
+            if (disc.active || overlay.style.display === 'flex') return;
+            isDragging = true; dragStart = getInputPos(e);
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            let currentY = getInputPos(e).y;
+            let power = Math.min(100, Math.max(0, (dragStart.y - currentY) / 3));
+            pFill.style.height = power + '%';
+        });
+
+        window.addEventListener('mouseup', (e) => {
             if (!isDragging) return;
             isDragging = false;
-            const endPos = getPos(e);
+            const end = getInputPos(e);
             
-            // Logic: Flick upward determines power (vz) and direction (vx)
-            disc.vz = (dragStart.y - endPos.y) * 0.12;
-            disc.vx = (endPos.x - dragStart.x) * 0.05;
-            disc.vy = -Math.abs(disc.vz * 0.3); // Slight upward arc
+            disc.vz = (dragStart.y - end.y) * 0.15;
+            disc.vx = (end.x - dragStart.x) * 0.06;
+            disc.vy = -disc.vz * 0.25; // Vertical launch angle
 
-            if (disc.vz > 5) {
+            if (disc.vz > 4) {
                 disc.active = true;
                 throws++;
                 document.getElementById('throw-num').innerText = throws;
+            } else {
+                resetDisc();
             }
-        };
+        });
 
-        function getPos(e) {
-            return {
-                x: e.touches ? e.touches[0].clientX : e.clientX,
-                y: e.touches ? e.touches[0].clientY : e.clientY
-            };
+        function drawBasket(bx, by, scale) {
+            ctx.save();
+            ctx.translate(bx, by);
+            ctx.scale(scale, scale);
+            
+            // Pole
+            ctx.fillStyle = "#475569";
+            ctx.fillRect(-2, -150, 4, 150);
+            
+            // Chains (Detailed)
+            ctx.strokeStyle = "#94a3b8";
+            ctx.lineWidth = 1.5;
+            for(let i=0; i<5; i++) {
+                ctx.beginPath();
+                ctx.moveTo(-25 + (i*12.5), -140);
+                ctx.quadraticCurveTo(0, -70, -25 + (i*12.5), -60);
+                ctx.stroke();
+            }
+            
+            // Top Band
+            ctx.fillStyle = "#f97316"; // Signature BaggedUp Orange
+            ctx.fillRect(-30, -150, 60, 10);
+            
+            // Basket Cage
+            ctx.fillStyle = "#334155";
+            ctx.beginPath();
+            ctx.moveTo(-40, -60); ctx.lineTo(40, -60);
+            ctx.lineTo(30, -10); ctx.lineTo(-30, -10);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
         }
 
-        window.addEventListener('mousedown', handleStart);
-        window.addEventListener('mouseup', handleEnd);
-        window.addEventListener('touchstart', handleStart);
-        window.addEventListener('touchend', handleEnd);
+        function drawDisc(dx, dy, scale) {
+            ctx.save();
+            ctx.translate(dx, dy);
+            ctx.scale(scale, scale);
+            
+            // Disc Edge (3D Effect)
+            ctx.fillStyle = "#ea6c0a";
+            ctx.beginPath();
+            ctx.ellipse(0, 5, 50, 15, 0, 0, Math.PI * 2);
+            ctx.fill();
 
-        function update() {
+            // Disc Top
+            ctx.fillStyle = "#f97316";
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 50, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Highlight
+            ctx.fillStyle = "rgba(255,255,255,0.3)";
+            ctx.beginPath();
+            ctx.ellipse(-10, -3, 20, 5, 0.2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function loop() {
+            const h = holes[hole-1];
+            
+            // Background
+            ctx.fillStyle = h.sky;
+            ctx.fillRect(0, 0, width, height/2);
+            ctx.fillStyle = h.ground;
+            ctx.fillRect(0, height/2, width, height/2);
+
+            // 3D Projection Calculations
+            const camFocal = 400;
+            
+            // Update Disc Physics
             if (disc.active) {
-                disc.z += disc.vz;
                 disc.x += disc.vx;
                 disc.y += disc.vy;
-                disc.vy += 0.2; // Gravity simulation
-                disc.size = Math.max(10, 60 * (1 - disc.z/1000)); // Perspective scaling
-                disc.rotation += 0.2;
+                disc.z += disc.vz;
+                disc.vy += GRAVITY;
+                disc.vx *= AIR_RESISTANCE;
+                disc.vz *= AIR_RESISTANCE;
 
-                // Collision with Basket
-                let dx = disc.x - basket.x;
-                let dz = disc.z - basket.z;
-                if (Math.abs(dz) < 20 && Math.abs(dx) < 40 && disc.y < -50 && disc.y > -250) {
-                    score += 100;
-                    document.getElementById('total-score').innerText = score;
-                    showOverlay("Chains!", "Perfect shot at " + holeConfigs[hole-1].name);
+                // Collision Logic
+                let distToBasket = Math.sqrt((disc.x - basket.x)**2 + (disc.z - basket.z)**2);
+                if (distToBasket < 40 && disc.y < basket.y + 50 && disc.y > basket.y - 100) {
+                    totalScore += (4 - throws) * 100;
+                    document.getElementById('total-score').innerText = totalScore;
+                    showOverlay("PUTT MADE", "Birdie! Great flight path.");
                     disc.active = false;
                 }
 
-                // Reset if missed
-                if (disc.z > basket.z + 100 || disc.y > 100) {
-                    if (throws >= 3) showOverlay("Hole Over", "Try the next one.");
+                if (disc.z > basket.z + 200 || disc.y > 200) {
+                    if (throws >= 3) showOverlay("HOLE COMPLETE", "Finalizing your scorecard...");
                     else resetDisc();
                 }
             }
-        }
 
-        function draw() {
-            // 1. Draw Environment (NZ Theme)
-            let cfg = holeConfigs[hole-1];
-            let grad = ctx.createLinearGradient(0, 0, 0, height);
-            grad.addColorStop(0, '#0ea5e9'); // Sky
-            grad.addColorStop(0.5, '#f1f5f9'); // Horizon/Mountains
-            grad.addColorStop(0.5, '#15803d'); // Grass
-            grad.addColorStop(1, '#065f46');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, width, height);
-
-            // Draw Lake
-            ctx.fillStyle = cfg.color;
-            ctx.beginPath();
-            ctx.ellipse(width/2, height*0.6, width, height*0.2, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // 2. Draw Basket (Perspective)
-            let bScale = 400 / (basket.z || 1);
+            // Render Basket
+            let bScale = camFocal / (basket.z);
             let bx = width/2 + basket.x * bScale;
             let by = height/2 + 100 * bScale;
+            drawBasket(bx, by, bScale);
 
-            ctx.save();
-            ctx.translate(bx, by);
-            ctx.scale(bScale, bScale);
-            // Basket Pole
-            ctx.fillStyle = "#64748b";
-            ctx.fillRect(-2, -150, 4, 150);
-            // Chains
-            ctx.strokeStyle = "#94a3b8";
-            ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.moveTo(-30, -140); ctx.lineTo(30, -140); ctx.lineTo(15, -60); ctx.lineTo(-15, -60); ctx.closePath(); ctx.stroke();
-            // Basket Tray
-            ctx.fillStyle = "#475569";
-            ctx.fillRect(-35, -60, 70, 20);
-            ctx.restore();
-
-            // 3. Draw Disc (First Person)
+            // Render Disc
+            let dScale = camFocal / (disc.z + camFocal);
+            let dx = width/2 + disc.x * dScale;
+            let dy = height - 150 + (disc.y * dScale);
             if (disc.active || !isDragging) {
-                let dx = width/2 + disc.x * (400/(disc.z+1));
-                let dy = height - 150 + disc.y;
-                
-                ctx.save();
-                ctx.translate(dx, dy);
-                ctx.rotate(disc.rotation);
-                // Disc Shadow
-                ctx.fillStyle = "rgba(0,0,0,0.2)";
-                ctx.beginPath(); ctx.ellipse(0, 20, disc.size, disc.size/3, 0, 0, Math.PI*2); ctx.fill();
-                // Disc Body
-                ctx.fillStyle = "#f97316";
-                ctx.beginPath(); ctx.ellipse(0, 0, disc.size, disc.size/3, 0, 0, Math.PI*2); ctx.fill();
-                ctx.strokeStyle = "#ea6c0a"; ctx.lineWidth = 3; ctx.stroke();
-                ctx.restore();
+                drawDisc(dx, dy, dScale * (disc.active ? 1 : 1.5));
             }
 
-            update();
-            requestAnimationFrame(draw);
+            requestAnimationFrame(loop);
         }
 
-        function showOverlay(title, body) {
-            document.getElementById('msg-title').innerText = title;
-            document.getElementById('msg-body').innerText = body;
+        function showOverlay(t, b) {
+            document.getElementById('msg-title').innerText = t;
+            document.getElementById('msg-body').innerText = b;
             overlay.style.display = 'flex';
         }
 
         function nextAction() {
             overlay.style.display = 'none';
-            resetDisc();
             if (throws >= 3) {
                 if (hole >= 3) {
-                    alert("Tournament Finished! Total Score: " + score);
+                    alert("Tournament Finished! Final Score: " + totalScore);
                     window.location.href = "/index.html";
                 } else {
-                    hole++;
-                    throws = 0;
-                    document.getElementById('hole-num').innerText = hole;
-                    document.getElementById('throw-num').innerText = 0;
-                    basket.z = holeConfigs[hole-1].basketDist;
-                    basket.x = holeConfigs[hole-1].basketSide;
+                    hole++; throws = 0;
+                    document.getElementById('throw-num').innerText = 1;
+                    updateHoleUI();
+                    resetDisc();
                 }
+            } else {
+                resetDisc();
             }
         }
 
         window.addEventListener('resize', init);
         init();
-        draw();
+        loop();
     </script>
 </body>
 </html>
