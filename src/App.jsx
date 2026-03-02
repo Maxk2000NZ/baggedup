@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 import Chart from 'chart.js/auto';
 
 const LOGO_URL = '/baggedup.logo.png';
-const APP_VERSION = 'v37.02-AI';
+const APP_VERSION = 'v39.00-AI';
 
 const FACTORY_DB = [
     // ── Original entries ──
@@ -674,6 +674,21 @@ export default function App() {
     const [verifyFade, setVerifyFade] = useState(0);
     const [verifyCorrecting, setVerifyCorrecting] = useState(false);
 
+    // My Coach (AI coaching feature)
+    const [showMyCoach, setShowMyCoach] = useState(false);
+    const [coachMessages, setCoachMessages] = useState([]);
+    const [coachInput, setCoachInput] = useState('');
+    const [coachLoading, setCoachLoading] = useState(false);
+    const coachEndRef = useRef(null);
+
+    // Bag creation with capacity
+    const [showCreateBag, setShowCreateBag] = useState(false);
+    const [newBagName, setNewBagName] = useState('');
+    const [newBagCapacity, setNewBagCapacity] = useState(18);
+
+    // Leaderboard-in-cardmates tab
+    const [cardMatesTab, setCardMatesTab] = useState('mates'); // 'mates' | 'leaderboard'
+
     // Card Mates
     const [showCardMates, setShowCardMates] = useState(false);
     const [cardMates, setCardMates] = useState([]);
@@ -725,7 +740,7 @@ export default function App() {
     const desktopPathRef = useRef(null);
     const desktopStabRef = useRef(null);
 
-    // Set favicon + load export libraries
+    // Set favicon + inject SEO meta tags + load export libraries
     useEffect(() => {
         // Cache-bust favicon
         document.querySelectorAll("link[rel*='icon']").forEach(el => el.remove());
@@ -733,6 +748,28 @@ export default function App() {
         link.type = 'image/png'; link.rel = 'icon';
         link.href = '/BaggedUp.Favicon.png?v=' + Date.now();
         document.head.appendChild(link);
+
+        // SEO Meta Tags
+        const setMeta = (name, content, prop = false) => {
+            const attr = prop ? 'property' : 'name';
+            let el = document.querySelector(`meta[${attr}="${name}"]`);
+            if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+            el.setAttribute('content', content);
+        };
+        document.title = 'BaggedUp — Your Disc Golf Bag, Tracked';
+        setMeta('description', 'BaggedUp is the ultimate disc golf bag tracker. Track your discs, analyse flight paths, get AI bag coaching, build the perfect bag, and connect with card mates.');
+        setMeta('keywords', 'disc golf, bag tracker, disc tracker, flight path, bag builder, disc golf app, PDGA, frisbee golf, bag analysis');
+        setMeta('author', 'BaggedUp');
+        setMeta('robots', 'index, follow');
+        setMeta('og:title', 'BaggedUp — Your Disc Golf Bag, Tracked', true);
+        setMeta('og:description', 'Track your discs, analyse flights, get AI coaching and connect with card mates. The ultimate disc golf bag app.', true);
+        setMeta('og:image', '/baggedup.logo.png', true);
+        setMeta('og:url', 'https://baggedup.vercel.app', true);
+        setMeta('og:type', 'website', true);
+        setMeta('twitter:card', 'summary_large_image');
+        setMeta('twitter:title', 'BaggedUp — Your Disc Golf Bag, Tracked');
+        setMeta('twitter:description', 'Track your discs, analyse flights, get AI coaching and connect with card mates.');
+        setMeta('twitter:image', '/baggedup.logo.png');
 
         // Preload jsPDF
         if (!window.jspdf) {
@@ -927,8 +964,8 @@ export default function App() {
         setMateBagLoading(false);
     };
 
-    const createBag = async (name) => {
-        const { data } = await supabase.from('bags').insert({ user_id: session.user.id, name }).select().single();
+    const createBag = async (name, capacity = 18) => {
+        const { data } = await supabase.from('bags').insert({ user_id: session.user.id, name, capacity: capacity || 18 }).select().single();
         if (data) { setBags([...bags, data]); setActiveBagId(data.id); setView('active'); }
     };
 
@@ -1240,6 +1277,59 @@ ${responseFormat}`;
             setAIResult({ error: `${err.message || 'Something went wrong. Check your API key in Settings.'}` });
         }
         setAILoading(false);
+    };
+
+    // --- MY COACH (Anthropic-powered) ---
+    const sendCoachMessage = async () => {
+        if (!coachInput.trim()) return;
+        const userMsg = { role: 'user', content: coachInput.trim() };
+        const updated = [...coachMessages, userMsg];
+        setCoachMessages(updated);
+        setCoachInput('');
+        setCoachLoading(true);
+        setTimeout(() => coachEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+
+        const systemPrompt = `You are "My Coach" — an expert disc golf coach and biomechanics advisor inside the BaggedUp app. 
+You help players improve form, fix errors, build training plans, and recommend YouTube videos.
+
+Player Profile:
+- Handedness: ${settings.handedness}-handed
+- Skill level: ${settings.skillLevel}
+- Backhand max: ~${settings.bhPower || 350}ft
+- Forehand max: ~${settings.fhPower || 250}ft
+- Throw style: ${settings.throwStyle}
+- Country: ${settings.country || 'Unknown'}
+
+Discs in bag: ${discs.filter(d=>d.bag_id===activeBagId&&d.status==='active'&&!d.is_idea).map(d=>d.name).join(', ') || 'None set'}
+
+Guidelines:
+- Give specific, actionable advice
+- For form issues, describe the fix step-by-step
+- For training plans, structure day-by-day or week-by-week
+- When recommending YouTube videos, suggest REAL disc golf instructors: Brodie Smith, Simon Lizotte, Dynamic Discs, Throw Pink, Jerm Disc Golf, Eagle McMahon, GK Pro. Format as: 🎥 **[Video Title idea]** — search: "channel name + topic" on YouTube
+- Be encouraging but honest
+- Keep responses concise but thorough
+- Use emojis sparingly for readability`;
+
+        try {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: 'claude-sonnet-4-20250514',
+                    max_tokens: 1000,
+                    system: systemPrompt,
+                    messages: updated.map(m => ({ role: m.role, content: m.content })),
+                })
+            });
+            const data = await response.json();
+            const reply = data.content?.map(b => b.text || '').join('') || 'Sorry, I had trouble responding. Please try again.';
+            setCoachMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+        } catch (err) {
+            setCoachMessages(prev => [...prev, { role: 'assistant', content: "I'm having trouble connecting right now. Please try again in a moment." }]);
+        }
+        setCoachLoading(false);
+        setTimeout(() => coachEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     };
 
     // --- LOST DISC GPS ---
@@ -1576,12 +1666,18 @@ ${responseFormat}`;
         const gaps = SLOTS.filter(s=>!filled.has(s.key)).sort((a,b)=>a.priority-b.priority)
             .map(s=>({...s, suggestions:ALL_DISCS.filter(SLOT_FILTER[s.key]).slice(0,4)}));
 
+        const activeBagObj = bags.find(b => b.id === activeBagId);
+        const bagCapacity = activeBagObj?.capacity || 18;
+
         return {
             gaps, allFilled: gaps.length===0,
             text: gaps.length===0 ? '✓ Bag Optimised' : `Gap: ${gaps[0]?.label}`,
             filter: gaps[0] ? SLOT_FILTER[gaps[0].key] : null,
+            bagCapacity,
+            discsInBag: active.length,
+            spotsLeft: Math.max(0, bagCapacity - active.length),
         };
-    }, [discs, activeBagId, communitySuggestions]);
+    }, [discs, activeBagId, communitySuggestions, bags]);
 
     // --- SHARED CHART CONFIG BUILDER ---
     // forExport=true → draws disc name pill-labels on canvas (no overlap, larger text)
@@ -2147,6 +2243,9 @@ ${responseFormat}`;
                 <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-pink-400 hover:bg-slate-800 transition">
                     <span className="text-base">🎯</span> Bag Builder
                 </button>
+                <button onClick={() => setShowMyCoach(true)} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-emerald-400 hover:bg-slate-800 transition">
+                    <span className="text-base">🧑‍🏫</span> My Coach
+                </button>
                 <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); }} className="flex items-center gap-3 px-3 py-2.5 rounded-xl font-black uppercase text-[10px] text-yellow-400 hover:bg-slate-800 transition">
                     <span className="text-base">🏆</span> Leaderboard
                 </button>
@@ -2186,6 +2285,7 @@ ${responseFormat}`;
                         </button>
                         <button onClick={() => { setShowHeatmap(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-violet-400 hover:bg-slate-800 transition"><span className="text-xl">🔥</span> Mold Heatmap</button>
                         <button onClick={() => { setShowAIBuilder(true); setAIResult(null); setAIPrompt(''); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-pink-400 hover:bg-slate-800 transition"><span className="text-xl">🎯</span> Bag Builder</button>
+                        <button onClick={() => { setShowMyCoach(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-emerald-400 hover:bg-slate-800 transition"><span className="text-xl">🧑‍🏫</span> My Coach</button>
                         <button onClick={() => { setShowLeaderboard(true); loadLeaderboard(); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-slate-800 transition"><span className="text-xl">🏆</span> Leaderboard</button>
                         <button onClick={() => { setShowCardMates(true); setSidebarOpen(false); }} className="flex items-center gap-4 p-4 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-slate-800 transition">
                             <span className="text-xl">🤝</span> Card Mates
@@ -2203,32 +2303,51 @@ ${responseFormat}`;
             <div className="flex-1 flex flex-col overflow-hidden min-w-0">
 
                 {/* HEADER */}
-                <header className="h-16 border-b border-slate-800 flex items-center justify-between px-4 shrink-0 z-50 glass sticky top-0">
-                    <div className="flex items-center gap-3">
-                        <button onClick={() => setSidebarOpen(true)} className="text-2xl lg:hidden">☰</button>
-                        <img src={LOGO_URL} alt="BaggedUp Logo" className="h-8 w-8 object-contain lg:hidden" />
-                        <span className="lg:hidden font-black uppercase text-white text-sm">Bagged<span className="text-orange-500">Up</span></span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="relative flex items-center">
-                            <span className="absolute left-3 text-orange-500 text-xs pointer-events-none">🎒</span>
-                            <select
-                                value={activeBagId}
-                                onChange={(e) => setActiveBagId(e.target.value)}
-                                className="appearance-none bg-slate-800 border border-slate-700 text-orange-500 font-black text-[11px] uppercase pl-8 pr-8 py-2.5 rounded-2xl outline-none cursor-pointer hover:border-orange-500 transition focus:border-orange-500"
-                            >
-                                {bags.map(b => <option key={b.id} value={b.id} style={{background:'#1e293b'}}>{b.name}</option>)}
-                            </select>
-                            <span className="absolute right-3 text-slate-500 text-[10px] pointer-events-none">▾</span>
+                <header className="h-14 border-b border-slate-800 flex items-center justify-between px-3 shrink-0 z-50 glass sticky top-0">
+                    {/* Left: menu + logo (mobile) / bag selector (desktop) */}
+                    <div className="flex items-center gap-2 min-w-0">
+                        <button onClick={() => setSidebarOpen(true)} className="text-xl text-slate-400 hover:text-white lg:hidden transition p-1">☰</button>
+                        <div className="hidden lg:flex items-center gap-2">
+                            <img src={LOGO_URL} alt="BaggedUp" className="h-6 w-6 object-contain" />
+                            <span className="font-black uppercase text-white text-xs tracking-wide">Bagged<span className="text-orange-500">Up</span></span>
                         </div>
-                        <button
-                            onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }}
-                            className="w-9 h-9 rounded-2xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition flex items-center justify-center text-sm"
-                            title="Rename bag"
-                        >✎</button>
+                        <div className="flex items-center gap-1.5 ml-1">
+                            <div className="relative flex items-center">
+                                <span className="absolute left-2.5 text-orange-500 text-xs pointer-events-none">🎒</span>
+                                <select
+                                    value={activeBagId}
+                                    onChange={(e) => setActiveBagId(e.target.value)}
+                                    className="appearance-none bg-slate-800 border border-slate-700 text-orange-500 font-black text-[11px] uppercase pl-7 pr-6 py-2 rounded-xl outline-none cursor-pointer hover:border-orange-500 transition focus:border-orange-500 max-w-[130px] lg:max-w-[180px]"
+                                >
+                                    {bags.map(b => <option key={b.id} value={b.id} style={{background:'#1e293b'}}>{b.name}</option>)}
+                                </select>
+                                <span className="absolute right-2 text-slate-500 text-[9px] pointer-events-none">▾</span>
+                            </div>
+                            <button
+                                onClick={() => { const n = prompt("Rename Bag:"); if (n) updateBagName(activeBagId, n); }}
+                                className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white hover:border-slate-500 transition flex items-center justify-center text-xs"
+                                title="Rename bag"
+                            >✎</button>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <button onClick={() => setShowSearch(true)} className="bg-orange-600 w-10 h-10 rounded-full font-black text-xl flex items-center justify-center shadow-lg">+</button>
+                    {/* Center: app name (mobile only) */}
+                    <div className="lg:hidden absolute left-1/2 -translate-x-1/2 flex items-center gap-1.5 pointer-events-none">
+                        <img src={LOGO_URL} alt="" className="h-5 w-5 object-contain opacity-80" />
+                        <span className="font-black uppercase text-white text-xs">Bagged<span className="text-orange-500">Up</span></span>
+                    </div>
+                    {/* Right: quick actions */}
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => { setShowMyCoach(true); }}
+                            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/80 to-cyan-600/80 hover:from-emerald-500 hover:to-cyan-500 transition text-white font-black text-[9px] uppercase border border-emerald-500/40"
+                            title="My Coach"
+                        >🧑‍🏫 Coach</button>
+                        <button
+                            onClick={() => { setShowMyCoach(true); }}
+                            className="sm:hidden w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600/80 to-cyan-600/80 border border-emerald-500/40 flex items-center justify-center text-sm"
+                            title="My Coach"
+                        >🧑‍🏫</button>
+                        <button onClick={() => setShowSearch(true)} className="bg-orange-600 hover:bg-orange-500 w-9 h-9 rounded-xl font-black text-lg flex items-center justify-center shadow-lg transition">+</button>
                     </div>
                 </header>
 
@@ -2317,7 +2436,7 @@ ${responseFormat}`;
                                         </div>
                                         <span className={`text-xs font-black ${bagScore.color}`}>{bagScore.total}/100</span>
                                     </div>
-                                    <div className="text-[9px] font-bold text-slate-600 uppercase mt-0.5">{bagScore.filledSlots}/12 slots • {bagScore.overlaps > 0 ? `${bagScore.overlaps} overlap${bagScore.overlaps > 1 ? 's' : ''}` : 'No overlaps'} — Tap for Smart Bag Coach 🧠</div>
+                                    <div className="text-[9px] font-bold text-slate-600 uppercase mt-0.5">{bagScore.filledSlots}/12 slots • {bagScore.overlaps > 0 ? `${bagScore.overlaps} overlap${bagScore.overlaps > 1 ? 's' : ''}` : 'No overlaps'} {gapAnalysis?.spotsLeft != null ? `• ${gapAnalysis.spotsLeft} spots left in bag` : ''} — Tap for Smart Bag Coach 🧠</div>
                                 </div>
                             </button>
                         </div>
@@ -2994,27 +3113,65 @@ ${responseFormat}`;
                                 </div>
 
                                 {/* BH and FH arm speed sliders */}
-                                {[
-                                    { key: 'bhPower', label: '↩ Backhand Max', color: 'text-orange-500' },
-                                    { key: 'fhPower', label: '↪ Forehand Max', color: 'text-cyan-400' },
-                                ].map(({ key, label, color }) => {
-                                    const val = settings.unit === 'm' ? Math.round((settings[key] || 300) * 0.3048) : (settings[key] || 300);
-                                    return (
-                                        <div key={key} className="bg-slate-800 p-4 rounded-2xl space-y-3">
+                                {(() => {
+                                    const bhVal = settings.unit === 'm' ? Math.round((settings.bhPower || 300) * 0.3048) : (settings.bhPower || 300);
+                                    const fhVal = settings.unit === 'm' ? Math.round((settings.fhPower || 250) * 0.3048) : (settings.fhPower || 250);
+                                    // Speed recommendations based on distance
+                                    const getSpeedRec = (distFt) => {
+                                        if (distFt < 175) return { maxSpeed: 5, label: 'Putters & Mids only', color: 'text-blue-400', tip: 'Focus on putters (speed 1-3) and midranges (4-6). High-speed drivers will just go right — understable discs in your hands behave overstable.' };
+                                        if (distFt < 250) return { maxSpeed: 7, label: 'Up to Fairway Drivers', color: 'text-cyan-400', tip: 'You can use fairway drivers (speed 6-8). Distance drivers will likely turn over — stick to understable molds until your arm develops more snap.' };
+                                        if (distFt < 325) return { maxSpeed: 9, label: 'Fairways + Entry Drivers', color: 'text-yellow-400', tip: 'Speed 7-9 is your sweet spot. You can throw some distance drivers with hyzer release. Avoid speed 12+ until you\'re consistently reaching 325ft.' };
+                                        if (distFt < 400) return { maxSpeed: 11, label: 'Most Drivers', color: 'text-orange-400', tip: 'You can effectively throw speed 9-11 discs. Speed 12-13 may still feel unpredictable. Focus on disc selection matching course conditions.' };
+                                        return { maxSpeed: 14, label: 'Full Bag Available', color: 'text-emerald-400', tip: 'You have the arm speed for any disc. Overstable high-speed drivers are your headwind weapons. Focus on consistency and shot shaping over raw power.' };
+                                    };
+                                    const bhRec = getSpeedRec(settings.bhPower || 300);
+                                    const fhRec = getSpeedRec(settings.fhPower || 250);
+                                    return (<>
+                                        {/* Backhand */}
+                                        <div className="bg-slate-800 p-4 rounded-2xl space-y-3">
                                             <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
-                                                <span>{label}</span>
-                                                <span className={color}>{val}{settings.unit}</span>
+                                                <span>↩ Backhand Max Distance</span>
+                                                <span className="text-orange-500">{bhVal}{settings.unit}</span>
                                             </div>
                                             <input type="range"
                                                 min={settings.unit === 'm' ? 30 : 100}
                                                 max={settings.unit === 'm' ? 183 : 600}
                                                 step={settings.unit === 'm' ? 1 : 5}
-                                                value={val}
-                                                onChange={(e) => { const v = Number(e.target.value); const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v; setSettings({...settings, [key]: inFeet, maxPower: key === 'bhPower' ? inFeet : settings.maxPower}); }}
+                                                value={bhVal}
+                                                onChange={(e) => { const v = Number(e.target.value); const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v; setSettings({...settings, bhPower: inFeet, maxPower: inFeet}); }}
                                                 className="w-full" />
+                                            <div className="bg-slate-700/60 rounded-xl p-3 space-y-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] font-black uppercase ${bhRec.color}`}>🎯 {bhRec.label}</span>
+                                                    <span className="text-[9px] font-bold text-slate-500 ml-auto">Max speed: {bhRec.maxSpeed}</span>
+                                                </div>
+                                                <p className="text-[9px] font-bold text-slate-400 leading-relaxed">{bhRec.tip}</p>
+                                            </div>
                                         </div>
-                                    );
-                                })}
+                                        {/* Forehand */}
+                                        <div className="bg-slate-800 p-4 rounded-2xl space-y-3">
+                                            <div className="flex justify-between text-[10px] font-black uppercase text-slate-400">
+                                                <span>↪ Forehand Max Distance</span>
+                                                <span className="text-cyan-400">{fhVal}{settings.unit}</span>
+                                            </div>
+                                            <input type="range"
+                                                min={settings.unit === 'm' ? 30 : 100}
+                                                max={settings.unit === 'm' ? 183 : 600}
+                                                step={settings.unit === 'm' ? 1 : 5}
+                                                value={fhVal}
+                                                onChange={(e) => { const v = Number(e.target.value); const inFeet = settings.unit === 'm' ? Math.round(v / 0.3048) : v; setSettings({...settings, fhPower: inFeet}); }}
+                                                className="w-full" />
+                                            <div className="bg-slate-700/60 rounded-xl p-3 space-y-1.5">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] font-black uppercase ${fhRec.color}`}>🎯 {fhRec.label}</span>
+                                                    <span className="text-[9px] font-bold text-slate-500 ml-auto">Max speed: {fhRec.maxSpeed}</span>
+                                                </div>
+                                                <p className="text-[9px] font-bold text-slate-400 leading-relaxed">{fhRec.tip}</p>
+                                            </div>
+                                            <p className="text-[8px] text-slate-600 font-bold">Tip: Most players throw forehand 50-80ft less than backhand. It's normal — forehand is a precision throw, not a power throw.</p>
+                                        </div>
+                                    </>);
+                                })()}
                                 <button onClick={() => { saveSettings(settings); setShowSettings(false); }}
                                     className="w-full bg-orange-600 hover:bg-orange-500 py-4 rounded-2xl font-black uppercase text-white shadow-xl transition">
                                     Save & Close
@@ -3045,7 +3202,7 @@ ${responseFormat}`;
                                     </div>
                                     <p className="text-[9px] font-bold text-slate-700 uppercase">Public bags are visible to your Card Mates. Private bags are only visible to you.</p>
                                 </div>
-                                <button onClick={() => { const n = prompt("New Bag Name:"); if (n) createBag(n); setShowSettings(false); }}
+                                <button onClick={() => { setNewBagName(''); setNewBagCapacity(18); setShowCreateBag(true); setShowSettings(false); }}
                                     className="w-full py-4 text-xs font-black uppercase text-slate-500 hover:text-slate-300 transition">
                                     + Create New Bag
                                 </button>
@@ -3768,6 +3925,67 @@ ${responseFormat}`;
                         <button onClick={() => { setShowCardMates(false); setViewingMate(null); setCardMateSearchResult(null); setCardMateSearch(''); }} className="text-2xl text-slate-500 hover:text-white">✕</button>
                     </div>
 
+                    {/* Tabs */}
+                    <div className="flex bg-slate-800 p-1 rounded-2xl gap-1">
+                        <button onClick={() => setCardMatesTab('mates')} className={`flex-1 py-2.5 rounded-xl font-black uppercase text-xs transition ${cardMatesTab === 'mates' ? 'bg-cyan-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>🤝 My Mates{cardMates.length > 0 && ` (${cardMates.length})`}</button>
+                        <button onClick={() => { setCardMatesTab('leaderboard'); loadLeaderboard(); }} className={`flex-1 py-2.5 rounded-xl font-black uppercase text-xs transition ${cardMatesTab === 'leaderboard' ? 'bg-yellow-600 text-white shadow' : 'text-slate-400 hover:text-white'}`}>🏆 Leaderboard</button>
+                    </div>
+
+                    {/* ── LEADERBOARD TAB ── */}
+                    {cardMatesTab === 'leaderboard' && (<>
+                        {leaderboardLoading && (
+                            <div className="text-center py-12">
+                                <div className="text-4xl mb-3 animate-bounce">🏆</div>
+                                <p className="text-slate-400 font-bold text-sm uppercase">Loading scores...</p>
+                            </div>
+                        )}
+                        {!leaderboardLoading && leaderboardData.length === 0 && (
+                            <div className="text-center py-12 bg-slate-900 rounded-3xl border border-slate-800">
+                                <div className="text-4xl mb-3">🤝</div>
+                                <p className="text-slate-400 font-bold uppercase text-sm">Add Card Mates to see the leaderboard</p>
+                                <button onClick={() => setCardMatesTab('mates')} className="mt-4 px-6 py-3 bg-cyan-600/20 border border-cyan-500/30 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-cyan-600/30 transition">Add Card Mates →</button>
+                            </div>
+                        )}
+                        {!leaderboardLoading && leaderboardData.length > 0 && (
+                            <div className="space-y-3">
+                                {leaderboardData.map((entry, i) => {
+                                    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i+1}`;
+                                    const gradeColor = entry.score >= 90 ? 'text-emerald-400' : entry.score >= 75 ? 'text-green-400' : entry.score >= 60 ? 'text-yellow-400' : entry.score >= 45 ? 'text-orange-400' : 'text-red-400';
+                                    return (
+                                        <div key={i} className={`flex items-center gap-4 px-5 py-4 rounded-2xl border transition ${entry.isYou ? 'bg-orange-900/20 border-orange-500/30' : 'bg-slate-900 border-slate-800'}`}>
+                                            <span className="text-xl shrink-0">{medal}</span>
+                                            <div className="w-10 h-10 rounded-2xl flex items-center justify-center text-lg shrink-0 border-2" style={{ backgroundColor: (entry.colour || '#f97316') + '22', borderColor: entry.colour || '#f97316' }}>
+                                                {entry.icon}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-black uppercase text-white text-sm truncate">
+                                                        {entry.isYou ? `${entry.username} (You)` : entry.username}
+                                                    </span>
+                                                    {entry.isYou && <span className="text-[8px] font-black uppercase bg-orange-500/20 text-orange-400 px-1.5 py-0.5 rounded-full shrink-0">You</span>}
+                                                </div>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden max-w-[120px]">
+                                                        <div className={`h-full rounded-full ${entry.score >= 75 ? 'bg-emerald-500' : entry.score >= 50 ? 'bg-yellow-500' : 'bg-orange-500'}`} style={{ width: `${entry.score}%` }} />
+                                                    </div>
+                                                    <span className={`text-[10px] font-black ${gradeColor}`}>{entry.score}/100</span>
+                                                    <span className="text-[9px] font-bold text-slate-600 uppercase">{entry.discCount} discs</span>
+                                                </div>
+                                            </div>
+                                            <div className={`text-3xl font-black italic shrink-0 ${gradeColor}`}>{entry.grade}</div>
+                                        </div>
+                                    );
+                                })}
+                                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl px-5 py-3">
+                                    <p className="text-[9px] font-bold text-slate-600 uppercase">Scores based on bag coverage, speed spread and disc count. Only public bags count.</p>
+                                </div>
+                                <button onClick={() => loadLeaderboard()} className="w-full py-3 bg-yellow-600/20 border border-yellow-500/30 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-yellow-600/30 transition">↺ Refresh Leaderboard</button>
+                            </div>
+                        )}
+                    </>)}
+
+                    {/* ── MATES TAB ── */}
+                    {cardMatesTab === 'mates' && (<>
                     {/* Search bar */}
                     <div className="flex gap-3">
                         <input
@@ -3944,6 +4162,7 @@ ${responseFormat}`;
                             </div>
                         )}
                     </div>
+                    </>)} {/* end mates tab */}
 
                 </div>
             </div>
@@ -4067,21 +4286,25 @@ ${responseFormat}`;
                             <div className="bg-red-900/20 border border-red-500/30 rounded-2xl px-5 py-4">
                                 <p className="text-[10px] font-black uppercase text-red-400 mb-2">⚠️ Arm Speed Advisory</p>
                                 <p className="text-sm font-bold text-red-300 mb-1">
-                                    Your backhand ({settings.unit === 'm' ? Math.round(bh * 0.3048) : bh}{settings.unit}) is most effective up to speed {comfortSpeed}.
-                                    The discs below (speed {hardMax}+) may not reach full potential:
+                                    At {settings.unit === 'm' ? Math.round(bh * 0.3048) : bh}{settings.unit} backhand, your effective range is up to speed {comfortSpeed}.
+                                    These {tooFast.length} disc{tooFast.length > 1 ? 's' : ''} (speed {hardMax}+) will likely turn over or not fly as intended:
                                 </p>
-                                <p className="text-[10px] font-bold text-red-400 mb-3">Tip: A worn-in version of a high-speed disc can fly better at lower arm speeds.</p>
+                                <div className="bg-red-900/20 rounded-xl p-3 mb-3 space-y-1">
+                                    <p className="text-[9px] font-black uppercase text-red-400">Why this matters:</p>
+                                    <p className="text-[10px] font-bold text-red-300">High-speed drivers need significant arm speed to reach their intended flight path. Too slow = the disc turns over (bad for RHBH). Beat-in/worn versions fly more understable and can work at lower arm speeds.</p>
+                                    <p className="text-[10px] font-bold text-orange-300 mt-1.5">💡 Try: Hyzer-releasing these discs to compensate, or switch to a fairway driver in the same stability for now.</p>
+                                </div>
                                 <div className="space-y-1.5">
                                     {tooFast.map(d => {
                                         const wear = parseFloat(d.wear) || 0;
-                                        const wearLabel = wear >= 0.7 ? 'Well Worn' : wear >= 0.4 ? 'Beat In' : wear >= 0.1 ? 'Slight Wear' : 'New';
+                                        const wearLabel = wear >= 0.7 ? '🟢 Well Worn — may work' : wear >= 0.4 ? '🟡 Beat In — borderline' : wear >= 0.1 ? '🟠 Slight Wear — too fast' : '🔴 New Plastic — too fast';
                                         return (
-                                            <div key={d.id} className="flex items-center gap-2 text-[11px] font-bold text-red-300">
+                                            <div key={d.id} className="flex items-center gap-2 bg-red-900/10 rounded-xl px-3 py-2">
                                                 <span style={{color: d.color}}>●</span>
-                                                <span>{d.name}</span>
-                                                <span className="text-red-500">Spd {d.speed}</span>
+                                                <span className="font-black text-[11px] text-red-300 flex-1">{d.name}</span>
+                                                <span className="text-red-500 text-[10px] font-bold">Spd {d.speed}</span>
                                                 {d.plastic && <span className="text-slate-500 text-[9px] uppercase">{d.plastic}</span>}
-                                                <span className={`text-[9px] uppercase ml-auto ${wear >= 0.4 ? 'text-emerald-400' : 'text-slate-600'}`}>{wearLabel}</span>
+                                                <span className={`text-[9px] uppercase ml-auto ${wear >= 0.4 ? 'text-emerald-400' : 'text-slate-500'}`}>{wearLabel}</span>
                                             </div>
                                         );
                                     })}
@@ -4135,7 +4358,16 @@ ${responseFormat}`;
 
                         {/* Bag Gap Analysis - 12 Slot Coverage Grid */}
                         <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5">
-                            <p className="text-[10px] font-black uppercase text-blue-400 mb-3">🎯 Bag Gap Analysis — {missingSlots.length === 0 ? 'All 12 Slots Covered!' : `${missingSlots.length} of 12 Slots Missing`}</p>
+                            <div className="flex items-center justify-between mb-3">
+                                <p className="text-[10px] font-black uppercase text-blue-400">🎯 Bag Gap Analysis — {missingSlots.length === 0 ? 'All 12 Slots Covered!' : `${missingSlots.length} of 12 Slots Missing`}</p>
+                                {gapAnalysis?.bagCapacity && (
+                                    <div className="flex items-center gap-1.5 bg-slate-800 px-3 py-1 rounded-xl">
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase">🎒</span>
+                                        <span className="text-[9px] font-black text-orange-400 uppercase">{gapAnalysis.discsInBag}/{gapAnalysis.bagCapacity}</span>
+                                        <span className="text-[8px] font-bold text-slate-600 uppercase">{gapAnalysis.spotsLeft > 0 ? `${gapAnalysis.spotsLeft} left` : 'Full'}</span>
+                                    </div>
+                                )}
+                            </div>
                             
                             {/* 12-slot grid */}
                             <div className="mb-4">
@@ -4191,6 +4423,14 @@ ${responseFormat}`;
                                     <p className="text-slate-500 text-[9px] font-bold uppercase mt-1">All 12 disc categories covered</p>
                                 </div>
                             )}
+                        </div>
+
+                        <div className="bg-gradient-to-r from-emerald-900/30 to-cyan-900/30 border border-emerald-600/20 rounded-2xl px-5 py-4">
+                            <p className="text-[10px] font-black uppercase text-emerald-400 mb-1">🧑‍🏫 Want Personalised Coaching?</p>
+                            <p className="text-sm font-bold text-emerald-200 mb-3">Ask My Coach for form tips, training plans, fix specific shot issues, or get YouTube recommendations tailored to you.</p>
+                            <button onClick={() => { setShowCoach(false); setShowMyCoach(true); }} className="w-full py-3 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 rounded-xl font-black uppercase text-xs text-white transition shadow-lg">
+                                Open My Coach 🧑‍🏫
+                            </button>
                         </div>
 
                         <button onClick={() => setShowCoach(false)} className="w-full py-4 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
@@ -4493,7 +4733,7 @@ ${responseFormat}`;
                         <div className="text-center py-12 bg-slate-900 rounded-3xl border border-slate-800">
                             <div className="text-4xl mb-3">🤝</div>
                             <p className="text-slate-400 font-bold uppercase text-sm">Add Card Mates to see the leaderboard</p>
-                            <button onClick={() => { setShowLeaderboard(false); setShowCardMates(true); }} className="mt-4 px-6 py-3 bg-cyan-600/20 border border-cyan-500/30 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-cyan-600/30 transition">Add Card Mates →</button>
+                            <button onClick={() => { setShowLeaderboard(false); setShowCardMates(true); setCardMatesTab('leaderboard'); }} className="mt-4 px-6 py-3 bg-cyan-600/20 border border-cyan-500/30 rounded-2xl font-black uppercase text-xs text-cyan-400 hover:bg-cyan-600/30 transition">Add Card Mates →</button>
                         </div>
                     )}
 
@@ -4540,6 +4780,189 @@ ${responseFormat}`;
                         <button onClick={() => loadLeaderboard()} className="flex-1 py-3 bg-yellow-600/20 border border-yellow-500/30 rounded-2xl font-black uppercase text-xs text-yellow-400 hover:bg-yellow-600/30 transition">↺ Refresh</button>
                         <button onClick={() => setShowLeaderboard(false)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded-2xl font-black uppercase text-xs text-slate-400 transition">Close</button>
                     </div>
+                </div>
+            </div>
+        )}
+
+        {/* =====================================================
+            CREATE BAG MODAL
+        ===================================================== */}
+        {showCreateBag && (
+            <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-6">
+                <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] w-full max-w-md p-8 space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-2xl font-black italic uppercase text-orange-500">🎒 New Bag</h2>
+                        <button onClick={() => setShowCreateBag(false)} className="text-slate-500 hover:text-white text-xl">✕</button>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Bag Name</label>
+                        <input
+                            type="text"
+                            value={newBagName}
+                            onChange={e => setNewBagName(e.target.value)}
+                            placeholder="e.g. Tournament Bag, Practice Bag…"
+                            className="w-full bg-slate-800 border border-slate-700 focus:border-orange-500 px-5 py-4 rounded-2xl text-white font-bold text-[16px] outline-none transition placeholder-slate-600"
+                            autoFocus
+                        />
+                    </div>
+
+                    <div className="space-y-3">
+                        <label className="block text-[10px] font-black uppercase text-slate-500 tracking-widest">Bag Capacity — How many discs fit?</label>
+                        <div className="flex items-center gap-4 bg-slate-800 px-5 py-4 rounded-2xl">
+                            <span className="text-3xl">🎒</span>
+                            <div className="flex-1">
+                                <div className="flex justify-between mb-2">
+                                    <span className="text-[10px] font-black uppercase text-slate-400">Disc capacity</span>
+                                    <span className="text-orange-500 font-black text-lg">{newBagCapacity}</span>
+                                </div>
+                                <input type="range" min="6" max="30" step="1" value={newBagCapacity}
+                                    onChange={e => setNewBagCapacity(Number(e.target.value))}
+                                    className="w-full" />
+                                <div className="flex justify-between text-[8px] font-bold text-slate-700 uppercase mt-1">
+                                    <span>Minimal (6)</span><span>Club (18)</span><span>Max (30)</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="bg-slate-800/60 rounded-xl px-4 py-3">
+                            <p className="text-[9px] font-bold text-slate-400">
+                                {newBagCapacity <= 8 && '⚡ Minimalist setup — perfect for casual rounds, walking courses or travelling light. Suggestions will prioritise essential slots only.'}
+                                {newBagCapacity >= 9 && newBagCapacity <= 14 && '🎯 Standard setup — great balance of options vs carrying weight. Suggestions will cover all core shot types.'}
+                                {newBagCapacity >= 15 && newBagCapacity <= 20 && '💪 Full bag — room for dedicated specialist discs. Suggestions will include specialty and condition-specific discs.'}
+                                {newBagCapacity > 20 && '🏆 Tournament setup — comprehensive bag with redundancy. You\'ll have a disc for every situation on any course.'}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2">
+                        {[
+                            { count: 9, label: 'Casual', emoji: '😊' },
+                            { count: 15, label: 'Standard', emoji: '🎯' },
+                            { count: 21, label: 'Full Bag', emoji: '💼' },
+                        ].map(p => (
+                            <button key={p.count} onClick={() => setNewBagCapacity(p.count)}
+                                className={`py-3 rounded-xl text-[9px] font-black uppercase transition ${newBagCapacity === p.count ? 'bg-orange-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}>
+                                {p.emoji}<br/>{p.label}<br/>{p.count} discs
+                            </button>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={() => {
+                            if (!newBagName.trim()) return;
+                            createBag(newBagName.trim(), newBagCapacity);
+                            setShowCreateBag(false);
+                        }}
+                        disabled={!newBagName.trim()}
+                        className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 py-5 rounded-2xl font-black uppercase text-white shadow-xl transition"
+                    >
+                        Create Bag ({newBagCapacity} discs)
+                    </button>
+                </div>
+            </div>
+        )}
+
+        {/* =====================================================
+            MY COACH MODAL
+        ===================================================== */}
+        {showMyCoach && (
+            <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex flex-col p-4 lg:p-6">
+                <div className="w-full max-w-2xl mx-auto flex flex-col h-full gap-4">
+
+                    {/* Header */}
+                    <div className="flex justify-between items-center shrink-0">
+                        <div>
+                            <h2 className="text-3xl font-black italic uppercase bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">🧑‍🏫 My Coach</h2>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mt-1">AI disc golf coaching — form, drills, training plans & YouTube recs</p>
+                        </div>
+                        <button onClick={() => setShowMyCoach(false)} className="text-slate-500 hover:text-white text-2xl">✕</button>
+                    </div>
+
+                    {/* Quick prompt chips */}
+                    {coachMessages.length === 0 && (
+                        <div className="shrink-0">
+                            <div className="bg-slate-900 border border-emerald-600/20 rounded-3xl p-5 space-y-4">
+                                <div className="text-center">
+                                    <div className="text-4xl mb-2">🧑‍🏫</div>
+                                    <p className="text-sm font-bold text-slate-300">I'm your personal disc golf coach. Ask me anything about form, technique, training, or equipment.</p>
+                                    <p className="text-[10px] font-bold text-slate-600 uppercase mt-2">Powered by Claude AI — no API key needed</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { label: '🎯 Fix my hyzer-flip', prompt: 'My disc always turns over when I try to throw a hyzer-flip. What am I doing wrong and how do I fix it?' },
+                                        { label: '💪 Improve distance', prompt: 'I throw about 250ft backhand. What are the best drills and technique tips to improve my distance?' },
+                                        { label: '📅 Training plan', prompt: 'Can you build me a 4-week training plan to improve my disc golf game? I practice 3 times per week.' },
+                                        { label: '↪ Forehand help', prompt: 'My forehand is inconsistent and turns over. What grip, form and practice tips can help me throw a more reliable forehand?' },
+                                        { label: '🌲 Wooded shots', prompt: 'I struggle in the woods — discs hit trees. What shot shapes and disc choices help in tight wooded courses?' },
+                                        { label: '📺 Best YouTube channels', prompt: 'What are the best YouTube channels and videos for learning disc golf technique and improving form?' },
+                                    ].map(chip => (
+                                        <button key={chip.label} onClick={() => setCoachInput(chip.prompt)}
+                                            className="text-left px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/40 rounded-xl text-[10px] font-bold text-slate-300 transition">
+                                            {chip.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Chat messages */}
+                    {coachMessages.length > 0 && (
+                        <div className="flex-1 overflow-y-auto space-y-4 pr-1 min-h-0">
+                            {coachMessages.map((msg, i) => (
+                                <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-sm shrink-0 ${msg.role === 'user' ? 'bg-orange-600' : 'bg-gradient-to-br from-emerald-600 to-cyan-600'}`}>
+                                        {msg.role === 'user' ? (myProfile?.icon || '👤') : '🧑‍🏫'}
+                                    </div>
+                                    <div className={`flex-1 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                                        <div className={`px-4 py-3 rounded-2xl text-sm font-bold leading-relaxed whitespace-pre-wrap ${
+                                            msg.role === 'user'
+                                                ? 'bg-orange-600/20 border border-orange-500/30 text-white rounded-tr-sm'
+                                                : 'bg-slate-900 border border-emerald-600/20 text-slate-200 rounded-tl-sm'
+                                        }`}>
+                                            {msg.content}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            {coachLoading && (
+                                <div className="flex gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-600 to-cyan-600 flex items-center justify-center text-sm shrink-0">🧑‍🏫</div>
+                                    <div className="bg-slate-900 border border-emerald-600/20 rounded-2xl rounded-tl-sm px-4 py-3">
+                                        <div className="flex gap-1.5 items-center">
+                                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay:'0ms'}} />
+                                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay:'150ms'}} />
+                                            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style={{animationDelay:'300ms'}} />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={coachEndRef} />
+                        </div>
+                    )}
+
+                    {/* Input */}
+                    <div className="shrink-0 flex gap-3 items-end">
+                        <textarea
+                            value={coachInput}
+                            onChange={e => setCoachInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCoachMessage(); } }}
+                            placeholder="Ask about form, drills, training plans, YouTube videos…"
+                            rows={2}
+                            className="flex-1 bg-slate-900 border border-slate-700 focus:border-emerald-500 rounded-2xl px-4 py-3 text-white font-bold text-sm outline-none transition resize-none placeholder-slate-600"
+                        />
+                        <button
+                            onClick={sendCoachMessage}
+                            disabled={coachLoading || !coachInput.trim()}
+                            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 disabled:opacity-40 flex items-center justify-center text-xl transition shadow-lg"
+                        >↑</button>
+                    </div>
+
+                    {coachMessages.length > 0 && (
+                        <button onClick={() => setCoachMessages([])} className="shrink-0 text-[9px] font-black uppercase text-slate-600 hover:text-slate-400 transition text-center">
+                            Clear Conversation
+                        </button>
+                    )}
                 </div>
             </div>
         )}
