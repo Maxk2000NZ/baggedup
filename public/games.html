@@ -439,92 +439,97 @@ function switchGame(id, btn) {
 //  DISC DATABASE
 // ═══════════════════════════════════════
 const DISCS = [
-  { name:"DESTROYER", brand:"Innova", type:"Driver", speed:12, glide:5, turn:-1, fade:3 },
-  { name:"BUZZZ", brand:"Discraft", type:"Midrange", speed:5, glide:4, turn:-1, fade:1 },
-  { name:"AVIAR", brand:"Innova", type:"Putter", speed:2, glide:3, turn:0, fade:1 },
-  { name:"WRAITH", brand:"Innova", type:"Driver", speed:11, glide:5, turn:-1, fade:3 },
-  { name:"BOSS", brand:"Innova", type:"Driver", speed:13, glide:5, turn:-1, fade:3 },
-  { name:"LEOPARD3", brand:"Innova", type:"Fairway", speed:7, glide:5, turn:-2, fade:1 },
-  { name:"FIREBIRD", brand:"Innova", type:"Driver", speed:9, glide:3, turn:0, fade:4 },
-  { name:"ROC3", brand:"Innova", type:"Midrange", speed:5, glide:4, turn:0, fade:3 },
-  { name:"EAGLE", brand:"Innova", type:"Fairway", speed:8, glide:4, turn:-1, fade:2 },
-  { name:"VALKYRIE", brand:"Innova", type:"Driver", speed:9, glide:4, turn:-2, fade:2 },
-  { name:"JUSTICE", brand:"Dynamic Discs", type:"Midrange", speed:5, glide:4, turn:0, fade:3 },
-  { name:"FELON", brand:"Dynamic Discs", type:"Driver", speed:9, glide:3, turn:0, fade:4 },
-  { name:"RIVER", brand:"Latitude 64", type:"Fairway", speed:7, glide:6, turn:-2, fade:1 },
-  { name:"COMET", brand:"Discraft", type:"Midrange", speed:4, glide:5, turn:-2, fade:1 },
-  { name:"UNDERTAKER", brand:"Discraft", type:"Driver", speed:9, glide:5, turn:-1, fade:2 },
-  { name:"LUNA", brand:"Discraft", type:"Putter", speed:3, glide:3, turn:0, fade:3 },
-  { name:"ZONE", brand:"Discraft", type:"Putter", speed:4, glide:3, turn:0, fade:3 },
-  { name:"NUKE", brand:"Discraft", type:"Driver", speed:13, glide:5, turn:-1, fade:3 },
-  { name:"SURGE SS", brand:"Discraft", type:"Driver", speed:10, glide:5, turn:-2, fade:2 },
-  { name:"FD", brand:"Discmania", type:"Fairway", speed:7, glide:6, turn:-1, fade:1 },
-  { name:"PD", brand:"Discmania", type:"Driver", speed:10, glide:4, turn:0, fade:3 },
-  { name:"JUDGE", brand:"Dynamic Discs", type:"Putter", speed:2, glide:4, turn:0, fade:1 },
-  { name:"TEEBIRD3", brand:"Innova", type:"Fairway", speed:7, glide:5, turn:0, fade:2 },
-  { name:"MAKO3", brand:"Innova", type:"Midrange", speed:5, glide:5, turn:0, fade:0 },
-  { name:"THUNDERBIRD", brand:"Innova", type:"Driver", speed:10, glide:5, turn:0, fade:3 },
-  { name:"COLOSSUS", brand:"Innova", type:"Driver", speed:14, glide:5, turn:-2, fade:2 },
-  { name:"KATANA", brand:"Innova", type:"Driver", speed:13, glide:5, turn:-2, fade:2 },
-  { name:"PHANTOM", brand:"Latitude 64", type:"Driver", speed:9, glide:5, turn:-2, fade:2 },
-  { name:"OCEAN", brand:"Latitude 64", type:"Fairway", speed:8, glide:6, turn:-2, fade:1 },
-  { name:"TRUTH", brand:"MVP", type:"Midrange", speed:5, glide:5, turn:-1, fade:1 },
-  { name:"RESISTOR", brand:"MVP", type:"Driver", speed:10, glide:4, turn:0, fade:4 },
-  { name:"ENVY", brand:"Axiom", type:"Putter", speed:3, glide:4, turn:0, fade:2 },
-  { name:"PROXY", brand:"Axiom", type:"Putter", speed:3, glide:4, turn:0, fade:1 },
-  { name:"CRAVE", brand:"Axiom", type:"Fairway", speed:8, glide:5, turn:-2, fade:2 },
-  { name:"ESCAPE", brand:"Dynamic Discs", type:"Fairway", speed:9, glide:5, turn:-2, fade:2 },
-  { name:"EMAC TRUTH", brand:"MVP", type:"Midrange", speed:5, glide:5, turn:-1, fade:1 },
-  { name:"HEAT", brand:"Discraft", type:"Driver", speed:9, glide:6, turn:-3, fade:1 },
-  { name:"BANGER GT", brand:"Discraft", type:"Putter", speed:2, glide:3, turn:0, fade:1 },
-  { name:"XL", brand:"Discraft", type:"Fairway", speed:9, glide:6, turn:-3, fade:1 },
-  { name:"ANAX", brand:"Innova", type:"Driver", speed:12, glide:5, turn:-1, fade:3 },
+  { name:"DESTROYER",  brand:"Innova",        type:"Driver",   speed:12, glide:5, turn:-1, fade:3 },
+  { name:"BUZZZ",      brand:"Discraft",      type:"Midrange", speed:5,  glide:4, turn:-1, fade:1 },
+  { name:"AVIAR",      brand:"Innova",        type:"Putter",   speed:2,  glide:3, turn:0,  fade:1 },
+  { name:"WRAITH",     brand:"Innova",        type:"Driver",   speed:11, glide:5, turn:-1, fade:3 },
+  { name:"BOSS",       brand:"Innova",        type:"Driver",   speed:13, glide:5, turn:-1, fade:3 },
+  { name:"LEOPARD3",   brand:"Innova",        type:"Fairway",  speed:7,  glide:5, turn:-2, fade:1 },
+  { name:"FIREBIRD",   brand:"Innova",        type:"Driver",   speed:9,  glide:3, turn:0,  fade:4 },
+  { name:"ROC3",       brand:"Innova",        type:"Midrange", speed:5,  glide:4, turn:0,  fade:3 },
+  { name:"EAGLE",      brand:"Innova",        type:"Fairway",  speed:8,  glide:4, turn:-1, fade:2 },
+  { name:"VALKYRIE",   brand:"Innova",        type:"Driver",   speed:9,  glide:4, turn:-2, fade:2 },
+  { name:"JUSTICE",    brand:"Dynamic Discs", type:"Midrange", speed:5,  glide:4, turn:0,  fade:3 },
+  { name:"FELON",      brand:"Dynamic Discs", type:"Driver",   speed:9,  glide:3, turn:0,  fade:4 },
+  { name:"RIVER",      brand:"Latitude 64",   type:"Fairway",  speed:7,  glide:6, turn:-2, fade:1 },
+  { name:"COMET",      brand:"Discraft",      type:"Midrange", speed:4,  glide:5, turn:-2, fade:1 },
+  { name:"UNDERTAKER", brand:"Discraft",      type:"Driver",   speed:9,  glide:5, turn:-1, fade:2 },
+  { name:"LUNA",       brand:"Discraft",      type:"Putter",   speed:3,  glide:3, turn:0,  fade:3 },
+  { name:"ZONE",       brand:"Discraft",      type:"Putter",   speed:4,  glide:3, turn:0,  fade:3 },
+  { name:"NUKE",       brand:"Discraft",      type:"Driver",   speed:13, glide:5, turn:-1, fade:3 },
+  { name:"SURGE SS",   brand:"Discraft",      type:"Driver",   speed:10, glide:5, turn:-2, fade:2 },
+  { name:"FD",         brand:"Discmania",     type:"Fairway",  speed:7,  glide:6, turn:-1, fade:1 },
+  { name:"PD",         brand:"Discmania",     type:"Driver",   speed:10, glide:4, turn:0,  fade:3 },
+  { name:"JUDGE",      brand:"Dynamic Discs", type:"Putter",   speed:2,  glide:4, turn:0,  fade:1 },
+  { name:"TEEBIRD3",   brand:"Innova",        type:"Fairway",  speed:7,  glide:5, turn:0,  fade:2 },
+  { name:"MAKO3",      brand:"Innova",        type:"Midrange", speed:5,  glide:5, turn:0,  fade:0 },
+  { name:"THUNDERBIRD",brand:"Innova",        type:"Driver",   speed:10, glide:5, turn:0,  fade:3 },
+  { name:"COLOSSUS",   brand:"Innova",        type:"Driver",   speed:14, glide:5, turn:-2, fade:2 },
+  { name:"KATANA",     brand:"Innova",        type:"Driver",   speed:13, glide:5, turn:-2, fade:2 },
+  { name:"PHANTOM",    brand:"Latitude 64",   type:"Driver",   speed:9,  glide:5, turn:-2, fade:2 },
+  { name:"OCEAN",      brand:"Latitude 64",   type:"Fairway",  speed:8,  glide:6, turn:-2, fade:1 },
+  { name:"TRUTH",      brand:"MVP",           type:"Midrange", speed:5,  glide:5, turn:-1, fade:1 },
+  { name:"RESISTOR",   brand:"MVP",           type:"Driver",   speed:10, glide:4, turn:0,  fade:4 },
+  { name:"ENVY",       brand:"Axiom",         type:"Putter",   speed:3,  glide:4, turn:0,  fade:2 },
+  { name:"PROXY",      brand:"Axiom",         type:"Putter",   speed:3,  glide:4, turn:0,  fade:1 },
+  { name:"CRAVE",      brand:"Axiom",         type:"Fairway",  speed:8,  glide:5, turn:-2, fade:2 },
+  { name:"ESCAPE",     brand:"Dynamic Discs", type:"Fairway",  speed:9,  glide:5, turn:-2, fade:2 },
+  { name:"HEAT",       brand:"Discraft",      type:"Driver",   speed:9,  glide:6, turn:-3, fade:1 },
+  { name:"BANGER GT",  brand:"Discraft",      type:"Putter",   speed:2,  glide:3, turn:0,  fade:1 },
+  { name:"ANAX",       brand:"Innova",        type:"Driver",   speed:12, glide:5, turn:-1, fade:3 },
+  { name:"HALO STAR",  brand:"Innova",        type:"Driver",   speed:11, glide:5, turn:-1, fade:3 },
+  { name:"MAGIC",      brand:"Discmania",     type:"Midrange", speed:4,  glide:5, turn:0,  fade:1 },
 ];
 
-// Game state
-let currentDisc = null, guessedChars = [], livesLeft = 6, cluesRevealed = 1;
+// Clue order — one revealed per wrong guess, starting from disc 1
+// ALL clues start hidden. First wrong guess = reveal speed, etc.
+const CLUE_ORDER = ['speed','glide','turn','fade','brand'];
+// Note: 'type' is revealed immediately (it's the starting state shown)
+
+let currentDisc = null;
+let guessedChars = [];
+let livesLeft = 6;
+let cluesRevealed = 0; // how many extra clues revealed so far (0 = only type shown)
 let score = 0, streak = 0, best = 0, gameOver = false;
 let pendingScore = null;
-const CLUE_ORDER = ['type','speed','glide','turn','fade','brand'];
+let discQueue = []; // shuffled queue so all discs appear before repeats
 
 // ─── LEADERBOARD ───
-function loadLB() {
-  try { return JSON.parse(localStorage.getItem('gtd_lb') || '[]'); } catch(e) { return []; }
-}
-function saveLB(lb) {
-  try { localStorage.setItem('gtd_lb', JSON.stringify(lb)); } catch(e) {}
-}
+function loadLB() { try { return JSON.parse(localStorage.getItem('gtd_lb')||'[]'); } catch(e) { return []; } }
+function saveLB(lb) { try { localStorage.setItem('gtd_lb', JSON.stringify(lb)); } catch(e) {} }
+
 function renderLB() {
   const lb = loadLB();
   const el = document.getElementById('lb-list');
   if (!lb.length) { el.innerHTML = '<div class="lb-empty">No scores yet — start playing!</div>'; return; }
   const medals = ['🥇','🥈','🥉'];
-  const rankClasses = ['top-1','top-2','top-3'];
-  const rankColorClasses = ['gold','silver','bronze'];
+  const rankCls = ['top-1','top-2','top-3'];
+  const rankCol = ['gold','silver','bronze'];
   el.innerHTML = lb.slice(0,10).map((e,i) => `
-    <div class="lb-row ${rankClasses[i]||''}">
-      <div class="lb-rank ${rankColorClasses[i]||''}">${medals[i] || (i+1)}</div>
-      <div class="lb-name">${e.name}<span>${e.date}</span></div>
+    <div class="lb-row ${rankCls[i]||''}">
+      <div class="lb-rank ${rankCol[i]||''}">${medals[i]||(i+1)}</div>
+      <div class="lb-name">${escHtml(e.name)}<span>${e.date}</span></div>
       <div class="lb-score">${e.score}</div>
       <div class="lb-streak">🔥${e.streak}</div>
-    </div>
-    ${i===2 && lb.length>3 ? '<hr class="lb-divider"/>' : ''}
+    </div>${i===2&&lb.length>3?'<hr class="lb-divider"/>'  :''}
   `).join('');
 }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function clearLeaderboard() {
   if (confirm('Reset the leaderboard?')) { localStorage.removeItem('gtd_lb'); renderLB(); }
 }
 function checkLeaderboard(sc, st) {
   const lb = loadLB();
-  if (lb.length < 10 || sc > lb[lb.length-1].score) {
+  if (lb.length < 10 || sc > (lb[lb.length-1]?.score||0)) {
     pendingScore = { score: sc, streak: st };
     document.getElementById('name-prompt').classList.add('show');
-    document.getElementById('name-input').focus();
+    setTimeout(() => document.getElementById('name-input').focus(), 100);
   }
 }
 function submitScore() {
   if (!pendingScore) return;
-  const name = document.getElementById('name-input').value.trim() || 'Anonymous';
+  const name = (document.getElementById('name-input').value.trim()||'Anonymous').slice(0,20);
   const lb = loadLB();
   lb.push({ name, score: pendingScore.score, streak: pendingScore.streak, date: new Date().toLocaleDateString() });
   lb.sort((a,b) => b.score - a.score);
@@ -534,31 +539,41 @@ function submitScore() {
   document.getElementById('name-input').value = '';
   pendingScore = null;
 }
-document.addEventListener('keydown', e => { if (e.key === 'Enter' && pendingScore) submitScore(); });
 
-// ─── GAME LOGIC ───
-function pickDisc() { return DISCS[Math.floor(Math.random() * DISCS.length)]; }
+// ─── DISC PICKING — shuffle queue ───
+function nextDisc() {
+  if (!discQueue.length) {
+    discQueue = [...DISCS].sort(() => Math.random() - 0.5);
+  }
+  return discQueue.pop();
+}
 
+// ─── GAME START ───
 function startNewDisc() {
-  currentDisc = pickDisc();
+  currentDisc = nextDisc();
   guessedChars = [];
   livesLeft = 6;
-  cluesRevealed = 1;
+  cluesRevealed = 0; // no extra clues yet — only type is shown
   gameOver = false;
 
   document.getElementById('gtd-result').classList.remove('show');
   document.getElementById('gtd-game-area').style.display = '';
   document.getElementById('name-prompt').classList.remove('show');
 
+  // Reset all clue boxes — only type is revealed at start
   document.querySelectorAll('.clue-box').forEach(b => b.classList.remove('revealed'));
   document.getElementById('clue-type').classList.add('revealed');
   document.getElementById('cv-type').textContent = currentDisc.type;
-  document.getElementById('cd-type').textContent = currentDisc.type === 'Driver' ? 'Distance driver' : currentDisc.type === 'Fairway' ? 'Fairway driver' : currentDisc.type;
-  ['speed','glide','turn','fade'].forEach(k => document.getElementById('cv-'+k).textContent = '?');
-  document.getElementById('cv-brand').textContent = '?';
-  document.getElementById('clue-progress').style.width = '16%';
+  document.getElementById('cd-type').textContent =
+    currentDisc.type === 'Driver' ? 'Distance driver' :
+    currentDisc.type === 'Fairway' ? 'Fairway driver' : currentDisc.type;
 
-  for (let i=1;i<=6;i++) document.getElementById('life-'+i).classList.remove('lost');
+  // Hide all other clue values
+  CLUE_ORDER.forEach(k => document.getElementById('cv-'+k).textContent = '?');
+  document.getElementById('clue-progress').style.width = '0%';
+
+  // Reset lives — all 6 shown
+  for (let i = 1; i <= 6; i++) document.getElementById('life-'+i).classList.remove('lost');
   document.getElementById('lives-label').textContent = '6 lives';
 
   renderWordDisplay();
@@ -570,9 +585,11 @@ function renderWordDisplay() {
   c.innerHTML = '';
   currentDisc.name.split('').forEach((ch, i) => {
     const s = document.createElement('div');
-    if (ch === ' ') { s.className='letter-slot space'; }
-    else {
-      s.className = 'letter-slot'; s.id = 'slot-'+i;
+    if (ch === ' ') {
+      s.className = 'letter-slot space';
+    } else {
+      s.className = 'letter-slot';
+      s.id = 'slot-' + i;
       if (guessedChars.includes(ch)) { s.textContent = ch; s.classList.add('revealed'); }
     }
     c.appendChild(s);
@@ -580,31 +597,32 @@ function renderWordDisplay() {
 }
 
 function renderKeyboard() {
-  const rows = [
+  [
     ['Q','W','E','R','T','Y','U','I','O','P'],
     ['A','S','D','F','G','H','J','K','L'],
     ['Z','X','C','V','B','N','M']
-  ];
-  rows.forEach((row, ri) => {
+  ].forEach((row, ri) => {
     const rowEl = document.getElementById('key-row-'+(ri+1));
     rowEl.innerHTML = '';
     row.forEach(ch => {
       const btn = document.createElement('button');
       btn.className = 'key-btn'; btn.textContent = ch;
-      if (guessedChars.includes(ch)) {
+      const isGuessed = guessedChars.includes(ch);
+      if (isGuessed) {
         btn.classList.add(currentDisc.name.includes(ch) ? 'hit' : 'miss');
         btn.disabled = true;
       } else { btn.onclick = () => guessChar(ch); }
       rowEl.appendChild(btn);
     });
   });
-  // Number row 0-9
+  // Numbers
   const numRow = document.getElementById('key-row-nums');
   numRow.innerHTML = '';
   '0123456789'.split('').forEach(ch => {
     const btn = document.createElement('button');
     btn.className = 'key-btn'; btn.textContent = ch;
-    if (guessedChars.includes(ch)) {
+    const isGuessed = guessedChars.includes(ch);
+    if (isGuessed) {
       btn.classList.add(currentDisc.name.includes(ch) ? 'hit' : 'miss');
       btn.disabled = true;
     } else { btn.onclick = () => guessChar(ch); }
@@ -617,9 +635,8 @@ function guessChar(ch) {
   guessedChars.push(ch);
   const isHit = currentDisc.name.includes(ch);
 
-  // Update key
-  const keyRows = ['key-row-1','key-row-2','key-row-3','key-row-nums'];
-  keyRows.forEach(rowId => {
+  // Update all key buttons
+  ['key-row-1','key-row-2','key-row-3','key-row-nums'].forEach(rowId => {
     const row = document.getElementById(rowId);
     if (!row) return;
     Array.from(row.children).forEach(btn => {
@@ -628,35 +645,58 @@ function guessChar(ch) {
   });
 
   if (!isHit) {
+    // Lose a life
+    const lostLifeIdx = 7 - livesLeft; // 1..6
+    document.getElementById('life-' + lostLifeIdx).classList.add('lost');
     livesLeft--;
-    document.getElementById('life-'+(7-livesLeft)).classList.add('lost');
-    document.getElementById('lives-label').textContent = livesLeft + (livesLeft===1?' life':' lives');
-    if (cluesRevealed < 6) { cluesRevealed++; revealClue(cluesRevealed); }
+    document.getElementById('lives-label').textContent = livesLeft + (livesLeft === 1 ? ' life' : ' lives');
+
+    // Reveal next clue IN ORDER: speed → glide → turn → fade → brand
+    if (cluesRevealed < CLUE_ORDER.length) {
+      revealClue(cluesRevealed);
+      cluesRevealed++;
+    }
   }
+
   renderWordDisplay();
   checkWin();
 }
 
 function revealClue(idx) {
-  const key = CLUE_ORDER[idx-1];
-  document.getElementById('clue-'+key).classList.add('revealed');
-  const val = currentDisc[key];
-  document.getElementById('cv-'+key).textContent = val;
-  document.getElementById('clue-progress').style.width = Math.round((idx/6)*100)+'%';
+  const key = CLUE_ORDER[idx]; // 0-indexed
+  const box = document.getElementById('clue-' + key);
+  if (!box) return;
+  box.classList.add('revealed');
+  document.getElementById('cv-' + key).textContent = currentDisc[key];
+  // Progress bar: 6 total clues (type + 5 others), idx+1 revealed beyond type
+  const pct = Math.round(((idx + 2) / 6) * 100);
+  document.getElementById('clue-progress').style.width = pct + '%';
 }
 
 function checkWin() {
   const name = currentDisc.name;
-  const won = [...name].every(ch => ch===' ' || guessedChars.includes(ch));
-  if (won) {
-    gameOver = true; score++; streak++; if (streak>best) best=streak;
-    updateScoreDisplay(); showResult(true);
+  const allRevealed = [...name].every(ch => ch === ' ' || guessedChars.includes(ch));
+
+  if (allRevealed) {
+    gameOver = true;
+    score++; streak++;
+    if (streak > best) best = streak;
+    updateScoreDisplay();
+    showResult(true);
   } else if (livesLeft <= 0) {
-    gameOver = true; streak = 0; updateScoreDisplay();
-    name.split('').forEach((ch,i) => {
-      const s = document.getElementById('slot-'+i);
-      if (s && !guessedChars.includes(ch)) { s.textContent=ch; s.classList.add('wrong-guess'); }
+    gameOver = true;
+    streak = 0;
+    updateScoreDisplay();
+    // Reveal all unrevealed letters in red
+    name.split('').forEach((ch, i) => {
+      const slot = document.getElementById('slot-' + i);
+      if (slot && !guessedChars.includes(ch)) {
+        slot.textContent = ch;
+        slot.classList.add('wrong-guess');
+      }
     });
+    // Reveal all remaining clues immediately
+    for (let i = cluesRevealed; i < CLUE_ORDER.length; i++) revealClue(i);
     showResult(false);
   }
 }
@@ -667,7 +707,12 @@ function showResult(won) {
   res.classList.add('show');
   document.getElementById('result-emoji').textContent = won ? '🎉' : '💀';
   document.getElementById('result-title').textContent = won ? 'Aced It!' : 'Disc Lost';
-  document.getElementById('result-answer').innerHTML = 'The disc was the <strong>' + currentDisc.brand + ' ' + currentDisc.name + '</strong> (' + currentDisc.speed+'/'+currentDisc.glide+'/'+currentDisc.turn+'/'+currentDisc.fade+')';
+  document.getElementById('result-answer').innerHTML =
+    (won ? 'You guessed the ' : 'The answer was the ') +
+    '<strong>' + currentDisc.brand + ' ' + currentDisc.name + '</strong>' +
+    '<br><span style="font-size:0.88rem;color:var(--muted)">' +
+    currentDisc.speed + '/' + currentDisc.glide + '/' + currentDisc.turn + '/' + currentDisc.fade +
+    '</span>';
   if (won) checkLeaderboard(score, streak);
 }
 
@@ -677,504 +722,605 @@ function updateScoreDisplay() {
   document.getElementById('gtd-best').textContent = best;
 }
 
-// Physical keyboard
+// Physical keyboard input
 document.addEventListener('keydown', e => {
   const k = e.key.toUpperCase();
   if (/^[A-Z0-9]$/.test(k) && !gameOver && !pendingScore) guessChar(k);
+  if (e.key === 'Enter' && pendingScore) submitScore();
 });
 
 startNewDisc();
 renderLB();
 
 // ═══════════════════════════════════════
-//  PUTTING GAME
+//  PUTTING GAME — IMPROVED
 // ═══════════════════════════════════════
 const HOLE_PARS = [2,2,3,2,3,3,3,4,4];
 const HOLES = [
-  { par:2, name:"Warm-Up", pin:{x:.5,y:.18}, tee:{x:.5,y:.82}, obstacles:[], wind:{speed:0,angle:0}, terrain:[] },
-  { par:2, name:"Side Door", pin:{x:.22,y:.2}, tee:{x:.75,y:.82}, obstacles:[], wind:{speed:1.2,angle:.3}, terrain:[] },
-  { par:3, name:"The Blocker", pin:{x:.5,y:.15}, tee:{x:.5,y:.85}, obstacles:[{x:.5,y:.48,r:22,type:'tree'}], wind:{speed:.8,angle:Math.PI*1.5}, terrain:[{type:'water',x:.28,y:.58,w:.14,h:.1}] },
-  { par:2, name:"Snake Path", pin:{x:.78,y:.18}, tee:{x:.22,y:.82}, obstacles:[{x:.5,y:.5,r:18,type:'rock'}], wind:{speed:1.5,angle:Math.PI*.75}, terrain:[] },
-  { par:3, name:"Twin Trees", pin:{x:.5,y:.14}, tee:{x:.5,y:.86}, obstacles:[{x:.33,y:.42,r:20,type:'tree'},{x:.67,y:.42,r:20,type:'tree'}], wind:{speed:1.8,angle:Math.PI*.5}, terrain:[{type:'water',x:.38,y:.6,w:.24,h:.1}] },
-  { par:3, name:"The Maze", pin:{x:.75,y:.16}, tee:{x:.25,y:.84}, obstacles:[{x:.42,y:.38,r:16,type:'rock'},{x:.6,y:.55,r:18,type:'tree'},{x:.28,y:.55,r:14,type:'rock'}], wind:{speed:2,angle:Math.PI*1.2}, terrain:[] },
-  { par:3, name:"Crosswind", pin:{x:.5,y:.12}, tee:{x:.5,y:.86}, obstacles:[{x:.35,y:.5,r:18,type:'tree'},{x:.65,y:.5,r:18,type:'tree'},{x:.5,y:.32,r:14,type:'rock'}], wind:{speed:3.5,angle:Math.PI*.5}, terrain:[{type:'water',x:.08,y:.35,w:.12,h:.3}] },
-  { par:4, name:"Long Road", pin:{x:.25,y:.1}, tee:{x:.75,y:.88}, obstacles:[{x:.55,y:.65,r:22,type:'tree'},{x:.38,y:.42,r:18,type:'rock'}], wind:{speed:2.5,angle:Math.PI*1.7}, terrain:[{type:'water',x:.5,y:.25,w:.18,h:.15}] },
-  { par:4, name:"The Final", pin:{x:.5,y:.1}, tee:{x:.5,y:.88}, obstacles:[{x:.3,y:.38,r:20,type:'tree'},{x:.7,y:.38,r:20,type:'tree'},{x:.5,y:.58,r:16,type:'rock'},{x:.35,y:.62,r:13,type:'rock'},{x:.65,y:.62,r:13,type:'tree'}], wind:{speed:3,angle:Math.PI*.3}, terrain:[{type:'water',x:.08,y:.55,w:.12,h:.22},{type:'water',x:.8,y:.55,w:.12,h:.22}] },
+  { par:2, name:"Warm-Up",    pin:{x:.5,y:.2},   tee:{x:.5,y:.82},  obstacles:[], wind:{speed:0,angle:0}, terrain:[] },
+  { par:2, name:"Side Door",  pin:{x:.2,y:.2},   tee:{x:.78,y:.8},  obstacles:[], wind:{speed:1.2,angle:.3}, terrain:[] },
+  { par:3, name:"The Blocker",pin:{x:.5,y:.15},  tee:{x:.5,y:.85},  obstacles:[{x:.5,y:.5,r:24,type:'tree'}], wind:{speed:.8,angle:Math.PI*1.5}, terrain:[{type:'water',x:.28,y:.6,w:.15,h:.1}] },
+  { par:2, name:"Snake Path", pin:{x:.8,y:.18},  tee:{x:.18,y:.82}, obstacles:[{x:.5,y:.5,r:20,type:'rock'}], wind:{speed:1.5,angle:Math.PI*.75}, terrain:[] },
+  { par:3, name:"Twin Trees", pin:{x:.5,y:.14},  tee:{x:.5,y:.86},  obstacles:[{x:.32,y:.44,r:22,type:'tree'},{x:.68,y:.44,r:22,type:'tree'}], wind:{speed:1.8,angle:Math.PI*.5}, terrain:[{type:'water',x:.37,y:.62,w:.26,h:.1}] },
+  { par:3, name:"The Maze",   pin:{x:.78,y:.16}, tee:{x:.22,y:.84}, obstacles:[{x:.44,y:.38,r:18,type:'rock'},{x:.62,y:.56,r:20,type:'tree'},{x:.26,y:.56,r:16,type:'rock'}], wind:{speed:2,angle:Math.PI*1.2}, terrain:[] },
+  { par:3, name:"Crosswind",  pin:{x:.5,y:.12},  tee:{x:.5,y:.86},  obstacles:[{x:.33,y:.5,r:20,type:'tree'},{x:.67,y:.5,r:20,type:'tree'},{x:.5,y:.32,r:16,type:'rock'}], wind:{speed:3.5,angle:Math.PI*.5}, terrain:[{type:'water',x:.07,y:.34,w:.13,h:.32}] },
+  { par:4, name:"Long Road",  pin:{x:.22,y:.1},  tee:{x:.78,y:.88}, obstacles:[{x:.54,y:.65,r:24,type:'tree'},{x:.36,y:.42,r:20,type:'rock'}], wind:{speed:2.5,angle:Math.PI*1.7}, terrain:[{type:'water',x:.5,y:.26,w:.2,h:.15}] },
+  { par:4, name:"The Final",  pin:{x:.5,y:.1},   tee:{x:.5,y:.88},  obstacles:[{x:.28,y:.38,r:22,type:'tree'},{x:.72,y:.38,r:22,type:'tree'},{x:.5,y:.58,r:18,type:'rock'},{x:.33,y:.64,r:14,type:'rock'},{x:.67,y:.64,r:14,type:'tree'}], wind:{speed:3,angle:Math.PI*.3}, terrain:[{type:'water',x:.07,y:.55,w:.13,h:.24},{type:'water',x:.8,y:.55,w:.13,h:.24}] },
 ];
 
-let puttState = null;
+let PS = null; // putting state
 
 function initPutting() {
-  if (puttState && puttState.initialized) return;
+  if (PS?.initialized) { drawHole(); return; }
+
   const canvas = document.getElementById('putting-canvas');
   const ctx = canvas.getContext('2d');
   const W = 640, H = 400;
 
-  // Responsive sizing
   function resize() {
-    const w = canvas.parentElement.clientWidth;
+    const w = Math.min(canvas.parentElement.clientWidth, 800);
     canvas.style.width = w + 'px';
-    canvas.style.height = (w * H/W) + 'px';
+    canvas.style.height = (w * H / W) + 'px';
   }
   resize();
   window.addEventListener('resize', resize);
 
-  puttState = {
+  PS = {
     initialized: true, canvas, ctx, W, H,
     currentHole: 0, currentThrow: 0,
     scores: new Array(9).fill(null),
-    power: 55, aimAngle: -Math.PI/2,
-    disc: {x:0,y:0}, vel: {x:0,y:0},
+    power: 60, aimAngle: -Math.PI / 2,
+    disc: { x: 0, y: 0 }, vel: { x: 0, y: 0 },
     isAnimating: false, inWater: false,
     trail: [], particles: [], shake: 0,
-    animFrame: null, isDraggingPower: false
+    animFrame: null, dragPow: false,
+    glowFrame: null,
   };
 
-  // Aim via canvas mouse/touch
-  function getPos(e) {
-    const rect = canvas.getBoundingClientRect();
-    const sx = W/rect.width, sy = H/rect.height;
-    const cx = e.touches ? e.touches[0].clientX : e.clientX;
-    const cy = e.touches ? e.touches[0].clientY : e.clientY;
-    return { x:(cx-rect.left)*sx, y:(cy-rect.top)*sy };
+  // ── AIM: mouse/touch move on canvas ──
+  function getCanvasPos(clientX, clientY) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (clientX - r.left) * (W / r.width),
+      y: (clientY - r.top) * (H / r.height)
+    };
   }
-  canvas.addEventListener('mousemove', e => { if (!puttState.isAnimating) { const p=getPos(e); puttState.aimAngle=Math.atan2(p.y-puttState.disc.y,p.x-puttState.disc.x); drawHole(); } });
-  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!puttState.isAnimating) { const p=getPos(e); puttState.aimAngle=Math.atan2(p.y-puttState.disc.y,p.x-puttState.disc.x); drawHole(); } }, {passive:false});
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); if (!puttState.isAnimating) { const p=getPos(e); puttState.aimAngle=Math.atan2(p.y-puttState.disc.y,p.x-puttState.disc.x); drawHole(); } }, {passive:false});
-
-  // Power bar drag
-  const pt = document.getElementById('power-track');
-  function setPow(e) {
-    const r=pt.getBoundingClientRect();
-    const cx=e.touches?e.touches[0].clientX:e.clientX;
-    puttState.power = Math.max(5, Math.min(100, Math.round((cx-r.left)/r.width*100)));
-    document.getElementById('power-fill').style.width = puttState.power+'%';
-    document.getElementById('power-val').textContent = puttState.power;
+  function setAim(clientX, clientY) {
+    if (PS.isAnimating) return;
+    const p = getCanvasPos(clientX, clientY);
+    PS.aimAngle = Math.atan2(p.y - PS.disc.y, p.x - PS.disc.x);
     drawHole();
   }
-  pt.addEventListener('mousedown', e=>{puttState.isDraggingPower=true;setPow(e);});
-  pt.addEventListener('touchstart', e=>{puttState.isDraggingPower=true;setPow(e);},{passive:true});
-  document.addEventListener('mousemove', e=>{if(puttState.isDraggingPower)setPow(e);});
-  document.addEventListener('touchmove', e=>{if(puttState.isDraggingPower)setPow(e);},{passive:true});
-  document.addEventListener('mouseup', ()=>puttState.isDraggingPower=false);
-  document.addEventListener('touchend', ()=>puttState.isDraggingPower=false);
+  canvas.addEventListener('mousemove', e => setAim(e.clientX, e.clientY));
+  canvas.addEventListener('click', e => { setAim(e.clientX, e.clientY); });
+  canvas.addEventListener('touchmove',  e => { e.preventDefault(); setAim(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); setAim(e.touches[0].clientX, e.touches[0].clientY); }, { passive: false });
+
+  // ── POWER BAR: click or drag ──
+  const pt = document.getElementById('power-track');
+  function setPow(clientX) {
+    const r = pt.getBoundingClientRect();
+    PS.power = Math.max(5, Math.min(100, Math.round((clientX - r.left) / r.width * 100)));
+    document.getElementById('power-fill').style.width = PS.power + '%';
+    document.getElementById('power-val').textContent = PS.power;
+    if (!PS.isAnimating) drawHole();
+  }
+  pt.addEventListener('mousedown',  e => { PS.dragPow = true; setPow(e.clientX); });
+  pt.addEventListener('touchstart', e => { PS.dragPow = true; setPow(e.touches[0].clientX); }, { passive: true });
+  document.addEventListener('mousemove',  e => { if (PS.dragPow) setPow(e.clientX); });
+  document.addEventListener('touchmove',  e => { if (PS.dragPow) setPow(e.touches[0].clientX); }, { passive: true });
+  document.addEventListener('mouseup',    () => PS.dragPow = false);
+  document.addEventListener('touchend',   () => PS.dragPow = false);
 
   resetPutt();
 }
 
 function resetPutt() {
-  if (!puttState) return;
-  const s = puttState;
-  if (s.animFrame) { cancelAnimationFrame(s.animFrame); s.animFrame=null; }
-  const hole = HOLES[s.currentHole];
-  s.disc = {x: hole.tee.x*s.W, y: hole.tee.y*s.H};
-  s.vel = {x:0,y:0};
-  s.aimAngle = Math.atan2(hole.pin.y*s.H - s.disc.y, hole.pin.x*s.W - s.disc.x);
-  s.isAnimating = false; s.inWater = false;
-  s.trail = []; s.particles = [];
-  s.currentThrow = 0;
+  if (!PS) return;
+  if (PS.animFrame) { cancelAnimationFrame(PS.animFrame); PS.animFrame = null; }
+  if (PS.glowFrame) { cancelAnimationFrame(PS.glowFrame); PS.glowFrame = null; }
+
+  const hole = HOLES[PS.currentHole];
+  PS.disc = { x: hole.tee.x * PS.W, y: hole.tee.y * PS.H };
+  PS.vel = { x: 0, y: 0 };
+  PS.aimAngle = Math.atan2(hole.pin.y * PS.H - PS.disc.y, hole.pin.x * PS.W - PS.disc.x);
+  PS.isAnimating = false;
+  PS.inWater = false;
+  PS.trail = [];
+  PS.particles = [];
+  PS.shake = 0;
+  PS.currentThrow = 0;
 
   document.getElementById('throw-btn').disabled = false;
   document.getElementById('throw-num').textContent = '0';
   document.getElementById('putt-msg').textContent = '';
   document.getElementById('putt-msg').className = 'putt-result-msg';
+
   updateWindUI();
   updateHoleUI();
   drawHole();
+  startGlowLoop();
+}
+
+function startGlowLoop() {
+  // Continuously redraw when idle so basket glow animates
+  if (PS.glowFrame) cancelAnimationFrame(PS.glowFrame);
+  function loop() {
+    if (!PS.isAnimating) drawHole();
+    PS.glowFrame = requestAnimationFrame(loop);
+  }
+  PS.glowFrame = requestAnimationFrame(loop);
 }
 
 function updateWindUI() {
-  if (!puttState) return;
-  const wind = HOLES[puttState.currentHole].wind;
-  const sp = wind.speed;
+  if (!PS) return;
+  const w = HOLES[PS.currentHole].wind;
   const lbl = document.getElementById('wind-label');
   const arr = document.getElementById('wind-arrow');
   const str = document.getElementById('wind-strength');
   const desc = document.getElementById('wind-desc');
-  if (sp < 0.3) {
-    lbl.textContent='Calm'; arr.textContent='•'; str.textContent=''; desc.textContent='No effect';
+  if (w.speed < 0.3) {
+    lbl.textContent = 'Calm'; arr.textContent = '•'; str.textContent = ''; desc.textContent = 'No effect';
   } else {
-    const arrows=['→','↗','↑','↖','←','↙','↓','↘'];
-    const idx=Math.round(wind.angle/(Math.PI/4))&7;
-    arr.textContent = arrows[idx];
-    const labels=['Light','Moderate','Strong','Gusty'];
-    lbl.textContent = labels[Math.min(3,Math.floor(sp/1.2))] + ' Wind';
-    str.textContent = sp.toFixed(1)+' mph';
-    desc.textContent = sp>2.5?'Major drift':sp>1.2?'Noticeable drift':'Minor drift';
+    const arrows = ['→','↗','↑','↖','←','↙','↓','↘'];
+    arr.textContent = arrows[Math.round(w.angle / (Math.PI / 4)) & 7];
+    const labels = ['Light','Moderate','Strong','Gusty'];
+    lbl.textContent = labels[Math.min(3, Math.floor(w.speed / 1.2))] + ' Wind';
+    str.textContent = w.speed.toFixed(1) + ' mph';
+    desc.textContent = w.speed > 2.5 ? 'Major drift' : w.speed > 1.2 ? 'Noticeable drift' : 'Minor drift';
   }
 }
 
 function updateHoleUI() {
-  if (!puttState) return;
-  const s = puttState;
-  document.getElementById('hole-num').textContent = s.currentHole+1;
-  document.getElementById('par-num').textContent = HOLES[s.currentHole].par;
-  const tot = s.scores.reduce((a,v)=>a+(v||0),0);
-  const par = s.scores.reduce((a,v,i)=>a+(v!=null?HOLE_PARS[i]:0),0);
-  const diff = tot-par;
-  document.getElementById('total-score-display').textContent = tot===0?'E':diff===0?'E':diff>0?'+'+diff:diff;
+  if (!PS) return;
+  document.getElementById('hole-num').textContent = PS.currentHole + 1;
+  document.getElementById('par-num').textContent = HOLES[PS.currentHole].par;
+  const tot = PS.scores.reduce((a, v) => a + (v || 0), 0);
+  const par = PS.scores.reduce((a, v, i) => a + (v != null ? HOLE_PARS[i] : 0), 0);
+  const diff = tot - par;
+  document.getElementById('total-score-display').textContent = tot === 0 ? 'E' : diff === 0 ? 'E' : diff > 0 ? '+' + diff : diff;
 }
 
 function throwDisc() {
-  if (!puttState || puttState.isAnimating) return;
-  const s = puttState;
-  s.isAnimating = true;
-  s.currentThrow++;
-  document.getElementById('throw-num').textContent = s.currentThrow;
+  if (!PS || PS.isAnimating) return;
+  if (PS.glowFrame) { cancelAnimationFrame(PS.glowFrame); PS.glowFrame = null; }
+  PS.isAnimating = true;
+  PS.currentThrow++;
+  document.getElementById('throw-num').textContent = PS.currentThrow;
   document.getElementById('throw-btn').disabled = true;
   document.getElementById('putt-msg').textContent = '';
-  const spd = (s.power/100)*16+2;
-  s.vel = {x:Math.cos(s.aimAngle)*spd, y:Math.sin(s.aimAngle)*spd};
-  s.trail = [];
-  animate();
+
+  const spd = (PS.power / 100) * 15 + 3;
+  PS.vel = { x: Math.cos(PS.aimAngle) * spd, y: Math.sin(PS.aimAngle) * spd };
+  PS.trail = [];
+  PS.particles = [];
+  animateDisc();
 }
 
-function spawnParticles(x,y,color,n) {
-  const s = puttState;
-  for(let i=0;i<n;i++) s.particles.push({x,y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:1,color,size:3+Math.random()*4});
+function spawnPart(x, y, color, n) {
+  for (let i = 0; i < n; i++) {
+    PS.particles.push({ x, y, vx: (Math.random()-.5)*9, vy: (Math.random()-.5)*9, life: 1, color, size: 3 + Math.random()*4 });
+  }
 }
 
-function animate() {
-  const s = puttState;
+function animateDisc() {
+  const s = PS;
   if (!s.isAnimating) return;
+  const { W, H } = s;
   const hole = HOLES[s.currentHole];
-  const W=s.W, H=s.H;
-  const pinX=hole.pin.x*W, pinY=hole.pin.y*H;
-  const wind=hole.wind;
+  const pinX = hole.pin.x * W, pinY = hole.pin.y * H;
 
   // Wind + drag
-  s.vel.x += Math.cos(wind.angle)*wind.speed*0.015;
-  s.vel.y += Math.sin(wind.angle)*wind.speed*0.015;
-  const spd = Math.sqrt(s.vel.x**2+s.vel.y**2);
-  const drag = 0.974 - spd*0.001;
-  s.vel.x *= drag; s.vel.y *= drag;
-  s.disc.x += s.vel.x; s.disc.y += s.vel.y;
+  s.vel.x += Math.cos(hole.wind.angle) * hole.wind.speed * 0.014;
+  s.vel.y += Math.sin(hole.wind.angle) * hole.wind.speed * 0.014;
+  const spd = Math.sqrt(s.vel.x ** 2 + s.vel.y ** 2);
+  s.vel.x *= (0.976 - spd * 0.0008);
+  s.vel.y *= (0.976 - spd * 0.0008);
+  s.disc.x += s.vel.x;
+  s.disc.y += s.vel.y;
 
   // Trail
-  s.trail.push({x:s.disc.x,y:s.disc.y,a:1});
-  if(s.trail.length>30) s.trail.shift();
-  s.trail.forEach(p=>p.a*=0.92);
+  s.trail.push({ x: s.disc.x, y: s.disc.y, a: 1 });
+  if (s.trail.length > 35) s.trail.shift();
+  s.trail.forEach(p => p.a *= 0.91);
 
-  // Particles
-  s.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=0.88;p.vy*=0.88;p.life*=0.88;});
-  s.particles=s.particles.filter(p=>p.life>0.05);
-  s.shake*=0.7;
+  // Particles decay
+  s.particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vx *= 0.87; p.vy *= 0.87; p.life *= 0.87; });
+  s.particles = s.particles.filter(p => p.life > 0.04);
+  s.shake *= 0.72;
 
-  // Water
-  for(const t of hole.terrain||[]) {
-    if(t.type==='water') {
-      const wx=t.x*W,wy=t.y*H,ww=t.w*W,wh=t.h*H;
-      if(s.disc.x>wx&&s.disc.x<wx+ww&&s.disc.y>wy&&s.disc.y<wy+wh) {
-        spawnParticles(s.disc.x,s.disc.y,'#60a5fa',12); s.shake=5;
-        s.isAnimating=false; s.inWater=true; s.vel={x:0,y:0};
+  // Water hazard
+  for (const t of hole.terrain || []) {
+    if (t.type === 'water') {
+      const wx = t.x*W, wy = t.y*H, ww = t.w*W, wh = t.h*H;
+      if (s.disc.x > wx && s.disc.x < wx+ww && s.disc.y > wy && s.disc.y < wy+wh) {
+        spawnPart(s.disc.x, s.disc.y, '#60a5fa', 14);
+        s.shake = 6; s.isAnimating = false; s.inWater = true; s.vel = { x:0, y:0 };
         drawHole();
-        setTimeout(()=>{
-          s.disc={x:hole.tee.x*W,y:hole.tee.y*H};
-          s.aimAngle=Math.atan2(pinY-s.disc.y,pinX-s.disc.x);
-          s.trail=[];s.particles=[];s.inWater=false;
-          document.getElementById('throw-btn').disabled=false;
-          showMsg('💦 Water! Back to tee.','bogey'); drawHole();
-        },1000);
+        setTimeout(() => {
+          s.disc = { x: hole.tee.x*W, y: hole.tee.y*H };
+          s.aimAngle = Math.atan2(pinY - s.disc.y, pinX - s.disc.x);
+          s.trail = []; s.particles = []; s.inWater = false;
+          document.getElementById('throw-btn').disabled = false;
+          showMsg('💦 Water! Back to tee.', 'bogey');
+          drawHole(); startGlowLoop();
+        }, 900);
         return;
       }
     }
   }
 
-  // Obstacles
-  for(const obs of hole.obstacles||[]) {
-    const ox=obs.x*W,oy=obs.y*H;
-    const dx=s.disc.x-ox,dy=s.disc.y-oy,dd=Math.sqrt(dx**2+dy**2);
-    const cr=obs.r+11;
-    if(dd<cr) {
-      const nx=dx/dd,ny=dy/dd;
-      const dot=s.vel.x*nx+s.vel.y*ny;
-      const bounce=obs.type==='rock'?.55:.35;
-      s.vel.x=(s.vel.x-2*dot*nx)*bounce; s.vel.y=(s.vel.y-2*dot*ny)*bounce;
-      s.disc.x=ox+(cr+1)*nx; s.disc.y=oy+(cr+1)*ny;
-      spawnParticles(s.disc.x,s.disc.y,obs.type==='rock'?'#94a3b8':'#22c55e',5);
-      s.shake=3;
+  // Obstacle collision
+  for (const obs of hole.obstacles || []) {
+    const ox = obs.x*W, oy = obs.y*H;
+    const dx = s.disc.x - ox, dy = s.disc.y - oy;
+    const dd = Math.sqrt(dx**2 + dy**2);
+    const cr = obs.r + 12;
+    if (dd < cr && dd > 0) {
+      const nx = dx/dd, ny = dy/dd;
+      const dot = s.vel.x*nx + s.vel.y*ny;
+      const bounce = obs.type === 'rock' ? 0.52 : 0.32;
+      s.vel.x = (s.vel.x - 2*dot*nx) * bounce;
+      s.vel.y = (s.vel.y - 2*dot*ny) * bounce;
+      s.disc.x = ox + (cr+1)*nx;
+      s.disc.y = oy + (cr+1)*ny;
+      spawnPart(s.disc.x, s.disc.y, obs.type === 'rock' ? '#94a3b8' : '#4ade80', 6);
+      s.shake = 4;
     }
   }
 
   // Walls
-  const mg=12;
-  if(s.disc.x<mg){s.disc.x=mg;s.vel.x=Math.abs(s.vel.x)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
-  if(s.disc.x>W-mg){s.disc.x=W-mg;s.vel.x=-Math.abs(s.vel.x)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
-  if(s.disc.y<mg){s.disc.y=mg;s.vel.y=Math.abs(s.vel.y)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
-  if(s.disc.y>H-mg){s.disc.y=H-mg;s.vel.y=-Math.abs(s.vel.y)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
+  const mg = 14;
+  if (s.disc.x < mg)   { s.disc.x = mg;   s.vel.x =  Math.abs(s.vel.x) * 0.5; spawnPart(s.disc.x, s.disc.y, '#f97316', 4); }
+  if (s.disc.x > W-mg) { s.disc.x = W-mg; s.vel.x = -Math.abs(s.vel.x) * 0.5; spawnPart(s.disc.x, s.disc.y, '#f97316', 4); }
+  if (s.disc.y < mg)   { s.disc.y = mg;   s.vel.y =  Math.abs(s.vel.y) * 0.5; spawnPart(s.disc.x, s.disc.y, '#f97316', 4); }
+  if (s.disc.y > H-mg) { s.disc.y = H-mg; s.vel.y = -Math.abs(s.vel.y) * 0.5; spawnPart(s.disc.x, s.disc.y, '#f97316', 4); }
 
-  // Check basket
-  const dist=Math.sqrt((s.disc.x-pinX)**2+(s.disc.y-pinY)**2);
-  if(dist<24) {
-    spawnParticles(pinX,pinY,'#fbbf24',20);
-    s.disc={x:pinX,y:pinY}; s.vel={x:0,y:0};
-    s.isAnimating=false;
-    s.scores[s.currentHole]=s.currentThrow;
+  // Basket detection
+  const distPin = Math.sqrt((s.disc.x - pinX)**2 + (s.disc.y - pinY)**2);
+  if (distPin < 26) {
+    spawnPart(pinX, pinY, '#fbbf24', 24);
+    s.disc = { x: pinX, y: pinY }; s.vel = { x:0, y:0 };
+    s.isAnimating = false;
+    s.scores[s.currentHole] = s.currentThrow;
     updateScorecard();
-    const par=hole.par;
-    const t=s.currentThrow;
-    if(t===1) showMsg('🌟 HOLE IN ONE!','ace');
-    else if(t<=par-2) showMsg('🦅 Eagle! Incredible!','birdie');
-    else if(t<par) showMsg('🎉 Birdie!','birdie');
-    else if(t===par) showMsg('👍 Par!','par');
-    else showMsg('😬 Bogey +' + (t-par),'bogey');
+    const par = hole.par, t = s.currentThrow;
+    if (t === 1)        showMsg('🌟 HOLE IN ONE!!', 'ace');
+    else if (t <= par-2)showMsg('🦅 Eagle! Incredible!', 'birdie');
+    else if (t < par)   showMsg('🎉 Birdie! Great throw!', 'birdie');
+    else if (t === par) showMsg('👍 Par!', 'par');
+    else                showMsg('😬 Bogey +' + (t-par), 'bogey');
     drawHole();
-    setTimeout(()=>nextHole(),1800);
+    setTimeout(() => nextHole(), 1800);
     return;
   }
 
   // Stopped
-  if(spd<0.35) {
-    s.isAnimating=false;
-    document.getElementById('throw-btn').disabled=false;
-    const maxT=hole.par+3;
-    if(s.currentThrow>=maxT) {
-      s.scores[s.currentHole]=s.currentThrow; updateScorecard();
-      showMsg('Max throws — next hole','bogey');
-      setTimeout(()=>nextHole(),1500); return;
+  if (spd < 0.3) {
+    s.isAnimating = false;
+    document.getElementById('throw-btn').disabled = false;
+    const maxT = hole.par + 3;
+    if (s.currentThrow >= maxT) {
+      s.scores[s.currentHole] = s.currentThrow;
+      updateScorecard();
+      showMsg('Max throws — next hole', 'bogey');
+      setTimeout(() => nextHole(), 1500);
+      drawHole(); return;
     }
-    const distM=(dist/(W/18)).toFixed(1);
-    showMsg('Missed! '+distM+'m away — try again','bogey');
-    drawHole(); return;
+    const mAway = (distPin / (W / 18)).toFixed(1);
+    showMsg('Missed! ' + mAway + 'm away — aim again', 'bogey');
+    drawHole(); startGlowLoop(); return;
   }
 
   drawHole();
-  s.animFrame=requestAnimationFrame(animate);
+  s.animFrame = requestAnimationFrame(animateDisc);
 }
 
-function showMsg(txt,cls) {
-  const el=document.getElementById('putt-msg');
-  el.textContent=txt; el.className='putt-result-msg '+(cls||'');
+function showMsg(txt, cls) {
+  const el = document.getElementById('putt-msg');
+  el.textContent = txt;
+  el.className = 'putt-result-msg ' + (cls || '');
 }
 
 function updateScorecard() {
-  const s=puttState;
-  let tot=0,totPar=0;
-  s.scores.forEach((v,i)=>{
-    if(v!=null) {
-      const cell=document.getElementById('sc-'+(i+1));
-      cell.textContent=v;
-      const par=HOLE_PARS[i],diff=v-par;
-      cell.className='sc-cell '+(diff<=-2?'eagle':diff===-1?'birdie':diff===0?'par':'bogey');
-      tot+=v; totPar+=par;
+  let tot = 0, totPar = 0;
+  PS.scores.forEach((v, i) => {
+    if (v != null) {
+      const cell = document.getElementById('sc-' + (i+1));
+      if (!cell) return;
+      cell.textContent = v;
+      const d = v - HOLE_PARS[i];
+      cell.className = 'sc-cell ' + (d <= -2 ? 'eagle' : d === -1 ? 'birdie' : d === 0 ? 'par' : 'bogey');
+      tot += v; totPar += HOLE_PARS[i];
     }
   });
-  const diff=tot-totPar;
-  const totEl=document.getElementById('sc-total');
-  totEl.textContent=tot>0?(diff===0?'E':diff>0?'+'+diff:diff):'–';
-  totEl.className='sc-cell total '+(diff<0?'under':diff>0?'over':'');
+  const diff = tot - totPar;
+  const el = document.getElementById('sc-total');
+  el.textContent = tot > 0 ? (diff === 0 ? 'E' : diff > 0 ? '+'+diff : diff) : '–';
+  el.className = 'sc-cell total ' + (diff < 0 ? 'under' : diff > 0 ? 'over' : '');
   updateHoleUI();
 }
 
 function nextHole() {
-  const s=puttState;
-  if(s.currentHole<8) {
-    s.currentHole++;
+  if (!PS) return;
+  if (PS.currentHole < 8) {
+    PS.currentHole++;
     resetPutt();
   } else {
-    const tot=s.scores.reduce((a,v)=>a+(v||0),0);
-    const par=HOLE_PARS.reduce((a,b)=>a+b,0);
-    const diff=tot-par;
-    showMsg(diff<0?'🏆 '+Math.abs(diff)+' under par! Amazing!':diff===0?'🎯 Even par! Solid!':'😤 +'+diff+' — try again!',diff<0?'birdie':diff===0?'par':'bogey');
-    document.getElementById('throw-btn').disabled=true;
-    setTimeout(()=>{
-      s.currentHole=0; s.scores=new Array(9).fill(null);
-      for(let i=1;i<=9;i++){const c=document.getElementById('sc-'+i);if(c){c.textContent='–';c.className='sc-cell';}}
-      document.getElementById('sc-total').textContent='–';
-      document.getElementById('sc-total').className='sc-cell total';
+    const tot = PS.scores.reduce((a,v) => a+(v||0), 0);
+    const par = HOLE_PARS.reduce((a,b) => a+b, 0);
+    const diff = tot - par;
+    showMsg(
+      diff < 0 ? '🏆 ' + Math.abs(diff) + ' under par! Amazing!' :
+      diff === 0 ? '🎯 Even par! Solid round!' :
+      '😤 +' + diff + ' — come back for more!',
+      diff < 0 ? 'birdie' : diff === 0 ? 'par' : 'bogey'
+    );
+    document.getElementById('throw-btn').disabled = true;
+    setTimeout(() => {
+      PS.currentHole = 0;
+      PS.scores = new Array(9).fill(null);
+      for (let i = 1; i <= 9; i++) {
+        const c = document.getElementById('sc-'+i);
+        if (c) { c.textContent = '–'; c.className = 'sc-cell'; }
+      }
+      document.getElementById('sc-total').textContent = '–';
+      document.getElementById('sc-total').className = 'sc-cell total';
       resetPutt();
-    },4000);
+    }, 4000);
   }
 }
 
+// ═══ DRAWING ENGINE ═══
 function drawHole() {
-  if(!puttState||!puttState.initialized) return;
-  const s=puttState;
-  const {ctx,W,H} = s;
-  const hole=HOLES[s.currentHole];
-  const pinX=hole.pin.x*W,pinY=hole.pin.y*H;
-  const teeX=hole.tee.x*W,teeY=hole.tee.y*H;
+  if (!PS?.initialized) return;
+  const { ctx, W, H } = PS;
+  const hole = HOLES[PS.currentHole];
+  const pinX = hole.pin.x * W, pinY = hole.pin.y * H;
+  const teeX = hole.tee.x * W, teeY = hole.tee.y * H;
+  const t = Date.now() * 0.003;
 
   ctx.save();
-  if(s.shake>0.3) ctx.translate((Math.random()-.5)*s.shake,(Math.random()-.5)*s.shake);
+  if (PS.shake > 0.4) ctx.translate((Math.random()-.5)*PS.shake, (Math.random()-.5)*PS.shake);
 
-  // Background
-  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.8);
-  bg.addColorStop(0,'#0d2010'); bg.addColorStop(.6,'#091a0c'); bg.addColorStop(1,'#060e08');
-  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  // ── BACKGROUND ──
+  const bg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*.85);
+  bg.addColorStop(0, '#0f2812'); bg.addColorStop(.5, '#091a0c'); bg.addColorStop(1, '#050d07');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
 
-  // Grass lines
-  ctx.strokeStyle='rgba(255,255,255,0.018)'; ctx.lineWidth=1;
-  for(let x=0;x<W;x+=22){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+8,H);ctx.stroke();}
+  // Subtle grass stripes
+  ctx.strokeStyle = 'rgba(255,255,255,0.016)'; ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 24) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x+10, H); ctx.stroke(); }
 
-  // Fairway
-  const fg=ctx.createLinearGradient(teeX,teeY,pinX,pinY);
-  fg.addColorStop(0,'rgba(34,197,94,0.05)'); fg.addColorStop(.5,'rgba(34,197,94,0.1)'); fg.addColorStop(1,'rgba(34,197,94,0.05)');
-  ctx.beginPath(); ctx.moveTo(teeX,teeY); ctx.lineTo(pinX,pinY);
-  ctx.strokeStyle=fg; ctx.lineWidth=50; ctx.lineCap='round'; ctx.stroke();
+  // ── FAIRWAY HIGHLIGHT ──
+  const path = new Path2D();
+  path.moveTo(teeX, teeY); path.lineTo(pinX, pinY);
+  ctx.save();
+  ctx.strokeStyle = 'rgba(34,197,94,0.09)'; ctx.lineWidth = 60; ctx.lineCap = 'round';
+  ctx.stroke(path);
+  ctx.strokeStyle = 'rgba(34,197,94,0.05)'; ctx.lineWidth = 100;
+  ctx.stroke(path);
+  ctx.restore();
 
-  // Water hazards
-  (hole.terrain||[]).forEach(t=>{
-    if(t.type!=='water') return;
-    const wx=t.x*W,wy=t.y*H,ww=t.w*W,wh=t.h*H;
-    const wg=ctx.createLinearGradient(wx,wy,wx,wy+wh);
-    wg.addColorStop(0,'rgba(59,130,246,0.5)'); wg.addColorStop(1,'rgba(29,78,216,0.7)');
-    ctx.fillStyle=wg; ctx.beginPath(); ctx.roundRect(wx,wy,ww,wh,8); ctx.fill();
-    ctx.strokeStyle='rgba(147,197,253,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
-    ctx.beginPath(); ctx.ellipse(wx+ww/2,wy+wh/2,ww*.35,wh*.3,0,0,Math.PI*2); ctx.stroke();
+  // ── WATER HAZARDS ──
+  (hole.terrain || []).forEach(t2 => {
+    if (t2.type !== 'water') return;
+    const wx = t2.x*W, wy = t2.y*H, ww = t2.w*W, wh = t2.h*H;
+    const wg = ctx.createLinearGradient(wx, wy, wx, wy+wh);
+    wg.addColorStop(0, 'rgba(59,130,246,0.55)'); wg.addColorStop(1, 'rgba(29,78,216,0.75)');
+    ctx.fillStyle = wg;
+    ctx.beginPath(); ctx.roundRect(wx, wy, ww, wh, 10); ctx.fill();
+    // Shimmer
+    ctx.strokeStyle = 'rgba(147,197,253,0.22)'; ctx.lineWidth = 1; ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.ellipse(wx+ww/2, wy+wh/2, ww*.38, wh*.28, 0, 0, Math.PI*2); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle='rgba(147,197,253,0.5)'; ctx.font='700 9px DM Sans'; ctx.textAlign='center';
-    ctx.fillText('OB',wx+ww/2,wy+wh/2+3);
+    ctx.fillStyle = 'rgba(147,197,253,0.55)'; ctx.font = 'bold 10px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText('OB', wx+ww/2, wy+wh/2+4);
   });
 
-  // Obstacles
-  (hole.obstacles||[]).forEach(obs=>{
-    const ox=obs.x*W,oy=obs.y*H;
-    if(obs.type==='tree') {
-      ctx.beginPath(); ctx.ellipse(ox+4,oy+5,obs.r*.9,obs.r*.5,.3,0,Math.PI*2);
-      ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
-      ctx.fillStyle='#6b4226'; ctx.fillRect(ox-3,oy+obs.r*.3,6,obs.r*.5);
-      for(let li=0;li<3;li++){
-        const lr=obs.r*(1-li*.2),ly=oy-li*obs.r*.28;
-        const cg=ctx.createRadialGradient(ox-lr*.2,ly-lr*.2,1,ox,ly,lr);
-        cg.addColorStop(0,li===0?'#4ade80':'#22c55e'); cg.addColorStop(.6,'#16a34a'); cg.addColorStop(1,'#14532d');
-        ctx.beginPath(); ctx.arc(ox,ly,lr,0,Math.PI*2);
-        ctx.fillStyle=cg; ctx.fill();
-        ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1; ctx.stroke();
+  // ── OBSTACLES ──
+  (hole.obstacles || []).forEach(obs => {
+    const ox = obs.x*W, oy = obs.y*H;
+    if (obs.type === 'tree') {
+      // Shadow
+      ctx.save(); ctx.globalAlpha = 0.3;
+      ctx.beginPath(); ctx.ellipse(ox+5, oy+6, obs.r*.95, obs.r*.5, .3, 0, Math.PI*2);
+      ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
+      // Trunk
+      ctx.fillStyle = '#7c5230'; ctx.fillRect(ox-4, oy+obs.r*.25, 8, obs.r*.6);
+      // 3 canopy layers
+      for (let li = 2; li >= 0; li--) {
+        const lr = obs.r * (1 - li*.18), ly = oy - li*obs.r*.25;
+        const cg = ctx.createRadialGradient(ox-lr*.25, ly-lr*.25, 1, ox, ly, lr);
+        cg.addColorStop(0, li===2 ? '#6ee7b7' : li===1 ? '#4ade80' : '#22c55e');
+        cg.addColorStop(.55, '#16a34a'); cg.addColorStop(1, '#14532d');
+        ctx.beginPath(); ctx.arc(ox, ly, lr, 0, Math.PI*2);
+        ctx.fillStyle = cg; ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 1; ctx.stroke();
       }
-    } else {
-      ctx.beginPath(); ctx.ellipse(ox+4,oy+4,obs.r*.9,obs.r*.6,.3,0,Math.PI*2);
-      ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
-      const rg=ctx.createRadialGradient(ox-obs.r*.2,oy-obs.r*.2,2,ox,oy,obs.r);
-      rg.addColorStop(0,'#94a3b8'); rg.addColorStop(.5,'#64748b'); rg.addColorStop(1,'#334155');
-      ctx.beginPath(); ctx.arc(ox,oy,obs.r,0,Math.PI*2);
-      ctx.fillStyle=rg; ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.stroke();
+      // Highlight
+      ctx.beginPath(); ctx.arc(ox - obs.r*.3, oy - obs.r*.55, obs.r*.22, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
+    } else { // rock
+      ctx.save(); ctx.globalAlpha = 0.28;
+      ctx.beginPath(); ctx.ellipse(ox+5, oy+5, obs.r*.9, obs.r*.55, .3, 0, Math.PI*2);
+      ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
+      const rg = ctx.createRadialGradient(ox-obs.r*.28, oy-obs.r*.28, 2, ox, oy, obs.r);
+      rg.addColorStop(0, '#cbd5e1'); rg.addColorStop(.4, '#94a3b8'); rg.addColorStop(.8, '#475569'); rg.addColorStop(1, '#1e293b');
+      ctx.beginPath(); ctx.arc(ox, oy, obs.r, 0, Math.PI*2);
+      ctx.fillStyle = rg; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1.5; ctx.stroke();
+      // Crack
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1; ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(ox-obs.r*.3, oy-obs.r*.2); ctx.lineTo(ox+obs.r*.2, oy+obs.r*.3); ctx.stroke();
+      ctx.setLineDash([]);
     }
   });
 
-  // Hole name
-  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='700 10px DM Sans'; ctx.textAlign='left';
-  ctx.fillText('H'+(s.currentHole+1)+' · '+hole.name, 10, H-10);
+  // ── HOLE INFO ──
+  ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.font = '700 11px DM Sans'; ctx.textAlign = 'left';
+  ctx.fillText('H' + (PS.currentHole+1) + '  ·  ' + hole.name, 12, H-11);
 
-  // Trail
-  for(let i=1;i<s.trail.length;i++){
-    const a=s.trail[i-1],b=s.trail[i];
-    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
-    ctx.strokeStyle='rgba(249,115,22,'+b.a*.6+')';
-    ctx.lineWidth=2.5*b.a; ctx.lineCap='round'; ctx.stroke();
+  // Wind indicator on canvas
+  if (hole.wind.speed > 0.3) {
+    const arrows = ['→','↗','↑','↖','←','↙','↓','↘'];
+    const wi = Math.round(hole.wind.angle / (Math.PI/4)) & 7;
+    const wColor = hole.wind.speed > 2.5 ? '#ef4444' : hole.wind.speed > 1.2 ? '#f97316' : '#fbbf24';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.beginPath(); ctx.roundRect(W-72, 8, 64, 26, 8); ctx.fill();
+    ctx.fillStyle = wColor; ctx.font = 'bold 11px DM Sans'; ctx.textAlign = 'center';
+    ctx.fillText(arrows[wi] + ' ' + hole.wind.speed.toFixed(1)+'mph', W-40, 26);
   }
 
-  // Particles
-  s.particles.forEach(p=>{
-    ctx.globalAlpha=p.life;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
-    ctx.fillStyle=p.color; ctx.fill();
-    ctx.globalAlpha=1;
+  // ── TRAIL ──
+  ctx.lineCap = 'round';
+  for (let i = 1; i < PS.trail.length; i++) {
+    const a = PS.trail[i-1], b = PS.trail[i];
+    ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = 'rgba(249,115,22,' + (b.a * 0.7) + ')';
+    ctx.lineWidth = 3 * b.a;
+    ctx.stroke();
+  }
+
+  // ── PARTICLES ──
+  PS.particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.size*p.life, 0, Math.PI*2);
+    ctx.fillStyle = p.color; ctx.fill();
+    ctx.globalAlpha = 1;
   });
 
-  // Aim line + wind preview
-  if(!s.isAnimating&&!s.inWater) {
-    const al=(s.power/100)*55+40;
-    const tx=s.disc.x+Math.cos(s.aimAngle)*al,ty=s.disc.y+Math.sin(s.aimAngle)*al;
-    const ag=ctx.createLinearGradient(s.disc.x,s.disc.y,tx,ty);
-    ag.addColorStop(0,'rgba(249,115,22,0.9)'); ag.addColorStop(1,'rgba(249,115,22,0)');
-    ctx.beginPath(); ctx.moveTo(s.disc.x,s.disc.y); ctx.lineTo(tx,ty);
-    ctx.strokeStyle=ag; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.stroke();
-    ctx.setLineDash([]);
+  // ── AIM LINE (when not animating) ──
+  if (!PS.isAnimating && !PS.inWater) {
+    const aimLen = 55 + PS.power * 0.85;
+    const tx = PS.disc.x + Math.cos(PS.aimAngle) * aimLen;
+    const ty = PS.disc.y + Math.sin(PS.aimAngle) * aimLen;
+
+    // Glow behind line
+    ctx.shadowBlur = 8; ctx.shadowColor = 'rgba(249,115,22,0.5)';
+    const ag = ctx.createLinearGradient(PS.disc.x, PS.disc.y, tx, ty);
+    ag.addColorStop(0, 'rgba(249,115,22,0.95)'); ag.addColorStop(1, 'rgba(249,115,22,0)');
+    ctx.beginPath(); ctx.moveTo(PS.disc.x, PS.disc.y); ctx.lineTo(tx, ty);
+    ctx.strokeStyle = ag; ctx.lineWidth = 2.5; ctx.setLineDash([6,5]); ctx.stroke();
+    ctx.setLineDash([]); ctx.shadowBlur = 0;
+
     // Arrow tip
-    ctx.save(); ctx.translate(tx,ty); ctx.rotate(s.aimAngle);
-    ctx.fillStyle='rgba(249,115,22,0.7)'; ctx.beginPath();
-    ctx.moveTo(8,0); ctx.lineTo(-4,-4); ctx.lineTo(-4,4); ctx.closePath(); ctx.fill();
+    ctx.save(); ctx.translate(tx, ty); ctx.rotate(PS.aimAngle);
+    ctx.fillStyle = 'rgba(249,115,22,0.85)';
+    ctx.beginPath(); ctx.moveTo(10,0); ctx.lineTo(-5,-5); ctx.lineTo(-5,5); ctx.closePath(); ctx.fill();
     ctx.restore();
-    // Wind drift preview
-    if(hole.wind.speed>0.5) {
-      let px=s.disc.x,py=s.disc.y;
-      let pvx=Math.cos(s.aimAngle)*(s.power/100*16+2)*.35;
-      let pvy=Math.sin(s.aimAngle)*(s.power/100*16+2)*.35;
-      ctx.beginPath(); ctx.moveTo(px,py);
-      for(let i=0;i<20;i++){
-        pvx+=Math.cos(hole.wind.angle)*hole.wind.speed*0.015;
-        pvy+=Math.sin(hole.wind.angle)*hole.wind.speed*0.015;
-        pvx*=0.97; pvy*=0.97; px+=pvx; py+=pvy; ctx.lineTo(px,py);
+
+    // Power ring around disc
+    const powerArc = (PS.power / 100) * Math.PI * 2;
+    ctx.beginPath(); ctx.arc(PS.disc.x, PS.disc.y, 18, -Math.PI/2, -Math.PI/2 + powerArc);
+    const arcColor = PS.power > 75 ? '#ef4444' : PS.power > 40 ? '#f97316' : '#22c55e';
+    ctx.strokeStyle = arcColor; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+
+    // Wind drift preview (blue dashes)
+    if (hole.wind.speed > 0.4) {
+      let px = PS.disc.x, py = PS.disc.y;
+      let pvx = Math.cos(PS.aimAngle) * (PS.power/100*15+3) * 0.3;
+      let pvy = Math.sin(PS.aimAngle) * (PS.power/100*15+3) * 0.3;
+      ctx.beginPath(); ctx.moveTo(px, py);
+      for (let i = 0; i < 22; i++) {
+        pvx += Math.cos(hole.wind.angle) * hole.wind.speed * 0.014;
+        pvy += Math.sin(hole.wind.angle) * hole.wind.speed * 0.014;
+        pvx *= 0.977; pvy *= 0.977; px += pvx; py += pvy;
+        ctx.lineTo(px, py);
       }
-      ctx.strokeStyle='rgba(96,165,250,0.22)'; ctx.lineWidth=1.5; ctx.setLineDash([3,5]); ctx.stroke();
+      ctx.strokeStyle = 'rgba(96,165,250,0.28)'; ctx.lineWidth = 1.5; ctx.setLineDash([3,5]); ctx.stroke();
       ctx.setLineDash([]);
     }
   }
 
-  // Tee box
-  ctx.beginPath(); ctx.ellipse(teeX,teeY,22,12,0,0,Math.PI*2);
-  ctx.fillStyle='rgba(34,197,94,0.18)'; ctx.fill();
-  ctx.strokeStyle='rgba(34,197,94,0.45)'; ctx.lineWidth=1.5; ctx.stroke();
-  ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.font='700 9px DM Sans'; ctx.textAlign='center';
-  ctx.fillText('TEE',teeX,teeY+3.5);
+  // ── TEE BOX ──
+  ctx.beginPath(); ctx.ellipse(teeX, teeY, 24, 13, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(34,197,94,0.15)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(34,197,94,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.font = '700 9px DM Sans'; ctx.textAlign = 'center';
+  ctx.fillText('TEE', teeX, teeY + 4);
 
-  // Basket glow
-  const t=Date.now()*.003;
-  for(let i=0;i<3;i++){
-    ctx.beginPath(); ctx.arc(pinX,pinY,28+i*12+Math.sin(t+i)*4,0,Math.PI*2);
-    ctx.strokeStyle='rgba(34,197,94,'+(0.06-i*.015)+')'; ctx.lineWidth=1; ctx.stroke();
+  // ── BASKET ──
+  // Pulsing glow rings
+  for (let ri = 0; ri < 3; ri++) {
+    const r = 30 + ri*13 + Math.sin(t + ri*1.2)*5;
+    ctx.beginPath(); ctx.arc(pinX, pinY, r, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(34,197,94,' + (0.08 - ri*0.02) + ')'; ctx.lineWidth = 1.5; ctx.stroke();
   }
-  ctx.beginPath(); ctx.ellipse(pinX+4,pinY+5,16,8,0,0,Math.PI*2);
-  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fill();
-  ctx.beginPath(); ctx.arc(pinX,pinY,20,0,Math.PI*2);
-  const bg2=ctx.createRadialGradient(pinX,pinY,4,pinX,pinY,20);
-  bg2.addColorStop(0,'rgba(34,197,94,0.28)'); bg2.addColorStop(1,'rgba(34,197,94,0.04)');
-  ctx.fillStyle=bg2; ctx.fill();
-  ctx.strokeStyle='rgba(34,197,94,0.8)'; ctx.lineWidth=2.5; ctx.stroke();
-  // Chains
-  for(let i=0;i<8;i++){
-    const ca=(i/8)*Math.PI*2+t*.1;
-    ctx.beginPath(); ctx.moveTo(pinX,pinY-6); ctx.lineTo(pinX+Math.cos(ca)*13,pinY+Math.sin(ca)*9);
-    ctx.strokeStyle='rgba(203,213,225,0.4)'; ctx.lineWidth=1; ctx.stroke();
+  // Shadow
+  ctx.save(); ctx.globalAlpha = 0.4;
+  ctx.beginPath(); ctx.ellipse(pinX+5, pinY+6, 18, 9, 0, 0, Math.PI*2);
+  ctx.fillStyle = '#000'; ctx.fill(); ctx.restore();
+  // Outer ring (glowing)
+  ctx.shadowBlur = 12; ctx.shadowColor = 'rgba(34,197,94,0.6)';
+  ctx.beginPath(); ctx.arc(pinX, pinY, 21, 0, Math.PI*2);
+  ctx.strokeStyle = '#22c55e'; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.shadowBlur = 0;
+  // Inner basket fill
+  ctx.beginPath(); ctx.arc(pinX, pinY, 21, 0, Math.PI*2);
+  const bg3 = ctx.createRadialGradient(pinX, pinY, 3, pinX, pinY, 21);
+  bg3.addColorStop(0, 'rgba(34,197,94,0.35)'); bg3.addColorStop(1, 'rgba(34,197,94,0.05)');
+  ctx.fillStyle = bg3; ctx.fill();
+  // Chains (8)
+  for (let ci = 0; ci < 8; ci++) {
+    const ca = (ci/8)*Math.PI*2 + t*0.12;
+    ctx.beginPath(); ctx.moveTo(pinX, pinY-8); ctx.lineTo(pinX+Math.cos(ca)*15, pinY+Math.sin(ca)*11);
+    ctx.strokeStyle = 'rgba(203,213,225,0.5)'; ctx.lineWidth = 1.2; ctx.stroke();
   }
-  ctx.beginPath(); ctx.arc(pinX,pinY,7,0,Math.PI*2);
-  ctx.fillStyle='rgba(34,197,94,0.6)'; ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1; ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(pinX,pinY+8); ctx.lineTo(pinX,pinY+38);
-  ctx.strokeStyle='rgba(180,180,180,0.55)'; ctx.lineWidth=2.5; ctx.stroke();
+  // Center dot
+  ctx.beginPath(); ctx.arc(pinX, pinY, 7, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(34,197,94,0.7)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.stroke();
+  // Pole
+  ctx.beginPath(); ctx.moveTo(pinX, pinY+10); ctx.lineTo(pinX, pinY+42);
+  ctx.strokeStyle = 'rgba(200,200,200,0.6)'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.stroke();
+  // Flag
+  ctx.fillStyle = '#f97316';
+  ctx.beginPath(); ctx.moveTo(pinX, pinY+10); ctx.lineTo(pinX+18, pinY+17); ctx.lineTo(pinX, pinY+24); ctx.closePath(); ctx.fill();
 
-  // Dist label
-  if(!s.isAnimating) {
-    const distPx=Math.sqrt((s.disc.x-pinX)**2+(s.disc.y-pinY)**2);
-    if(distPx>32) {
-      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='600 9px DM Sans'; ctx.textAlign='center';
-      ctx.fillText((distPx/(W/18)).toFixed(1)+'m',pinX,pinY-26);
+  // Distance label
+  if (!PS.isAnimating && !PS.inWater) {
+    const distPx = Math.sqrt((PS.disc.x-pinX)**2 + (PS.disc.y-pinY)**2);
+    if (distPx > 35) {
+      ctx.fillStyle = 'rgba(255,255,255,0.32)'; ctx.font = '600 10px DM Sans'; ctx.textAlign = 'center';
+      ctx.fillText((distPx / (W/18)).toFixed(1) + 'm', pinX, pinY - 30);
     }
   }
 
-  // Disc
-  if(!s.inWater) {
-    const spd2=Math.sqrt(s.vel.x**2+s.vel.y**2);
-    ctx.beginPath(); ctx.ellipse(s.disc.x+4,s.disc.y+4,13,7,s.isAnimating?spd2*.04:0,0,Math.PI*2);
-    ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fill();
-    if(s.isAnimating&&spd2>3) {
-      ctx.beginPath(); ctx.arc(s.disc.x,s.disc.y,22,0,Math.PI*2);
-      ctx.fillStyle='rgba(249,115,22,'+Math.min(0.18,spd2*.012)+')'; ctx.fill();
+  // ── DISC ──
+  if (!PS.inWater) {
+    const curSpd = Math.sqrt(PS.vel.x**2 + PS.vel.y**2);
+    // Motion shadow
+    ctx.beginPath(); ctx.ellipse(PS.disc.x+4, PS.disc.y+5, 14, 7, PS.isAnimating ? Math.atan2(PS.vel.y,PS.vel.x) : 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill();
+    // Glow when fast
+    if (PS.isAnimating && curSpd > 4) {
+      ctx.beginPath(); ctx.arc(PS.disc.x, PS.disc.y, 20, 0, Math.PI*2);
+      ctx.fillStyle = 'rgba(249,115,22,' + Math.min(0.22, curSpd*0.013) + ')'; ctx.fill();
     }
-    ctx.save(); ctx.translate(s.disc.x,s.disc.y);
-    if(s.isAnimating) ctx.rotate(spd2*.08);
-    const dg=ctx.createRadialGradient(-4,-4,1,0,0,12);
-    dg.addColorStop(0,'#fb923c'); dg.addColorStop(.5,'#f97316'); dg.addColorStop(1,'#c2510f');
-    ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fillStyle=dg; ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,0.28)'; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.stroke();
-    ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.38)'; ctx.fill();
+    ctx.save();
+    ctx.translate(PS.disc.x, PS.disc.y);
+    if (PS.isAnimating) ctx.rotate(Math.atan2(PS.vel.y, PS.vel.x) + curSpd*0.1);
+    // Disc body
+    const dg = ctx.createRadialGradient(-4,-4,1, 0,0,13);
+    dg.addColorStop(0, '#fdba74'); dg.addColorStop(.45, '#f97316'); dg.addColorStop(1, '#9a3412');
+    ctx.beginPath(); ctx.arc(0, 0, 13, 0, Math.PI*2);
+    ctx.fillStyle = dg; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
+    // Rings
+    ctx.beginPath(); ctx.arc(0, 0, 8, 0, Math.PI*2); ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2); ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
     ctx.restore();
   }
 
-  ctx.restore();
-
-  // Keep animating basket glow when idle
-  if(!s.isAnimating) requestAnimationFrame(()=>{ if(!puttState.isAnimating) drawHole(); });
+  ctx.restore(); // camera shake
 }
 
 // Scroll reveal
-const obs2=new IntersectionObserver((entries)=>{
-  entries.forEach((e,i)=>{ if(e.isIntersecting) setTimeout(()=>e.target.classList.add('visible'),i*100); });
-},{threshold:0.1});
-document.querySelectorAll('.reveal').forEach(el=>obs2.observe(el));
+const obs2 = new IntersectionObserver((entries) => {
+  entries.forEach((e, i) => { if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i*100); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => obs2.observe(el));
 </script>
 </body>
 </html>
