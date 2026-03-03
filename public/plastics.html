@@ -118,6 +118,27 @@
     @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 768px) {
+      nav { padding: 0.8rem 1.2rem; }
+      .nav-links { display: none; }
+      .nav-mobile-btn { display: flex; }
+      .btn-nav { padding: 0.45rem 1rem; font-size: 0.72rem; }
+      .page-header { padding: 4rem 1.2rem 2rem; }
+      .container { padding: 2rem 1.2rem 3rem; }
+      .tier-intro { grid-template-columns: 1fr !important; }
+      .brand-section { margin-bottom: 2rem; }
+      .brand-name { font-size: 1.4rem !important; }
+      .plastics-table { font-size: 0.75rem; }
+      .plastics-table th, .plastics-table td { padding: 0.5rem 0.6rem; }
+      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 0.8rem; }
+      .footer-inner { flex-direction: column; gap: 1rem; }
+      .footer-links { gap: 0.8rem; flex-wrap: wrap; }
+    }
+    @media (max-width: 480px) {
+      .btn-nav { display: none; }
+      .tier-intro { grid-template-columns: 1fr !important; }
+    }
   </style>
 </head>
 <body>
@@ -253,7 +274,7 @@
               <td>Ultra-lightweight Champion plastic with microbubbles. Can float on water. Often 1–2g lighter than standard — changes flight characteristics (more distance for slower arms). Popular for beginners who can't throw standard Destroyers far enough.</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
@@ -323,7 +344,7 @@
               <td>Crystal-clear Z plastic. Extremely translucent — you can see through it. Same durability as Z but more flexible with better cold-weather grip. Very eye-catching on the course.</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
@@ -393,7 +414,7 @@
               <td>Fuzion-X combines the durability of Lucid-X with slightly more grip. Best of both worlds for players who want max durability but need cold-weather grip.</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
@@ -455,7 +476,7 @@
               <td>Two variants — Soft for maximum grip and feel, Hard for more durability. Both are very popular for putting. One of the softest, grippiest putter plastics on the market.</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
@@ -509,7 +530,7 @@
               <td>Available in Soft and Medium variants. One of the grippiest putter plastics available. The Soft is particularly popular for wet-weather putting. More durable than typical base plastic.</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 
@@ -563,7 +584,7 @@
               <td>Premium blend with metallic sheen. Great grip and excellent durability. Popular collector series. Flies identically to standard Opto.</td>
             </tr>
           </tbody>
-        </table>
+        </table></div>
       </div>
     </div>
 

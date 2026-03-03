@@ -157,6 +157,29 @@
     @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 768px) {
+      nav { padding: 0.8rem 1.2rem; }
+      .nav-links { display: none; }
+      .nav-mobile-btn { display: flex; }
+      .btn-nav { padding: 0.45rem 1rem; font-size: 0.72rem; }
+      .page-hero { padding: 4.5rem 1.2rem 3rem; }
+      .container { padding: 2rem 1.2rem 3rem; }
+      .mission-block { grid-template-columns: 1fr !important; gap: 2rem; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .values-grid { grid-template-columns: 1fr !important; }
+      .story-section { padding: 3rem 1.2rem; }
+      .contact-grid { grid-template-columns: 1fr !important; }
+      .email-card { grid-row: span 1 !important; }
+      .about-cta { padding: 2rem 1.2rem; }
+      .footer-inner { flex-direction: column; gap: 1rem; }
+      .footer-links { gap: 0.8rem; flex-wrap: wrap; }
+    }
+    @media (max-width: 480px) {
+      .btn-nav { display: none; }
+      .stat-grid { grid-template-columns: 1fr 1fr; }
+      .page-hero h1 { font-size: clamp(2.8rem, 10vw, 5rem) !important; }
+    }
   </style>
 </head>
 <body>
@@ -292,10 +315,10 @@
           <span class="icon">📬</span>
           <h3>Email Us</h3>
           <p>Whether it's a feature request, a bug you found, or just feedback on your experience — we want to hear it. We aim to reply within 48 hours.</p>
-          <a href="mailto:baggedupdiscgolf@gmail.com" class="email-link">
+          <a href="/cdn-cgi/l/email-protection#731112141416170603171a0010141c1f1533141e121a1f5d101c1e" class="email-link">
             <div class="em-icon">✉️</div>
             <div>
-              <span class="em-addr">baggedupdiscgolf@gmail.com</span>
+              <span class="em-addr"><span class="__cf_email__" data-cfemail="81e3e0e6e6e4e5f4f1e5e8f2e2e6eeede7c1e6ece0e8edafe2eeec">[email&#160;protected]</span></span>
               <span class="em-sub">Click to open your email client</span>
             </div>
           </a>
@@ -349,9 +372,4 @@
         <li><a href="/games.html">Games</a></li>
         <li><a href="/about.html">About</a></li>
         <li><a href="/app">Open App</a></li>
-      </ul>
-      <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
-    </div>
-  </footer>
-</body>
-</html>
+ 
