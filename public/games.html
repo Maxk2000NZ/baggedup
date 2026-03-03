@@ -20,21 +20,10 @@
     }
     html { scroll-behavior: smooth; }
     body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
-
-    body::before {
-      content: ''; position: fixed; inset: 0;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-      pointer-events: none; z-index: 0;
-    }
+    body::before { content: ''; position: fixed; inset: 0; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E"); pointer-events: none; z-index: 0; }
 
     /* NAV */
-    nav {
-      position: sticky; top: 0; z-index: 100;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 1rem 2rem;
-      background: rgba(8,11,18,0.92); backdrop-filter: blur(16px);
-      border-bottom: 1px solid var(--border);
-    }
+    nav { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; background: rgba(8,11,18,0.92); backdrop-filter: blur(16px); border-bottom: 1px solid var(--border); }
     .nav-logo { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
     .nav-logo img { height: 32px; width: 32px; object-fit: contain; border-radius: 8px; }
     .nav-logo-text { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; color: var(--text); }
@@ -48,259 +37,165 @@
     .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); }
     .mobile-menu.open { display: flex; }
     .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
-    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; border-bottom: none; }
     @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
 
     /* PAGE HEADER */
-    .page-header {
-      padding: 5rem 2rem 3rem; text-align: center; position: relative; z-index: 1;
-      background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%);
-    }
+    .page-header { padding: 5rem 2rem 2rem; text-align: center; position: relative; z-index: 1; background: radial-gradient(ellipse at 50% 0%, rgba(249,115,22,0.08) 0%, transparent 60%); }
     .page-header h1 { font-family: 'Bebas Neue', sans-serif; font-size: clamp(3rem, 8vw, 5.5rem); line-height: 1; letter-spacing: 0.02em; margin-bottom: 0.8rem; animation: fade-up 0.6s ease both; }
     .page-header h1 em { font-style: normal; color: var(--orange); }
     .page-header p { font-size: 1rem; color: var(--muted); max-width: 480px; margin: 0 auto; line-height: 1.7; animation: fade-up 0.6s 0.1s ease both; }
 
-    /* GAME SELECTOR */
-    .game-tabs {
-      display: flex; gap: 1rem; justify-content: center; padding: 2rem 2rem 0;
-      position: relative; z-index: 1;
-    }
-    .game-tab {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 999px; padding: 0.7rem 1.8rem;
-      font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em;
-      cursor: pointer; transition: all 0.2s; color: var(--muted);
-    }
+    /* TABS */
+    .game-tabs { display: flex; gap: 1rem; justify-content: center; padding: 2rem 2rem 0; position: relative; z-index: 1; flex-wrap: wrap; }
+    .game-tab { background: var(--card); border: 1px solid var(--border); border-radius: 999px; padding: 0.7rem 1.8rem; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; transition: all 0.2s; color: var(--muted); }
     .game-tab:hover { color: var(--text); border-color: var(--muted2); }
     .game-tab.active { background: var(--orange); border-color: var(--orange); color: #fff; }
 
-    /* GAMES CONTAINER */
-    .games-container { max-width: 860px; margin: 0 auto; padding: 2rem 2rem 5rem; position: relative; z-index: 1; }
+    .games-container { max-width: 880px; margin: 0 auto; padding: 2rem 1.5rem 5rem; position: relative; z-index: 1; }
     .game-panel { display: none; }
     .game-panel.active { display: block; animation: fade-up 0.4s ease both; }
 
-    /* ═══════════════════════════════════════
-       GUESS THE DISC GAME
-    ═══════════════════════════════════════ */
-    .gtd-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 1.8rem; padding: 2.5rem; margin-bottom: 1.5rem;
-      position: relative; overflow: hidden;
-    }
-    .gtd-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, var(--orange), #fb923c, transparent);
-    }
-    .gtd-game-label {
-      font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em;
-      color: var(--orange); margin-bottom: 0.5rem;
-    }
-    .gtd-title {
-      font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.04em;
-      margin-bottom: 0.3rem;
-    }
-    .gtd-subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 2rem; line-height: 1.6; }
+    /* ═══ GUESS THE DISC ═══ */
+    .gtd-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.8rem; padding: 2rem; margin-bottom: 1.5rem; position: relative; overflow: hidden; }
+    .gtd-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--orange), #fb923c, transparent); }
+    .gtd-game-label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; color: var(--orange); margin-bottom: 0.4rem; }
+    .gtd-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+    .gtd-subtitle { font-size: 0.85rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
 
-    /* CLUES */
-    .clues-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-    .clue-box {
-      background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem;
-      padding: 1rem; text-align: center; transition: all 0.4s ease;
-      opacity: 0.3; transform: scale(0.95);
-    }
-    .clue-box.revealed { opacity: 1; transform: scale(1); border-color: rgba(249,115,22,0.4); }
-    .clue-box.revealed .clue-value { color: var(--orange); }
-    .clue-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.3rem; }
-    .clue-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.05em; color: var(--muted2); }
-    .clue-desc { font-size: 0.7rem; color: var(--muted2); margin-top: 0.2rem; }
-
-    /* WORD DISPLAY */
-    .word-display { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin: 2rem 0; min-height: 60px; align-items: center; }
-    .letter-slot {
-      width: 36px; height: 44px; border-bottom: 2px solid var(--border);
-      display: flex; align-items: center; justify-content: center;
-      font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.05em;
-      transition: all 0.3s ease;
-    }
-    .letter-slot.space { width: 16px; border: none; }
-    .letter-slot.revealed { color: var(--text); border-color: var(--orange); }
-    .letter-slot.wrong-guess { color: var(--red); }
-    .letter-slot.correct-guess { color: var(--green); animation: pop 0.3s ease; }
-
-    /* GUESSES / LIVES */
-    .lives-row { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem; justify-content: center; }
-    .life-dot { font-size: 1.3rem; transition: all 0.3s; }
-    .life-dot.lost { opacity: 0.2; filter: grayscale(1); transform: scale(0.8); }
-    .lives-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-left: 0.5rem; }
-
-    /* KEYBOARD */
-    .keyboard { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; margin: 1.5rem 0; }
-    .key-row { display: flex; gap: 0.4rem; flex-wrap: wrap; justify-content: center; }
-    .key-btn {
-      width: 38px; height: 42px; border-radius: 8px;
-      background: var(--bg2); border: 1px solid var(--border);
-      color: var(--text); font-size: 0.85rem; font-weight: 700;
-      cursor: pointer; transition: all 0.15s; text-transform: uppercase;
-      font-family: 'DM Sans', sans-serif;
-    }
-    .key-btn:hover:not(:disabled) { background: var(--border); }
-    .key-btn:disabled { opacity: 0.3; cursor: default; }
-    .key-btn.hit { background: rgba(34,197,94,0.2); border-color: var(--green); color: var(--green); }
-    .key-btn.miss { background: rgba(239,68,68,0.1); border-color: rgba(239,68,68,0.3); color: rgba(239,68,68,0.5); }
-
-    /* REVEAL PROGRESS BAR */
-    .reveal-progress {
-      height: 4px; background: var(--border); border-radius: 999px;
-      overflow: hidden; margin-bottom: 1rem;
-    }
-    .reveal-progress-fill {
-      height: 100%; background: var(--orange); border-radius: 999px;
-      transition: width 0.4s ease;
-    }
-
-    /* RESULT */
-    .game-result {
-      display: none; text-align: center; padding: 2rem; animation: fade-up 0.5s ease;
-    }
-    .game-result.show { display: block; }
-    .result-emoji { font-size: 3.5rem; margin-bottom: 0.5rem; }
-    .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.5rem; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
-    .result-answer { font-size: 1rem; color: var(--muted); margin-bottom: 1.5rem; }
-    .result-answer strong { color: var(--orange); }
-    .btn-play-again {
-      background: var(--orange); color: #fff; border: none; padding: 0.85rem 2.2rem;
-      border-radius: 999px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase;
-      letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s;
-      box-shadow: 0 0 24px rgba(249,115,22,0.3);
-    }
-    .btn-play-again:hover { background: #ea6c0a; transform: translateY(-2px); }
-
-    /* SCORE DISPLAY */
-    .score-strip {
-      display: flex; gap: 2rem; justify-content: center;
-      background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem;
-      padding: 1rem 2rem; margin-bottom: 1.5rem;
-    }
+    /* SCORE STRIP */
+    .score-strip { display: flex; gap: 1.5rem; justify-content: center; background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem; padding: 0.8rem 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
     .score-item { text-align: center; }
     .score-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; color: var(--orange); line-height: 1; }
-    .score-lbl { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); }
+    .score-lbl { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); }
 
-    /* ═══════════════════════════════════════
-    /* ═══════════════════════════════════════
-       MINI PUTTING GAME - IMPROVED
-    ═══════════════════════════════════════ */
-    .putting-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 1.8rem; padding: 1.8rem; position: relative; overflow: hidden;
-    }
-    .putting-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, #22c55e, #16a34a, transparent);
-    }
+    /* CLUES */
+    .reveal-progress { height: 4px; background: var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 1rem; }
+    .reveal-progress-fill { height: 100%; background: var(--orange); border-radius: 999px; transition: width 0.4s ease; }
+    .clues-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem; margin-bottom: 1.5rem; }
+    @media (max-width: 500px) { .clues-grid { grid-template-columns: repeat(2, 1fr); } }
+    .clue-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem; padding: 0.9rem; text-align: center; transition: all 0.4s ease; opacity: 0.3; transform: scale(0.95); }
+    .clue-box.revealed { opacity: 1; transform: scale(1); border-color: rgba(249,115,22,0.4); }
+    .clue-box.revealed .clue-value { color: var(--orange); }
+    .clue-label { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); margin-bottom: 0.3rem; }
+    .clue-value { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 0.05em; color: var(--muted2); }
+    .clue-desc { font-size: 0.68rem; color: var(--muted2); margin-top: 0.2rem; }
+
+    /* LIVES */
+    .lives-row { display: flex; align-items: center; gap: 0.4rem; margin-bottom: 1.2rem; justify-content: center; flex-wrap: wrap; }
+    .life-dot { font-size: 1.2rem; transition: all 0.3s; }
+    .life-dot.lost { opacity: 0.15; filter: grayscale(1); transform: scale(0.8); }
+    .lives-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-left: 0.4rem; }
+
+    /* WORD DISPLAY */
+    .word-display { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: center; margin: 1.5rem 0; min-height: 50px; align-items: center; }
+    .letter-slot { width: 34px; height: 42px; border-bottom: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'Bebas Neue', sans-serif; font-size: 1.5rem; letter-spacing: 0.05em; transition: all 0.3s ease; }
+    .letter-slot.space { width: 14px; border: none; }
+    .letter-slot.revealed { color: var(--text); border-color: var(--orange); }
+    .letter-slot.wrong-guess { color: var(--red); }
+
+    /* KEYBOARD */
+    .keyboard { display: flex; flex-direction: column; gap: 0.4rem; align-items: center; margin: 1.2rem 0; }
+    .key-row { display: flex; gap: 0.3rem; flex-wrap: wrap; justify-content: center; }
+    .key-btn { width: 36px; height: 40px; border-radius: 7px; background: var(--bg2); border: 1px solid var(--border); color: var(--text); font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: all 0.15s; text-transform: uppercase; font-family: 'DM Sans', sans-serif; }
+    .key-btn:hover:not(:disabled) { background: var(--border); transform: translateY(-1px); }
+    .key-btn:disabled { opacity: 0.3; cursor: default; }
+    .key-btn.hit { background: rgba(34,197,94,0.2); border-color: var(--green); color: var(--green); }
+    .key-btn.miss { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); color: rgba(239,68,68,0.4); }
+    .key-num-row { margin-top: 0.3rem; }
+
+    /* RESULT */
+    .game-result { display: none; text-align: center; padding: 2rem 1rem; animation: fade-up 0.5s ease; }
+    .game-result.show { display: block; }
+    .result-emoji { font-size: 3rem; margin-bottom: 0.5rem; }
+    .result-title { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; letter-spacing: 0.04em; margin-bottom: 0.5rem; }
+    .result-answer { font-size: 0.95rem; color: var(--muted); margin-bottom: 1.5rem; line-height: 1.6; }
+    .result-answer strong { color: var(--orange); }
+    .btn-play-again { background: var(--orange); color: #fff; border: none; padding: 0.85rem 2.2rem; border-radius: 999px; font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; cursor: pointer; transition: all 0.2s; box-shadow: 0 0 24px rgba(249,115,22,0.3); }
+    .btn-play-again:hover { background: #ea6c0a; transform: translateY(-2px); }
+
+    /* LEADERBOARD */
+    .leaderboard-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.4rem; padding: 1.5rem; margin-top: 1.2rem; }
+    .lb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+    .lb-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.04em; }
+    .lb-clear { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
+    .lb-clear:hover { border-color: var(--red); color: var(--red); }
+    .lb-empty { text-align: center; padding: 2rem; color: var(--muted2); font-size: 0.85rem; }
+    .lb-row { display: grid; grid-template-columns: 2rem 1fr auto auto; gap: 0.8rem; align-items: center; padding: 0.6rem 0.8rem; border-radius: 0.6rem; transition: background 0.2s; }
+    .lb-row:hover { background: var(--bg2); }
+    .lb-row.top-1 { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.2); margin-bottom: 0.3rem; }
+    .lb-row.top-2 { background: rgba(156,163,175,0.05); border: 1px solid rgba(156,163,175,0.15); margin-bottom: 0.3rem; }
+    .lb-row.top-3 { background: rgba(180,83,9,0.05); border: 1px solid rgba(180,83,9,0.15); margin-bottom: 0.3rem; }
+    .lb-rank { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; color: var(--muted2); text-align: center; }
+    .lb-rank.gold { color: #fbbf24; }
+    .lb-rank.silver { color: #9ca3af; }
+    .lb-rank.bronze { color: #b45309; }
+    .lb-name { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+    .lb-name span { font-size: 0.72rem; font-weight: 400; color: var(--muted); display: block; }
+    .lb-score { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--orange); }
+    .lb-streak { font-size: 0.72rem; color: var(--muted2); text-align: right; }
+    .lb-divider { border: none; border-top: 1px solid var(--border); margin: 0.5rem 0; }
+
+    /* NAME INPUT */
+    .name-prompt { background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem; padding: 1.2rem; margin-bottom: 1.2rem; display: none; }
+    .name-prompt.show { display: block; animation: fade-up 0.3s ease; }
+    .name-prompt p { font-size: 0.85rem; color: var(--muted); margin-bottom: 0.8rem; }
+    .name-input-row { display: flex; gap: 0.6rem; }
+    .name-input { flex: 1; background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 0.6rem 1rem; border-radius: 0.6rem; font-size: 0.9rem; font-family: 'DM Sans', sans-serif; outline: none; transition: border-color 0.2s; }
+    .name-input:focus { border-color: var(--orange); }
+    .name-submit { background: var(--orange); color: #fff; border: none; padding: 0.6rem 1.2rem; border-radius: 0.6rem; font-size: 0.82rem; font-weight: 800; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+    .name-submit:hover { background: #ea6c0a; }
+
+    /* ═══ PUTTING ═══ */
+    .putting-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.8rem; padding: 1.8rem; position: relative; overflow: hidden; }
+    .putting-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #22c55e, #16a34a, transparent); }
     .putting-header { text-align: center; margin-bottom: 1.2rem; }
-    .putting-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2.2rem; letter-spacing: 0.04em; margin-bottom: 0.2rem; }
+    .putting-header h2 { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
     .putting-header p { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
-
-    /* CANVAS WRAPPER */
-    .canvas-wrap {
-      position: relative; border-radius: 1rem; overflow: hidden;
-      border: 1px solid var(--border);
-      touch-action: none;
-      user-select: none;
-    }
+    .hole-status { display: flex; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+    .hole-badge { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; padding: 0.2rem 0.7rem; }
+    .hole-badge span { font-family: 'Bebas Neue', sans-serif; font-size: 0.95rem; color: var(--orange); }
+    .canvas-wrap { position: relative; border-radius: 1rem; overflow: hidden; border: 1px solid var(--border); touch-action: none; user-select: none; background: #060e08; }
     #putting-canvas { display: block; width: 100%; cursor: crosshair; }
-
-    /* WIND INDICATOR */
-    .wind-bar {
-      display: flex; align-items: center; gap: 0.6rem;
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 0.8rem; padding: 0.5rem 1rem; margin: 0.8rem 0;
-      font-size: 0.78rem; font-weight: 600; color: var(--muted);
-    }
-    .wind-arrow { font-size: 1.2rem; transition: transform 0.5s ease; }
+    .wind-bar { display: flex; align-items: center; gap: 0.6rem; background: var(--bg2); border: 1px solid var(--border); border-radius: 0.8rem; padding: 0.5rem 1rem; margin: 0.7rem 0; font-size: 0.78rem; font-weight: 600; color: var(--muted); }
     .wind-label { color: var(--text); font-weight: 700; }
-    .wind-strength { margin-left: auto; color: var(--orange); font-weight: 800; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; }
-
-    /* CONTROLS ROW */
-    .putt-controls-row {
-      display: grid; grid-template-columns: 1fr auto; gap: 1rem;
-      align-items: center; margin: 0.8rem 0;
-    }
-    @media (max-width: 500px) { .putt-controls-row { grid-template-columns: 1fr; } }
-
-    .power-section { display: flex; align-items: center; gap: 0.8rem; }
-    .power-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
-    .power-track {
-      flex: 1; height: 14px; background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 999px; overflow: hidden; cursor: pointer; position: relative;
-    }
-    .power-fill { height: 100%; border-radius: 999px; transition: width 0.05s; background: linear-gradient(90deg, #22c55e, #f97316, #ef4444); pointer-events: none; }
-    .power-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; color: var(--orange); min-width: 3ch; text-align: right; line-height: 1; }
-
-    .putting-controls { display: flex; gap: 0.8rem; }
-    .putt-btn { padding: 0.7rem 1.4rem; border-radius: 999px; font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
-    .putt-btn-primary { background: var(--orange); color: #fff; box-shadow: 0 0 20px rgba(249,115,22,0.3); }
-    .putt-btn-primary:hover:not(:disabled) { background: #ea6c0a; transform: translateY(-2px); }
-    .putt-btn-primary:disabled { opacity: 0.5; cursor: default; transform: none; }
-    .putt-btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--muted); }
-    .putt-btn-secondary:hover { color: var(--text); }
-
-    /* STATUS + MESSAGE */
-    .hole-status { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
-    .hole-badge { display: flex; align-items: center; gap: 0.3rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; padding: 0.25rem 0.8rem; }
-    .hole-badge span { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; color: var(--orange); }
-
-    .putt-result-msg {
-      text-align: center; min-height: 2rem; font-size: 1.1rem; font-weight: 800;
-      display: flex; align-items: center; justify-content: center; gap: 0.4rem;
-      transition: all 0.3s;
-    }
-    .putt-result-msg.ace { color: #fbbf24; font-size: 1.3rem; }
+    .wind-strength { margin-left: auto; color: var(--orange); font-weight: 800; font-size: 0.7rem; text-transform: uppercase; }
+    .putt-result-msg { text-align: center; min-height: 1.8rem; font-size: 1rem; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 0.4rem; margin: 0.4rem 0; }
+    .putt-result-msg.ace { color: #fbbf24; font-size: 1.2rem; }
     .putt-result-msg.birdie { color: var(--green); }
     .putt-result-msg.par { color: var(--text); }
     .putt-result-msg.bogey { color: #f87171; }
-
-    /* SCORECARD */
+    .putt-controls-row { display: flex; gap: 1rem; align-items: center; margin: 0.7rem 0; flex-wrap: wrap; }
+    .power-section { display: flex; align-items: center; gap: 0.8rem; flex: 1; min-width: 200px; }
+    .power-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); white-space: nowrap; }
+    .power-track { flex: 1; height: 14px; background: var(--bg2); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; cursor: pointer; position: relative; }
+    .power-fill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #22c55e, #f97316, #ef4444); pointer-events: none; transition: width 0.04s; }
+    .power-val { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; color: var(--orange); min-width: 2.5ch; text-align: right; line-height: 1; }
+    .putting-controls { display: flex; gap: 0.7rem; }
+    .putt-btn { padding: 0.65rem 1.3rem; border-radius: 999px; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap; }
+    .putt-btn-primary { background: var(--orange); color: #fff; box-shadow: 0 0 18px rgba(249,115,22,0.3); }
+    .putt-btn-primary:hover:not(:disabled) { background: #ea6c0a; transform: translateY(-2px); }
+    .putt-btn-primary:disabled { opacity: 0.45; cursor: default; transform: none; }
+    .putt-btn-secondary { background: var(--bg2); border: 1px solid var(--border); color: var(--muted); }
+    .putt-btn-secondary:hover { color: var(--text); }
     .scorecard { background: var(--bg2); border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; margin-top: 1.2rem; overflow-x: auto; }
-    .sc-grid { display: grid; grid-template-columns: 2.5rem repeat(9, 1fr) 3rem; gap: 0; }
-    .scorecard-header { background: rgba(249,115,22,0.08); border-bottom: 1px solid var(--border); padding: 0.5rem 0.6rem; font-size: 0.62rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); min-width: 480px; }
-    .scorecard-row { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.78rem; align-items: center; min-width: 480px; }
-    .scorecard-row:last-child { border-bottom: none; }
+    .sc-grid { display: grid; grid-template-columns: 2.5rem repeat(9, 1fr) 3rem; min-width: 460px; }
+    .sc-header { background: rgba(249,115,22,0.08); border-bottom: 1px solid var(--border); padding: 0.5rem 0.6rem; font-size: 0.6rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2); }
+    .sc-row { padding: 0.45rem 0.6rem; border-bottom: 1px solid var(--border); font-size: 0.78rem; align-items: center; }
+    .sc-row:last-child { border-bottom: none; }
     .sc-cell { text-align: center; color: var(--muted); padding: 0.1rem 0; }
     .sc-cell.active { color: var(--orange); font-weight: 800; }
     .sc-cell.birdie { color: var(--green); font-weight: 800; }
+    .sc-cell.eagle { color: #fbbf24; font-weight: 800; }
     .sc-cell.bogey { color: #f87171; font-weight: 700; }
     .sc-cell.par { color: var(--text); }
-    .sc-cell.eagle { color: #fbbf24; font-weight: 800; }
     .sc-cell.total { font-weight: 800; color: var(--text); }
-    .sc-cell.total.under { color: var(--green); }
-    .sc-cell.total.over { color: #f87171; }
-
-    .scorecard {
-      background: var(--bg2); border: 1px solid var(--border);
-      border-radius: 1rem; overflow: hidden; margin-top: 1.5rem;
-    }
-    .scorecard-header {
-      display: grid; background: rgba(249,115,22,0.1);
-      border-bottom: 1px solid var(--border); padding: 0.6rem 1rem;
-      font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted2);
-    }
-    .scorecard-row { display: grid; padding: 0.5rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.8rem; align-items: center; }
-    .scorecard-row:last-child { border-bottom: none; }
-    .sc-grid { grid-template-columns: 2rem repeat(9, 1fr) 2.5rem; gap: 0.3rem; }
-    .sc-cell { text-align: center; color: var(--muted); }
-    .sc-cell.active { color: var(--orange); font-weight: 800; }
-    .sc-cell.birdie { color: var(--green); }
-    .sc-cell.bogey { color: var(--red); }
-    .sc-cell.par { color: var(--text); }
-    .sc-cell.total { font-weight: 800; color: var(--text); }
+    .sc-cell.under { color: var(--green); }
+    .sc-cell.over { color: #f87171; }
 
     /* ANIMATIONS */
     @keyframes fade-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
-    @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-    .shake { animation: shake 0.3s ease; }
-
+    @keyframes pop { 0%,100% { transform: scale(1); } 50% { transform: scale(1.25); } }
     .reveal { opacity: 0; transform: translateY(24px); transition: opacity 0.6s ease, transform 0.6s ease; }
     .reveal.visible { opacity: 1; transform: none; }
 
@@ -313,39 +208,26 @@
     .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; transition: color 0.2s; }
     .footer-links a:hover { color: var(--text); }
     .footer-copy { font-size: 0.75rem; color: var(--muted2); }
-    @media (max-width: 640px) { .footer-inner { flex-direction: column; } .sc-grid { grid-template-columns: 1.5rem repeat(9, 1fr) 2rem; } }
 
     @media (max-width: 768px) {
       nav { padding: 0.8rem 1.2rem; }
-      .nav-links { display: none; }
-      .nav-mobile-btn { display: flex; }
       .btn-nav { padding: 0.45rem 1rem; font-size: 0.72rem; }
       .page-header { padding: 3.5rem 1.2rem 1.5rem; }
-      .game-tabs { padding: 1.2rem 1.2rem 0; gap: 0.6rem; }
+      .game-tabs { padding: 1.2rem 1.2rem 0; }
       .game-tab { font-size: 0.78rem; padding: 0.6rem 1rem; }
-      .games-container { padding: 1.5rem 1.2rem 3rem; }
+      .games-container { padding: 1.5rem 1rem 3rem; }
       .gtd-card, .putting-card { padding: 1.2rem; border-radius: 1.2rem; }
-      .clues-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 0.6rem; }
-      .clue-box { padding: 0.7rem; }
-      .clue-val { font-size: 1.1rem !important; }
-      .word-display { gap: 0.3rem !important; flex-wrap: wrap; justify-content: center; }
-      .letter-slot { width: 28px !important; height: 36px !important; font-size: 1rem !important; }
-      .key-row { gap: 0.25rem !important; }
-      .key-btn { width: 30px !important; height: 36px !important; font-size: 0.8rem !important; }
-      .hole-status { gap: 0.5rem; }
-      .hole-badge { font-size: 0.65rem; padding: 0.2rem 0.6rem; }
-      .putt-controls-row { grid-template-columns: 1fr; gap: 0.8rem; }
-      .putting-controls { justify-content: center; }
-      .scorecard { font-size: 0.72rem; }
-      .score-stats { gap: 1rem !important; }
+      .key-btn { width: 30px; height: 36px; font-size: 0.76rem; }
+      .letter-slot { width: 28px; height: 36px; font-size: 1.1rem; }
       .footer-inner { flex-direction: column; gap: 1rem; }
-      .footer-links { gap: 0.8rem; flex-wrap: wrap; }
+      .footer-links { gap: 0.8rem; }
     }
     @media (max-width: 480px) {
       .btn-nav { display: none; }
-      .clues-grid { grid-template-columns: repeat(2, 1fr) !important; }
-      .key-btn { width: 26px !important; height: 34px !important; font-size: 0.72rem !important; }
-      .letter-slot { width: 24px !important; height: 32px !important; font-size: 0.9rem !important; }
+      .key-btn { width: 26px; height: 34px; font-size: 0.7rem; }
+      .letter-slot { width: 24px; height: 32px; font-size: 1rem; }
+      .putt-controls-row { flex-direction: column; }
+      .power-section { width: 100%; }
     }
   </style>
 </head>
@@ -353,7 +235,7 @@
 
   <nav>
     <a href="/" class="nav-logo">
-      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;" />
+      <img src="/baggedup.logo.png" alt="BaggedUp" onerror="this.style.display='none'" style="height:32px;width:32px;object-fit:contain;border-radius:8px;"/>
       <span class="nav-logo-text">Bagged<span>Up</span></span>
     </a>
     <ul class="nav-links">
@@ -362,8 +244,7 @@
       <li><a href="/flightpath.html">Flight Science</a></li>
       <li><a href="/plastics.html">Plastics</a></li>
       <li><a href="/games.html" class="active">Games</a></li>
-      
-    <li><a href="/about.html">About</a></li>
+      <li><a href="/about.html">About</a></li>
     </ul>
     <a href="/app" class="btn-nav">Get Started →</a>
     <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
@@ -379,27 +260,23 @@
   </div>
 
   <div class="page-header">
-  </div>
-
-  <div class="page-header">
     <h1>Disc Golf <em>Mini Games</em></h1>
-    <p>Test your disc knowledge — and your putting nerve. Two free disc golf mini games built to sharpen your game IQ.</p>
+    <p>Test your disc knowledge — and your putting nerve. Two free mini games built to sharpen your game IQ.</p>
   </div>
 
   <div class="game-tabs">
-    <button class="game-tab active" onclick="switchGame('gtd')">🥏 Guess The Disc</button>
-    <button class="game-tab" onclick="switchGame('putting')">⛳ Mini Putting</button>
+    <button class="game-tab active" onclick="switchGame('gtd', this)">🥏 Guess The Disc</button>
+    <button class="game-tab" onclick="switchGame('putting', this)">⛳ Mini Putting</button>
   </div>
 
   <div class="games-container">
 
-    <!-- ═══ GUESS THE DISC ═══ -->
+    <!-- GUESS THE DISC -->
     <div id="panel-gtd" class="game-panel active">
-
       <div class="gtd-card reveal">
         <div class="gtd-game-label">🥏 Mini Game 1</div>
         <div class="gtd-title">Guess The Disc</div>
-        <div class="gtd-subtitle">Clues reveal one at a time. Guess the disc mould name before you run out of lives. Think Wordle meets Hangman — for disc golfers.</div>
+        <div class="gtd-subtitle">Clues reveal one at a time. Guess the disc mould — letters and numbers. Think Wordle meets Hangman for disc golfers.</div>
 
         <div class="score-strip">
           <div class="score-item"><div class="score-num" id="gtd-score">0</div><div class="score-lbl">Score</div></div>
@@ -408,79 +285,83 @@
         </div>
 
         <div id="gtd-game-area">
-          <!-- Clues -->
           <div class="reveal-progress"><div class="reveal-progress-fill" id="clue-progress" style="width:16%"></div></div>
-          <div class="clues-grid" id="clues-grid">
+          <div class="clues-grid">
             <div class="clue-box revealed" id="clue-type"><div class="clue-label">Disc Type</div><div class="clue-value" id="cv-type">?</div><div class="clue-desc" id="cd-type">Loading...</div></div>
             <div class="clue-box" id="clue-speed"><div class="clue-label">Speed</div><div class="clue-value" id="cv-speed">?</div><div class="clue-desc">Flight rating</div></div>
             <div class="clue-box" id="clue-glide"><div class="clue-label">Glide</div><div class="clue-value" id="cv-glide">?</div><div class="clue-desc">Flight rating</div></div>
             <div class="clue-box" id="clue-turn"><div class="clue-label">Turn</div><div class="clue-value" id="cv-turn">?</div><div class="clue-desc">Flight rating</div></div>
             <div class="clue-box" id="clue-fade"><div class="clue-label">Fade</div><div class="clue-value" id="cv-fade">?</div><div class="clue-desc">Flight rating</div></div>
-            <div class="clue-box" id="clue-brand"><div class="clue-label">Brand</div><div class="clue-value" id="cv-brand" style="font-size:1rem;padding-top:0.5rem">?</div><div class="clue-desc">Manufacturer</div></div>
+            <div class="clue-box" id="clue-brand"><div class="clue-label">Brand</div><div class="clue-value" id="cv-brand" style="font-size:0.95rem;padding-top:0.3rem">?</div><div class="clue-desc">Manufacturer</div></div>
           </div>
 
-          <!-- Lives -->
           <div class="lives-row">
-            <div class="life-dot" id="life-1">🥏</div>
-            <div class="life-dot" id="life-2">🥏</div>
-            <div class="life-dot" id="life-3">🥏</div>
-            <div class="life-dot" id="life-4">🥏</div>
-            <div class="life-dot" id="life-5">🥏</div>
-            <div class="life-dot" id="life-6">🥏</div>
-            <span class="lives-label" id="lives-label">6 lives remaining</span>
+            <div class="life-dot" id="life-1">🥏</div><div class="life-dot" id="life-2">🥏</div>
+            <div class="life-dot" id="life-3">🥏</div><div class="life-dot" id="life-4">🥏</div>
+            <div class="life-dot" id="life-5">🥏</div><div class="life-dot" id="life-6">🥏</div>
+            <span class="lives-label" id="lives-label">6 lives</span>
           </div>
 
-          <!-- Word slots -->
           <div class="word-display" id="word-display"></div>
 
-          <!-- Keyboard -->
           <div class="keyboard" id="keyboard">
             <div class="key-row" id="key-row-1"></div>
             <div class="key-row" id="key-row-2"></div>
             <div class="key-row" id="key-row-3"></div>
+            <div class="key-row key-num-row" id="key-row-nums"></div>
           </div>
         </div>
 
-        <!-- Result overlay -->
         <div class="game-result" id="gtd-result">
           <div class="result-emoji" id="result-emoji">🎉</div>
           <div class="result-title" id="result-title">Nice Throw!</div>
-          <div class="result-answer" id="result-answer">The disc was the <strong>Innova Destroyer</strong></div>
+          <div class="result-answer" id="result-answer"></div>
           <button class="btn-play-again" onclick="startNewDisc()">Next Disc →</button>
         </div>
       </div>
 
+      <!-- NAME PROMPT -->
+      <div class="name-prompt" id="name-prompt">
+        <p>🏆 You made the leaderboard! Enter your name:</p>
+        <div class="name-input-row">
+          <input type="text" class="name-input" id="name-input" maxlength="20" placeholder="Your name..." autocomplete="off"/>
+          <button class="name-submit" onclick="submitScore()">Save →</button>
+        </div>
+      </div>
+
+      <!-- LEADERBOARD -->
+      <div class="leaderboard-card reveal">
+        <div class="lb-header">
+          <div class="lb-title">🏆 Top 10 Leaderboard</div>
+          <button class="lb-clear" onclick="clearLeaderboard()">Reset</button>
+        </div>
+        <div id="lb-list"></div>
+      </div>
     </div>
 
-
-    <!-- ═══ MINI PUTTING ═══ -->
+    <!-- MINI PUTTING -->
     <div id="panel-putting" class="game-panel">
       <div class="putting-card reveal">
         <div class="putting-header">
           <h2>⛳ Mini Putting Challenge</h2>
-          <p>9 holes. Move to aim — click or drag the power bar — then throw. Wind changes every hole. Sink it for birdie!</p>
+          <p>9 holes. Move cursor to aim, drag the power bar, then throw. Wind changes every hole.</p>
         </div>
-
         <div class="hole-status">
           <div class="hole-badge">Hole <span id="hole-num">1</span>/9</div>
           <div class="hole-badge">Par <span id="par-num">2</span></div>
           <div class="hole-badge">Throw <span id="throw-num">0</span></div>
           <div class="hole-badge">Score <span id="total-score-display">E</span></div>
         </div>
-
         <div class="canvas-wrap">
           <canvas id="putting-canvas" width="640" height="400"></canvas>
         </div>
-
-        <div class="wind-bar" id="wind-bar">
-          <span class="wind-arrow" id="wind-arrow">→</span>
+        <div class="wind-bar">
+          <span id="wind-arrow" style="font-size:1.1rem">•</span>
           <span class="wind-label" id="wind-label">Calm</span>
-          <span id="wind-desc" style="font-size:0.75rem;color:var(--muted)"></span>
+          <span id="wind-desc" style="font-size:0.72rem;color:var(--muted)"></span>
           <span class="wind-strength" id="wind-strength"></span>
         </div>
-
         <div class="putt-result-msg" id="putt-msg"></div>
-
         <div class="putt-controls-row">
           <div class="power-section">
             <span class="power-label">Power</span>
@@ -494,23 +375,22 @@
             <button class="putt-btn putt-btn-primary" id="throw-btn" onclick="throwDisc()">🥏 Throw!</button>
           </div>
         </div>
-
         <div class="scorecard">
-          <div class="scorecard-header sc-grid">
+          <div class="sc-header sc-grid">
             <div class="sc-cell">H</div>
             <div class="sc-cell">1</div><div class="sc-cell">2</div><div class="sc-cell">3</div>
             <div class="sc-cell">4</div><div class="sc-cell">5</div><div class="sc-cell">6</div>
             <div class="sc-cell">7</div><div class="sc-cell">8</div><div class="sc-cell">9</div>
             <div class="sc-cell">TOT</div>
           </div>
-          <div class="scorecard-row sc-grid">
-            <div class="sc-cell" style="font-size:0.6rem;color:var(--muted2)">Par</div>
+          <div class="sc-row sc-grid" style="font-size:0.68rem;color:var(--muted2)">
+            <div class="sc-cell">Par</div>
             <div class="sc-cell">2</div><div class="sc-cell">2</div><div class="sc-cell">3</div>
             <div class="sc-cell">2</div><div class="sc-cell">3</div><div class="sc-cell">3</div>
             <div class="sc-cell">3</div><div class="sc-cell">4</div><div class="sc-cell">4</div>
             <div class="sc-cell total">26</div>
           </div>
-          <div class="scorecard-row sc-grid" id="score-row">
+          <div class="sc-row sc-grid" id="score-row">
             <div class="sc-cell" style="font-size:0.6rem;color:var(--orange)">You</div>
             <div class="sc-cell" id="sc-1">–</div><div class="sc-cell" id="sc-2">–</div><div class="sc-cell" id="sc-3">–</div>
             <div class="sc-cell" id="sc-4">–</div><div class="sc-cell" id="sc-5">–</div><div class="sc-cell" id="sc-6">–</div>
@@ -521,1092 +401,780 @@
       </div>
     </div>
 
-  </div><!-- end games-container -->
-
-            <div class="sc-cell" style="font-size:0.65rem;color:var(--orange)">You</div>
-            <div class="sc-cell" id="sc-1">-</div><div class="sc-cell" id="sc-2">-</div><div class="sc-cell" id="sc-3">-</div>
-            <div class="sc-cell" id="sc-4">-</div><div class="sc-cell" id="sc-5">-</div><div class="sc-cell" id="sc-6">-</div>
-            <div class="sc-cell" id="sc-7">-</div><div class="sc-cell" id="sc-8">-</div><div class="sc-cell" id="sc-9">-</div>
-            <div class="sc-cell total" id="sc-total">-</div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
   </div>
 
   <footer>
     <div class="footer-inner">
-      <div class="footer-brand"><img src="/baggedup.logo.png" alt="" style="height:28px;width:28px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'" />Bagged<span>Up</span></div>
+      <div class="footer-brand">
+        <img src="/baggedup.logo.png" alt="" style="height:26px;width:26px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'"/>
+        Bagged<span>Up</span>
+      </div>
       <ul class="footer-links">
         <li><a href="/">Home</a></li>
         <li><a href="/guide.html">Bag Guide</a></li>
         <li><a href="/blog.html">Blog</a></li>
+        <li><a href="/flightpath.html">Flight Science</a></li>
+        <li><a href="/plastics.html">Plastics</a></li>
         <li><a href="/games.html">Games</a></li>
-        
+        <li><a href="/about.html">About</a></li>
         <li><a href="/app">Open App</a></li>
       </ul>
       <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
     </div>
+  </footer>
 
-  <script>
-  // ═══════════════════════════════════════
-  //  GAME TAB SWITCHER
-  // ═══════════════════════════════════════
-  function switchGame(id) {
-    document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('panel-' + id).classList.add('active');
-    event.target.classList.add('active');
-    if (id === 'putting' && !puttingInitialized) initPutting();
+<script>
+// ═══════════════════════════════════════
+//  TAB SWITCHER
+// ═══════════════════════════════════════
+function switchGame(id, btn) {
+  document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'putting') initPutting();
+}
+
+// ═══════════════════════════════════════
+//  DISC DATABASE
+// ═══════════════════════════════════════
+const DISCS = [
+  { name:"DESTROYER", brand:"Innova", type:"Driver", speed:12, glide:5, turn:-1, fade:3 },
+  { name:"BUZZZ", brand:"Discraft", type:"Midrange", speed:5, glide:4, turn:-1, fade:1 },
+  { name:"AVIAR", brand:"Innova", type:"Putter", speed:2, glide:3, turn:0, fade:1 },
+  { name:"WRAITH", brand:"Innova", type:"Driver", speed:11, glide:5, turn:-1, fade:3 },
+  { name:"BOSS", brand:"Innova", type:"Driver", speed:13, glide:5, turn:-1, fade:3 },
+  { name:"LEOPARD3", brand:"Innova", type:"Fairway", speed:7, glide:5, turn:-2, fade:1 },
+  { name:"FIREBIRD", brand:"Innova", type:"Driver", speed:9, glide:3, turn:0, fade:4 },
+  { name:"ROC3", brand:"Innova", type:"Midrange", speed:5, glide:4, turn:0, fade:3 },
+  { name:"EAGLE", brand:"Innova", type:"Fairway", speed:8, glide:4, turn:-1, fade:2 },
+  { name:"VALKYRIE", brand:"Innova", type:"Driver", speed:9, glide:4, turn:-2, fade:2 },
+  { name:"JUSTICE", brand:"Dynamic Discs", type:"Midrange", speed:5, glide:4, turn:0, fade:3 },
+  { name:"FELON", brand:"Dynamic Discs", type:"Driver", speed:9, glide:3, turn:0, fade:4 },
+  { name:"RIVER", brand:"Latitude 64", type:"Fairway", speed:7, glide:6, turn:-2, fade:1 },
+  { name:"COMET", brand:"Discraft", type:"Midrange", speed:4, glide:5, turn:-2, fade:1 },
+  { name:"UNDERTAKER", brand:"Discraft", type:"Driver", speed:9, glide:5, turn:-1, fade:2 },
+  { name:"LUNA", brand:"Discraft", type:"Putter", speed:3, glide:3, turn:0, fade:3 },
+  { name:"ZONE", brand:"Discraft", type:"Putter", speed:4, glide:3, turn:0, fade:3 },
+  { name:"NUKE", brand:"Discraft", type:"Driver", speed:13, glide:5, turn:-1, fade:3 },
+  { name:"SURGE SS", brand:"Discraft", type:"Driver", speed:10, glide:5, turn:-2, fade:2 },
+  { name:"FD", brand:"Discmania", type:"Fairway", speed:7, glide:6, turn:-1, fade:1 },
+  { name:"PD", brand:"Discmania", type:"Driver", speed:10, glide:4, turn:0, fade:3 },
+  { name:"JUDGE", brand:"Dynamic Discs", type:"Putter", speed:2, glide:4, turn:0, fade:1 },
+  { name:"TEEBIRD3", brand:"Innova", type:"Fairway", speed:7, glide:5, turn:0, fade:2 },
+  { name:"MAKO3", brand:"Innova", type:"Midrange", speed:5, glide:5, turn:0, fade:0 },
+  { name:"THUNDERBIRD", brand:"Innova", type:"Driver", speed:10, glide:5, turn:0, fade:3 },
+  { name:"COLOSSUS", brand:"Innova", type:"Driver", speed:14, glide:5, turn:-2, fade:2 },
+  { name:"KATANA", brand:"Innova", type:"Driver", speed:13, glide:5, turn:-2, fade:2 },
+  { name:"PHANTOM", brand:"Latitude 64", type:"Driver", speed:9, glide:5, turn:-2, fade:2 },
+  { name:"OCEAN", brand:"Latitude 64", type:"Fairway", speed:8, glide:6, turn:-2, fade:1 },
+  { name:"TRUTH", brand:"MVP", type:"Midrange", speed:5, glide:5, turn:-1, fade:1 },
+  { name:"RESISTOR", brand:"MVP", type:"Driver", speed:10, glide:4, turn:0, fade:4 },
+  { name:"ENVY", brand:"Axiom", type:"Putter", speed:3, glide:4, turn:0, fade:2 },
+  { name:"PROXY", brand:"Axiom", type:"Putter", speed:3, glide:4, turn:0, fade:1 },
+  { name:"CRAVE", brand:"Axiom", type:"Fairway", speed:8, glide:5, turn:-2, fade:2 },
+  { name:"ESCAPE", brand:"Dynamic Discs", type:"Fairway", speed:9, glide:5, turn:-2, fade:2 },
+  { name:"EMAC TRUTH", brand:"MVP", type:"Midrange", speed:5, glide:5, turn:-1, fade:1 },
+  { name:"HEAT", brand:"Discraft", type:"Driver", speed:9, glide:6, turn:-3, fade:1 },
+  { name:"BANGER GT", brand:"Discraft", type:"Putter", speed:2, glide:3, turn:0, fade:1 },
+  { name:"XL", brand:"Discraft", type:"Fairway", speed:9, glide:6, turn:-3, fade:1 },
+  { name:"ANAX", brand:"Innova", type:"Driver", speed:12, glide:5, turn:-1, fade:3 },
+];
+
+// Game state
+let currentDisc = null, guessedChars = [], livesLeft = 6, cluesRevealed = 1;
+let score = 0, streak = 0, best = 0, gameOver = false;
+let pendingScore = null;
+const CLUE_ORDER = ['type','speed','glide','turn','fade','brand'];
+
+// ─── LEADERBOARD ───
+function loadLB() {
+  try { return JSON.parse(localStorage.getItem('gtd_lb') || '[]'); } catch(e) { return []; }
+}
+function saveLB(lb) {
+  try { localStorage.setItem('gtd_lb', JSON.stringify(lb)); } catch(e) {}
+}
+function renderLB() {
+  const lb = loadLB();
+  const el = document.getElementById('lb-list');
+  if (!lb.length) { el.innerHTML = '<div class="lb-empty">No scores yet — start playing!</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  const rankClasses = ['top-1','top-2','top-3'];
+  const rankColorClasses = ['gold','silver','bronze'];
+  el.innerHTML = lb.slice(0,10).map((e,i) => `
+    <div class="lb-row ${rankClasses[i]||''}">
+      <div class="lb-rank ${rankColorClasses[i]||''}">${medals[i] || (i+1)}</div>
+      <div class="lb-name">${e.name}<span>${e.date}</span></div>
+      <div class="lb-score">${e.score}</div>
+      <div class="lb-streak">🔥${e.streak}</div>
+    </div>
+    ${i===2 && lb.length>3 ? '<hr class="lb-divider"/>' : ''}
+  `).join('');
+}
+function clearLeaderboard() {
+  if (confirm('Reset the leaderboard?')) { localStorage.removeItem('gtd_lb'); renderLB(); }
+}
+function checkLeaderboard(sc, st) {
+  const lb = loadLB();
+  if (lb.length < 10 || sc > lb[lb.length-1].score) {
+    pendingScore = { score: sc, streak: st };
+    document.getElementById('name-prompt').classList.add('show');
+    document.getElementById('name-input').focus();
   }
+}
+function submitScore() {
+  if (!pendingScore) return;
+  const name = document.getElementById('name-input').value.trim() || 'Anonymous';
+  const lb = loadLB();
+  lb.push({ name, score: pendingScore.score, streak: pendingScore.streak, date: new Date().toLocaleDateString() });
+  lb.sort((a,b) => b.score - a.score);
+  saveLB(lb.slice(0,10));
+  renderLB();
+  document.getElementById('name-prompt').classList.remove('show');
+  document.getElementById('name-input').value = '';
+  pendingScore = null;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Enter' && pendingScore) submitScore(); });
 
-  // ═══════════════════════════════════════
-  //  GAME TAB SWITCHER
-  // ═══════════════════════════════════════
-  function switchGame(id) {
-    document.querySelectorAll('.game-panel').forEach(p => p.classList.remove('active'));
-    document.querySelectorAll('.game-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('panel-' + id).classList.add('active');
-    event.target.classList.add('active');
-    if (id === 'putting' && !puttingInitialized) initPutting();
-  }
+// ─── GAME LOGIC ───
+function pickDisc() { return DISCS[Math.floor(Math.random() * DISCS.length)]; }
 
-  // ═══════════════════════════════════════
-  //  DISC DATABASE
-  // ═══════════════════════════════════════
-  const DISCS = [
-    { name: "DESTROYER", brand: "Innova", type: "Driver", speed: 12, glide: 5, turn: -1, fade: 3 },
-    { name: "BUZZZ", brand: "Discraft", type: "Midrange", speed: 5, glide: 4, turn: -1, fade: 1 },
-    { name: "AVIAR", brand: "Innova", type: "Putter", speed: 2, glide: 3, turn: 0, fade: 1 },
-    { name: "WRAITH", brand: "Innova", type: "Driver", speed: 11, glide: 5, turn: -1, fade: 3 },
-    { name: "BOSS", brand: "Innova", type: "Driver", speed: 13, glide: 5, turn: -1, fade: 3 },
-    { name: "LEOPARD", brand: "Innova", type: "Fairway", speed: 7, glide: 5, turn: -2, fade: 1 },
-    { name: "FIREBIRD", brand: "Innova", type: "Driver", speed: 9, glide: 3, turn: 0, fade: 4 },
-    { name: "ROC3", brand: "Innova", type: "Midrange", speed: 5, glide: 4, turn: 0, fade: 3 },
-    { name: "EAGLE", brand: "Innova", type: "Fairway", speed: 8, glide: 4, turn: -1, fade: 2 },
-    { name: "VALKYRIE", brand: "Innova", type: "Driver", speed: 9, glide: 4, turn: -2, fade: 2 },
-    { name: "JUSTICE", brand: "Dynamic Discs", type: "Midrange", speed: 5, glide: 4, turn: 0, fade: 3 },
-    { name: "FELON", brand: "Dynamic Discs", type: "Driver", speed: 9, glide: 3, turn: 0, fade: 4 },
-    { name: "RIVER", brand: "Latitude 64", type: "Fairway", speed: 7, glide: 6, turn: -2, fade: 1 },
-    { name: "COMET", brand: "Discraft", type: "Midrange", speed: 4, glide: 5, turn: -2, fade: 1 },
-    { name: "UNDERTAKER", brand: "Discraft", type: "Driver", speed: 9, glide: 5, turn: -1, fade: 2 },
-    { name: "LUNA", brand: "Paul McBeth", type: "Putter", speed: 3, glide: 3, turn: 0, fade: 3 },
-    { name: "ZONE", brand: "Discraft", type: "Putter", speed: 4, glide: 3, turn: 0, fade: 3 },
-    { name: "NUKE", brand: "Discraft", type: "Driver", speed: 13, glide: 5, turn: -1, fade: 3 },
-    { name: "SURGE", brand: "Discraft", type: "Driver", speed: 10, glide: 5, turn: -1, fade: 3 },
-    { name: "MAGIC", brand: "Discmania", type: "Midrange", speed: 4, glide: 5, turn: 0, fade: 1 },
-    { name: "FD", brand: "Discmania", type: "Fairway", speed: 7, glide: 6, turn: -1, fade: 1 },
-    { name: "PD", brand: "Discmania", type: "Driver", speed: 10, glide: 4, turn: 0, fade: 3 },
-    { name: "HALO", brand: "Innova", type: "Driver", speed: 11, glide: 4, turn: -2, fade: 3 },
-    { name: "PHANTOM", brand: "Latitude 64", type: "Driver", speed: 9, glide: 5, turn: -2, fade: 2 },
-    { name: "JUDGE", brand: "Dynamic Discs", type: "Putter", speed: 2, glide: 4, turn: 0, fade: 1 },
-    { name: "TEEBIRD", brand: "Innova", type: "Fairway", speed: 7, glide: 5, turn: 0, fade: 2 },
-    { name: "MAKO3", brand: "Innova", type: "Midrange", speed: 5, glide: 5, turn: 0, fade: 0 },
-    { name: "THUNDERBIRD", brand: "Innova", type: "Driver", speed: 10, glide: 5, turn: 0, fade: 3 },
-    { name: "COLOSSUS", brand: "Innova", type: "Driver", speed: 14, glide: 5, turn: -2, fade: 2 },
-    { name: "PRO KATANA", brand: "Innova", type: "Driver", speed: 13, glide: 5, turn: -2, fade: 2 },
+function startNewDisc() {
+  currentDisc = pickDisc();
+  guessedChars = [];
+  livesLeft = 6;
+  cluesRevealed = 1;
+  gameOver = false;
+
+  document.getElementById('gtd-result').classList.remove('show');
+  document.getElementById('gtd-game-area').style.display = '';
+  document.getElementById('name-prompt').classList.remove('show');
+
+  document.querySelectorAll('.clue-box').forEach(b => b.classList.remove('revealed'));
+  document.getElementById('clue-type').classList.add('revealed');
+  document.getElementById('cv-type').textContent = currentDisc.type;
+  document.getElementById('cd-type').textContent = currentDisc.type === 'Driver' ? 'Distance driver' : currentDisc.type === 'Fairway' ? 'Fairway driver' : currentDisc.type;
+  ['speed','glide','turn','fade'].forEach(k => document.getElementById('cv-'+k).textContent = '?');
+  document.getElementById('cv-brand').textContent = '?';
+  document.getElementById('clue-progress').style.width = '16%';
+
+  for (let i=1;i<=6;i++) document.getElementById('life-'+i).classList.remove('lost');
+  document.getElementById('lives-label').textContent = '6 lives';
+
+  renderWordDisplay();
+  renderKeyboard();
+}
+
+function renderWordDisplay() {
+  const c = document.getElementById('word-display');
+  c.innerHTML = '';
+  currentDisc.name.split('').forEach((ch, i) => {
+    const s = document.createElement('div');
+    if (ch === ' ') { s.className='letter-slot space'; }
+    else {
+      s.className = 'letter-slot'; s.id = 'slot-'+i;
+      if (guessedChars.includes(ch)) { s.textContent = ch; s.classList.add('revealed'); }
+    }
+    c.appendChild(s);
+  });
+}
+
+function renderKeyboard() {
+  const rows = [
+    ['Q','W','E','R','T','Y','U','I','O','P'],
+    ['A','S','D','F','G','H','J','K','L'],
+    ['Z','X','C','V','B','N','M']
   ];
-
-  // Game state
-  let currentDisc = null;
-  let guessedLetters = [];
-  let livesLeft = 6;
-  let cluesRevealed = 1;
-  let score = 0;
-  let streak = 0;
-  let best = 0;
-  let gameOver = false;
-
-  const CLUE_ORDER = ['type','speed','glide','turn','fade','brand'];
-
-  function pickDisc() {
-    return DISCS[Math.floor(Math.random() * DISCS.length)];
-  }
-
-  function startNewDisc() {
-    currentDisc = pickDisc();
-    guessedLetters = [];
-    livesLeft = 6;
-    cluesRevealed = 1;
-    gameOver = false;
-
-    document.getElementById('gtd-result').classList.remove('show');
-    document.getElementById('gtd-game-area').style.display = '';
-
-    // Reset clues
-    document.querySelectorAll('.clue-box').forEach(b => b.classList.remove('revealed'));
-    document.getElementById('clue-type').classList.add('revealed');
-
-    document.getElementById('cv-type').textContent = currentDisc.type;
-    document.getElementById('cd-type').textContent = currentDisc.type === 'Driver' ? 'Distance driver' : currentDisc.type === 'Fairway' ? 'Fairway driver' : currentDisc.type;
-    document.getElementById('cv-speed').textContent = '?';
-    document.getElementById('cv-glide').textContent = '?';
-    document.getElementById('cv-turn').textContent = '?';
-    document.getElementById('cv-fade').textContent = '?';
-    document.getElementById('cv-brand').textContent = '?';
-
-    document.getElementById('clue-progress').style.width = '16%';
-
-    // Lives
-    for (let i = 1; i <= 6; i++) {
-      const d = document.getElementById('life-' + i);
-      d.classList.remove('lost');
-    }
-    document.getElementById('lives-label').textContent = '6 lives remaining';
-
-    renderWordDisplay();
-    renderKeyboard();
-  }
-
-  function renderWordDisplay() {
-    const container = document.getElementById('word-display');
-    container.innerHTML = '';
-    const name = currentDisc.name;
-    for (let i = 0; i < name.length; i++) {
-      const ch = name[i];
-      const slot = document.createElement('div');
-      if (ch === ' ') {
-        slot.className = 'letter-slot space';
-      } else {
-        slot.className = 'letter-slot';
-        slot.id = 'slot-' + i;
-        if (guessedLetters.includes(ch)) {
-          slot.textContent = ch;
-          slot.classList.add('revealed');
-        }
-      }
-      container.appendChild(slot);
-    }
-  }
-
-  function renderKeyboard() {
-    const rows = [
-      ['Q','W','E','R','T','Y','U','I','O','P'],
-      ['A','S','D','F','G','H','J','K','L'],
-      ['Z','X','C','V','B','N','M']
-    ];
-    rows.forEach((row, ri) => {
-      const rowEl = document.getElementById('key-row-' + (ri + 1));
-      rowEl.innerHTML = '';
-      row.forEach(letter => {
-        const btn = document.createElement('button');
-        btn.className = 'key-btn';
-        btn.id = 'key-' + letter;
-        btn.textContent = letter;
-        if (guessedLetters.includes(letter)) {
-          const isHit = currentDisc.name.includes(letter);
-          btn.classList.add(isHit ? 'hit' : 'miss');
-          btn.disabled = true;
-        } else {
-          btn.onclick = () => guessLetter(letter);
-        }
-        rowEl.appendChild(btn);
-      });
+  rows.forEach((row, ri) => {
+    const rowEl = document.getElementById('key-row-'+(ri+1));
+    rowEl.innerHTML = '';
+    row.forEach(ch => {
+      const btn = document.createElement('button');
+      btn.className = 'key-btn'; btn.textContent = ch;
+      if (guessedChars.includes(ch)) {
+        btn.classList.add(currentDisc.name.includes(ch) ? 'hit' : 'miss');
+        btn.disabled = true;
+      } else { btn.onclick = () => guessChar(ch); }
+      rowEl.appendChild(btn);
     });
-  }
+  });
+  // Number row 0-9
+  const numRow = document.getElementById('key-row-nums');
+  numRow.innerHTML = '';
+  '0123456789'.split('').forEach(ch => {
+    const btn = document.createElement('button');
+    btn.className = 'key-btn'; btn.textContent = ch;
+    if (guessedChars.includes(ch)) {
+      btn.classList.add(currentDisc.name.includes(ch) ? 'hit' : 'miss');
+      btn.disabled = true;
+    } else { btn.onclick = () => guessChar(ch); }
+    numRow.appendChild(btn);
+  });
+}
 
-  function guessLetter(letter) {
-    if (gameOver || guessedLetters.includes(letter)) return;
-    guessedLetters.push(letter);
+function guessChar(ch) {
+  if (gameOver || guessedChars.includes(ch)) return;
+  guessedChars.push(ch);
+  const isHit = currentDisc.name.includes(ch);
 
-    const isHit = currentDisc.name.includes(letter);
-    const keyBtn = document.getElementById('key-' + letter);
-    keyBtn.classList.add(isHit ? 'hit' : 'miss');
-    keyBtn.disabled = true;
-
-    if (!isHit) {
-      livesLeft--;
-      const lifeDot = document.getElementById('life-' + (7 - livesLeft));
-      if (lifeDot) lifeDot.classList.add('lost');
-      document.getElementById('lives-label').textContent = livesLeft + ' ' + (livesLeft === 1 ? 'life' : 'lives') + ' remaining';
-
-      // Reveal a clue on wrong guess
-      if (cluesRevealed < 6) {
-        cluesRevealed++;
-        revealClue(cluesRevealed);
-      }
-    }
-
-    renderWordDisplay();
-    checkWin();
-  }
-
-  function revealClue(idx) {
-    const key = CLUE_ORDER[idx - 1];
-    const box = document.getElementById('clue-' + key);
-    const valEl = document.getElementById('cv-' + key);
-    box.classList.add('revealed');
-
-    const val = currentDisc[key];
-    valEl.textContent = val;
-
-    const pct = Math.round((idx / 6) * 100);
-    document.getElementById('clue-progress').style.width = pct + '%';
-  }
-
-  function checkWin() {
-    const name = currentDisc.name;
-    const allRevealed = [...name].every(ch => ch === ' ' || guessedLetters.includes(ch));
-
-    if (allRevealed) {
-      gameOver = true;
-      score++;
-      streak++;
-      if (streak > best) best = streak;
-      updateScoreDisplay();
-      showResult(true);
-    } else if (livesLeft <= 0) {
-      gameOver = true;
-      streak = 0;
-      updateScoreDisplay();
-      // Reveal the full word in red
-      for (let i = 0; i < name.length; i++) {
-        const slot = document.getElementById('slot-' + i);
-        if (slot && !guessedLetters.includes(name[i])) {
-          slot.textContent = name[i];
-          slot.classList.add('wrong-guess');
-        }
-      }
-      showResult(false);
-    }
-  }
-
-  function showResult(won) {
-    document.getElementById('gtd-game-area').style.display = 'none';
-    const res = document.getElementById('gtd-result');
-    res.classList.add('show');
-    document.getElementById('result-emoji').textContent = won ? '🎉' : '💀';
-    document.getElementById('result-title').textContent = won ? 'Aced It!' : 'Disc Lost';
-    document.getElementById('result-answer').innerHTML = 'The disc was the <strong>' + currentDisc.brand + ' ' + currentDisc.name + '</strong> (' + currentDisc.speed + '/' + currentDisc.glide + '/' + currentDisc.turn + '/' + currentDisc.fade + ')';
-  }
-
-  function updateScoreDisplay() {
-    document.getElementById('gtd-score').textContent = score;
-    document.getElementById('gtd-streak').textContent = streak;
-    document.getElementById('gtd-best').textContent = best;
-  }
-
-  // Keyboard input
-  document.addEventListener('keydown', (e) => {
-    const letter = e.key.toUpperCase();
-    if (/^[A-Z]$/.test(letter) && !gameOver) guessLetter(letter);
+  // Update key
+  const keyRows = ['key-row-1','key-row-2','key-row-3','key-row-nums'];
+  keyRows.forEach(rowId => {
+    const row = document.getElementById(rowId);
+    if (!row) return;
+    Array.from(row.children).forEach(btn => {
+      if (btn.textContent === ch) { btn.classList.add(isHit ? 'hit' : 'miss'); btn.disabled = true; }
+    });
   });
 
-  startNewDisc();
-
-  // ═══════════════════════════════════════
-  //  MINI PUTTING GAME
-  // ═══════════════════════════════════════
-  let puttingInitialized = false;
-
-
-  // ═══════════════════════════════════════
-  //  MINI PUTTING GAME — REBUILT
-  // ═══════════════════════════════════════
-  let puttingInitialized = false;
-
-  const HOLE_PARS = [2,2,3,2,3,3,3,4,4];
-
-  const HOLES = [
-    {
-      par: 2, name: "The Warm-Up",
-      pin: {x:0.5, y:0.18},
-      tee: {x:0.5, y:0.82},
-      obstacles: [],
-      wind: {speed:0, angle:0},
-      terrain: []
-    },
-    {
-      par: 2, name: "Side Door",
-      pin: {x:0.22, y:0.2},
-      tee: {x:0.75, y:0.82},
-      obstacles: [],
-      wind: {speed: 1.2, angle: Math.PI * 0.1},
-      terrain: []
-    },
-    {
-      par: 3, name: "The Blocker",
-      pin: {x:0.5, y:0.15},
-      tee: {x:0.5, y:0.85},
-      obstacles: [{x:0.5, y:0.48, r:22, type:'tree'}],
-      wind: {speed:0.8, angle: Math.PI * 1.5},
-      terrain: [{type:'water', x:0.3, y:0.6, w:0.15, h:0.12}]
-    },
-    {
-      par: 2, name: "Snake Path",
-      pin: {x:0.78, y:0.18},
-      tee: {x:0.22, y:0.82},
-      obstacles: [{x:0.5, y:0.5, r:18, type:'rock'}],
-      wind: {speed:1.5, angle: Math.PI * 0.75},
-      terrain: []
-    },
-    {
-      par: 3, name: "Twin Trees",
-      pin: {x:0.5, y:0.14},
-      tee: {x:0.5, y:0.86},
-      obstacles: [
-        {x:0.33, y:0.42, r:20, type:'tree'},
-        {x:0.67, y:0.42, r:20, type:'tree'}
-      ],
-      wind: {speed:1.8, angle: Math.PI * 0.5},
-      terrain: [{type:'water', x:0.38, y:0.6, w:0.24, h:0.1}]
-    },
-    {
-      par: 3, name: "The Maze",
-      pin: {x:0.75, y:0.16},
-      tee: {x:0.25, y:0.84},
-      obstacles: [
-        {x:0.42, y:0.38, r:16, type:'rock'},
-        {x:0.6, y:0.55, r:18, type:'tree'},
-        {x:0.28, y:0.55, r:14, type:'rock'}
-      ],
-      wind: {speed:2, angle: Math.PI * 1.2},
-      terrain: []
-    },
-    {
-      par: 3, name: "Crosswind Hell",
-      pin: {x:0.5, y:0.12},
-      tee: {x:0.5, y:0.86},
-      obstacles: [
-        {x:0.35, y:0.5, r:18, type:'tree'},
-        {x:0.65, y:0.5, r:18, type:'tree'},
-        {x:0.5, y:0.33, r:14, type:'rock'}
-      ],
-      wind: {speed:3.5, angle: Math.PI * 0.5},
-      terrain: [{type:'water', x:0.1, y:0.35, w:0.12, h:0.3}]
-    },
-    {
-      par: 4, name: "Long Road",
-      pin: {x:0.25, y:0.1},
-      tee: {x:0.75, y:0.88},
-      obstacles: [
-        {x:0.55, y:0.65, r:22, type:'tree'},
-        {x:0.38, y:0.42, r:18, type:'rock'}
-      ],
-      wind: {speed:2.5, angle: Math.PI * 1.7},
-      terrain: [{type:'water', x:0.5, y:0.25, w:0.18, h:0.15}]
-    },
-    {
-      par: 4, name: "The Final",
-      pin: {x:0.5, y:0.1},
-      tee: {x:0.5, y:0.88},
-      obstacles: [
-        {x:0.3, y:0.38, r:20, type:'tree'},
-        {x:0.7, y:0.38, r:20, type:'tree'},
-        {x:0.5, y:0.58, r:16, type:'rock'},
-        {x:0.35, y:0.62, r:14, type:'rock'},
-        {x:0.65, y:0.62, r:14, type:'tree'}
-      ],
-      wind: {speed:3, angle: Math.PI * 0.3},
-      terrain: [
-        {type:'water', x:0.1, y:0.55, w:0.12, h:0.22},
-        {type:'water', x:0.78, y:0.55, w:0.12, h:0.22}
-      ]
-    }
-  ];
-
-  let currentHole = 0;
-  let currentThrow = 0;
-  let scores = new Array(9).fill(null);
-  let power = 55;
-  let aimAngle = -Math.PI / 2;
-  let discPos = {x:0, y:0};
-  let discVel = {x:0, y:0};
-  let discSpin = 0;
-  let isAnimating = false;
-  let inWater = false;
-  let canvas, ctx;
-  let W = 640, H = 400;
-  let animFrame = null;
-  let trailPoints = [];
-  let particles = [];
-  let cameraShake = 0;
-
-  // Touch/mouse drag for power
-  let isDraggingPower = false;
-
-  function initPutting() {
-    puttingInitialized = true;
-    canvas = document.getElementById('putting-canvas');
-    ctx = canvas.getContext('2d');
-
-    // Responsive canvas
-    function resizeCanvas() {
-      const wrap = canvas.parentElement;
-      const ratio = H / W;
-      const displayW = wrap.clientWidth;
-      canvas.style.width = displayW + 'px';
-      canvas.style.height = (displayW * ratio) + 'px';
-    }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    // Aim via mouse/touch on canvas
-    canvas.addEventListener('mousemove', onAim);
-    canvas.addEventListener('touchmove', onTouchAim, { passive: false });
-    canvas.addEventListener('touchstart', onTouchAim, { passive: false });
-
-    // Power via drag
-    const pt = document.getElementById('power-track');
-    function setPowerFromEvent(e) {
-      const rect = pt.getBoundingClientRect();
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      power = Math.round(((clientX - rect.left) / rect.width) * 100);
-      power = Math.max(5, Math.min(100, power));
-      updatePowerDisplay();
-      drawHole();
-    }
-    pt.addEventListener('mousedown', (e) => { isDraggingPower = true; setPowerFromEvent(e); });
-    pt.addEventListener('touchstart', (e) => { isDraggingPower = true; setPowerFromEvent(e); }, {passive:true});
-    document.addEventListener('mousemove', (e) => { if (isDraggingPower) setPowerFromEvent(e); });
-    document.addEventListener('touchmove', (e) => { if (isDraggingPower) setPowerFromEvent(e); }, {passive:true});
-    document.addEventListener('mouseup', () => isDraggingPower = false);
-    document.addEventListener('touchend', () => isDraggingPower = false);
-
-    resetPutt();
+  if (!isHit) {
+    livesLeft--;
+    document.getElementById('life-'+(7-livesLeft)).classList.add('lost');
+    document.getElementById('lives-label').textContent = livesLeft + (livesLeft===1?' life':' lives');
+    if (cluesRevealed < 6) { cluesRevealed++; revealClue(cluesRevealed); }
   }
+  renderWordDisplay();
+  checkWin();
+}
 
-  function getCanvasCoords(e) {
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const scaleY = H / rect.height;
-    return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY
-    };
-  }
+function revealClue(idx) {
+  const key = CLUE_ORDER[idx-1];
+  document.getElementById('clue-'+key).classList.add('revealed');
+  const val = currentDisc[key];
+  document.getElementById('cv-'+key).textContent = val;
+  document.getElementById('clue-progress').style.width = Math.round((idx/6)*100)+'%';
+}
 
-  function onAim(e) {
-    if (isAnimating) return;
-    const {x, y} = getCanvasCoords(e);
-    aimAngle = Math.atan2(y - discPos.y, x - discPos.x);
-    drawHole();
-  }
-
-  function onTouchAim(e) {
-    if (isAnimating) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    const scaleX = W / rect.width;
-    const scaleY = H / rect.height;
-    const x = (touch.clientX - rect.left) * scaleX;
-    const y = (touch.clientY - rect.top) * scaleY;
-    aimAngle = Math.atan2(y - discPos.y, x - discPos.x);
-    drawHole();
-  }
-
-  function updatePowerDisplay() {
-    document.getElementById('power-fill').style.width = power + '%';
-    document.getElementById('power-val').textContent = power;
-  }
-
-  function updateWindDisplay() {
-    const hole = HOLES[currentHole];
-    const wind = hole.wind;
-    const speed = wind.speed;
-    const el = document.getElementById('wind-label');
-    const arrow = document.getElementById('wind-arrow');
-    const strength = document.getElementById('wind-strength');
-    const desc = document.getElementById('wind-desc');
-
-    if (speed < 0.3) {
-      el.textContent = 'Calm';
-      arrow.textContent = '•';
-      strength.textContent = '';
-      desc.textContent = 'No wind effect';
-    } else {
-      const deg = Math.round((wind.angle * 180 / Math.PI) % 360);
-      const dirs = ['→','↗','↑','↖','←','↙','↓','↘'];
-      const idx = Math.round(deg / 45) % 8;
-      arrow.textContent = dirs[Math.abs(idx)];
-      arrow.style.transform = 'rotate(' + (wind.angle * 180/Math.PI) + 'deg)';
-
-      const labels = ['Light','Moderate','Strong','Gusty'];
-      const lvl = Math.min(3, Math.floor(speed / 1.2));
-      el.textContent = labels[lvl] + ' Wind';
-      strength.textContent = speed.toFixed(1) + ' mph';
-      desc.textContent = speed > 2.5 ? 'Major effect on disc' : speed > 1.2 ? 'Noticeable drift' : 'Minor drift';
-    }
-  }
-
-  function resetPutt() {
-    if (!canvas) { canvas = document.getElementById('putting-canvas'); ctx = canvas.getContext('2d'); }
-    if (animFrame) { cancelAnimationFrame(animFrame); animFrame = null; }
-
-    const hole = HOLES[currentHole];
-    discPos = { x: hole.tee.x * W, y: hole.tee.y * H };
-    discVel = { x:0, y:0 };
-    discSpin = 0;
-    aimAngle = Math.atan2(hole.pin.y * H - discPos.y, hole.pin.x * W - discPos.x);
-    isAnimating = false;
-    inWater = false;
-    trailPoints = [];
-    particles = [];
-    currentThrow = 0;
-
-    document.getElementById('throw-btn').disabled = false;
-    document.getElementById('throw-num').textContent = '0';
-    document.getElementById('putt-msg').textContent = '';
-    document.getElementById('putt-msg').className = 'putt-result-msg';
-
-    updateWindDisplay();
-    updateHoleInfo();
-    drawHole();
-  }
-
-  function updateHoleInfo() {
-    const hole = HOLES[currentHole];
-    document.getElementById('hole-num').textContent = currentHole + 1;
-    document.getElementById('par-num').textContent = hole.par;
-
-    const totalStrokes = scores.reduce((s, v) => s + (v !== null ? v : 0), 0);
-    const totalPar = scores.reduce((s, v, i) => s + (v !== null ? HOLE_PARS[i] : 0), 0);
-    const diff = totalStrokes - totalPar;
-    const el = document.getElementById('total-score-display');
-    el.textContent = totalStrokes === 0 ? 'E' : diff === 0 ? 'E' : (diff > 0 ? '+'+diff : diff);
-  }
-
-  function throwDisc() {
-    if (isAnimating) return;
-    isAnimating = true;
-    currentThrow++;
-    document.getElementById('throw-num').textContent = currentThrow;
-    document.getElementById('throw-btn').disabled = true;
-    document.getElementById('putt-msg').textContent = '';
-    document.getElementById('putt-msg').className = 'putt-result-msg';
-
-    const spd = (power / 100) * 16 + 2;
-    discVel = {
-      x: Math.cos(aimAngle) * spd,
-      y: Math.sin(aimAngle) * spd
-    };
-    discSpin = spd * 0.8;
-    trailPoints = [];
-    particles = [];
-
-    animateDisc();
-  }
-
-  function spawnParticles(x, y, color, count) {
-    for (let i = 0; i < count; i++) {
-      particles.push({
-        x, y,
-        vx: (Math.random() - 0.5) * 8,
-        vy: (Math.random() - 0.5) * 8,
-        life: 1,
-        color,
-        size: 3 + Math.random() * 4
-      });
-    }
-  }
-
-  function animateDisc() {
-    const hole = HOLES[currentHole];
-    const pinX = hole.pin.x * W;
-    const pinY = hole.pin.y * H;
-    const wind = hole.wind;
-
-    // Wind force
-    discVel.x += Math.cos(wind.angle) * wind.speed * 0.015;
-    discVel.y += Math.sin(wind.angle) * wind.speed * 0.015;
-
-    // Drag
-    const spd = Math.sqrt(discVel.x**2 + discVel.y**2);
-    const drag = 0.974 - spd * 0.001;
-    discVel.x *= drag;
-    discVel.y *= drag;
-    discSpin *= 0.97;
-
-    discPos.x += discVel.x;
-    discPos.y += discVel.y;
-
-    // Trail
-    trailPoints.push({x: discPos.x, y: discPos.y, age: 1});
-    if (trailPoints.length > 28) trailPoints.shift();
-    trailPoints.forEach(p => p.age *= 0.93);
-
-    // Update particles
-    particles.forEach(p => {
-      p.x += p.vx; p.y += p.vy;
-      p.vx *= 0.88; p.vy *= 0.88;
-      p.life *= 0.88;
+function checkWin() {
+  const name = currentDisc.name;
+  const won = [...name].every(ch => ch===' ' || guessedChars.includes(ch));
+  if (won) {
+    gameOver = true; score++; streak++; if (streak>best) best=streak;
+    updateScoreDisplay(); showResult(true);
+  } else if (livesLeft <= 0) {
+    gameOver = true; streak = 0; updateScoreDisplay();
+    name.split('').forEach((ch,i) => {
+      const s = document.getElementById('slot-'+i);
+      if (s && !guessedChars.includes(ch)) { s.textContent=ch; s.classList.add('wrong-guess'); }
     });
-    particles = particles.filter(p => p.life > 0.05);
+    showResult(false);
+  }
+}
 
-    // Check water hazard
-    for (const t of (hole.terrain || [])) {
-      if (t.type === 'water') {
-        const wx = t.x * W, wy = t.y * H, ww = t.w * W, wh = t.h * H;
-        if (discPos.x > wx && discPos.x < wx+ww && discPos.y > wy && discPos.y < wy+wh) {
-          // Water splash!
-          spawnParticles(discPos.x, discPos.y, '#60a5fa', 12);
-          cameraShake = 5;
-          inWater = true;
-          discVel = {x:0, y:0};
-          drawHole();
-          isAnimating = false;
-          setTimeout(() => {
-            // Reset to tee
-            discPos = { x: hole.tee.x * W, y: hole.tee.y * H };
-            aimAngle = Math.atan2(pinY - discPos.y, pinX - discPos.x);
-            trailPoints = [];
-            particles = [];
-            inWater = false;
-            document.getElementById('throw-btn').disabled = false;
-            showMsg('💦 Water! Retry from tee.', 'bogey');
-            drawHole();
-          }, 1000);
-          return;
-        }
-      }
-    }
+function showResult(won) {
+  document.getElementById('gtd-game-area').style.display = 'none';
+  const res = document.getElementById('gtd-result');
+  res.classList.add('show');
+  document.getElementById('result-emoji').textContent = won ? '🎉' : '💀';
+  document.getElementById('result-title').textContent = won ? 'Aced It!' : 'Disc Lost';
+  document.getElementById('result-answer').innerHTML = 'The disc was the <strong>' + currentDisc.brand + ' ' + currentDisc.name + '</strong> (' + currentDisc.speed+'/'+currentDisc.glide+'/'+currentDisc.turn+'/'+currentDisc.fade+')';
+  if (won) checkLeaderboard(score, streak);
+}
 
-    // Obstacle collision
-    for (const obs of (hole.obstacles || [])) {
-      const ox = obs.x * W, oy = obs.y * H;
-      const ddx = discPos.x - ox, ddy = discPos.y - oy;
-      const dd = Math.sqrt(ddx**2 + ddy**2);
-      const collisionR = obs.r + 11;
-      if (dd < collisionR) {
-        const nx = ddx/dd, ny = ddy/dd;
-        const dot = discVel.x*nx + discVel.y*ny;
-        const bounce = obs.type === 'rock' ? 0.55 : 0.35;
-        discVel.x = (discVel.x - 2*dot*nx) * bounce;
-        discVel.y = (discVel.y - 2*dot*ny) * bounce;
-        discPos.x = ox + (collisionR + 1) * nx;
-        discPos.y = oy + (collisionR + 1) * ny;
-        spawnParticles(discPos.x, discPos.y, obs.type === 'rock' ? '#94a3b8' : '#22c55e', 6);
-        cameraShake = 3;
-      }
-    }
+function updateScoreDisplay() {
+  document.getElementById('gtd-score').textContent = score;
+  document.getElementById('gtd-streak').textContent = streak;
+  document.getElementById('gtd-best').textContent = best;
+}
 
-    // Wall bounce
-    const margin = 12;
-    if (discPos.x < margin) { discPos.x = margin; discVel.x = Math.abs(discVel.x)*0.5; spawnParticles(discPos.x, discPos.y, '#f97316', 4); }
-    if (discPos.x > W-margin) { discPos.x = W-margin; discVel.x = -Math.abs(discVel.x)*0.5; spawnParticles(discPos.x, discPos.y, '#f97316', 4); }
-    if (discPos.y < margin) { discPos.y = margin; discVel.y = Math.abs(discVel.y)*0.5; spawnParticles(discPos.x, discPos.y, '#f97316', 4); }
-    if (discPos.y > H-margin) { discPos.y = H-margin; discVel.y = -Math.abs(discVel.y)*0.5; spawnParticles(discPos.x, discPos.y, '#f97316', 4); }
+// Physical keyboard
+document.addEventListener('keydown', e => {
+  const k = e.key.toUpperCase();
+  if (/^[A-Z0-9]$/.test(k) && !gameOver && !pendingScore) guessChar(k);
+});
 
-    // Camera shake decay
-    cameraShake *= 0.7;
+startNewDisc();
+renderLB();
 
-    // Check basket
-    const dx = discPos.x - pinX, dy = discPos.y - pinY;
-    const distToPin = Math.sqrt(dx**2 + dy**2);
+// ═══════════════════════════════════════
+//  PUTTING GAME
+// ═══════════════════════════════════════
+const HOLE_PARS = [2,2,3,2,3,3,3,4,4];
+const HOLES = [
+  { par:2, name:"Warm-Up", pin:{x:.5,y:.18}, tee:{x:.5,y:.82}, obstacles:[], wind:{speed:0,angle:0}, terrain:[] },
+  { par:2, name:"Side Door", pin:{x:.22,y:.2}, tee:{x:.75,y:.82}, obstacles:[], wind:{speed:1.2,angle:.3}, terrain:[] },
+  { par:3, name:"The Blocker", pin:{x:.5,y:.15}, tee:{x:.5,y:.85}, obstacles:[{x:.5,y:.48,r:22,type:'tree'}], wind:{speed:.8,angle:Math.PI*1.5}, terrain:[{type:'water',x:.28,y:.58,w:.14,h:.1}] },
+  { par:2, name:"Snake Path", pin:{x:.78,y:.18}, tee:{x:.22,y:.82}, obstacles:[{x:.5,y:.5,r:18,type:'rock'}], wind:{speed:1.5,angle:Math.PI*.75}, terrain:[] },
+  { par:3, name:"Twin Trees", pin:{x:.5,y:.14}, tee:{x:.5,y:.86}, obstacles:[{x:.33,y:.42,r:20,type:'tree'},{x:.67,y:.42,r:20,type:'tree'}], wind:{speed:1.8,angle:Math.PI*.5}, terrain:[{type:'water',x:.38,y:.6,w:.24,h:.1}] },
+  { par:3, name:"The Maze", pin:{x:.75,y:.16}, tee:{x:.25,y:.84}, obstacles:[{x:.42,y:.38,r:16,type:'rock'},{x:.6,y:.55,r:18,type:'tree'},{x:.28,y:.55,r:14,type:'rock'}], wind:{speed:2,angle:Math.PI*1.2}, terrain:[] },
+  { par:3, name:"Crosswind", pin:{x:.5,y:.12}, tee:{x:.5,y:.86}, obstacles:[{x:.35,y:.5,r:18,type:'tree'},{x:.65,y:.5,r:18,type:'tree'},{x:.5,y:.32,r:14,type:'rock'}], wind:{speed:3.5,angle:Math.PI*.5}, terrain:[{type:'water',x:.08,y:.35,w:.12,h:.3}] },
+  { par:4, name:"Long Road", pin:{x:.25,y:.1}, tee:{x:.75,y:.88}, obstacles:[{x:.55,y:.65,r:22,type:'tree'},{x:.38,y:.42,r:18,type:'rock'}], wind:{speed:2.5,angle:Math.PI*1.7}, terrain:[{type:'water',x:.5,y:.25,w:.18,h:.15}] },
+  { par:4, name:"The Final", pin:{x:.5,y:.1}, tee:{x:.5,y:.88}, obstacles:[{x:.3,y:.38,r:20,type:'tree'},{x:.7,y:.38,r:20,type:'tree'},{x:.5,y:.58,r:16,type:'rock'},{x:.35,y:.62,r:13,type:'rock'},{x:.65,y:.62,r:13,type:'tree'}], wind:{speed:3,angle:Math.PI*.3}, terrain:[{type:'water',x:.08,y:.55,w:.12,h:.22},{type:'water',x:.8,y:.55,w:.12,h:.22}] },
+];
 
-    if (distToPin < 24) {
-      // SUNK!
-      spawnParticles(pinX, pinY, '#fbbf24', 20);
-      discPos = {x: pinX, y: pinY};
-      discVel = {x:0, y:0};
-      drawHole();
-      isAnimating = false;
-      scores[currentHole] = currentThrow;
-      updateScoreCard();
-      const par = hole.par;
-      if (currentThrow === 1) { showMsg('🌟 HOLE IN ONE! LEGENDARY!', 'ace'); }
-      else if (currentThrow < par - 1) { showMsg('🦅 Eagle! Incredible!', 'eagle'); }
-      else if (currentThrow < par) { showMsg('🎉 Birdie! Great putt!', 'birdie'); }
-      else if (currentThrow === par) { showMsg('👍 Par!', 'par'); }
-      else { showMsg('😬 Bogey +' + (currentThrow - par), 'bogey'); }
-      setTimeout(() => nextHole(), 1800);
-      return;
-    }
+let puttState = null;
 
-    // Disc stopped
-    if (spd < 0.35) {
-      drawHole();
-      isAnimating = false;
-      document.getElementById('throw-btn').disabled = false;
-      const maxThrows = hole.par + 3;
-      if (currentThrow >= maxThrows) {
-        scores[currentHole] = currentThrow;
-        updateScoreCard();
-        showMsg('Max throws — next hole', 'bogey');
-        setTimeout(() => nextHole(), 1500);
+function initPutting() {
+  if (puttState && puttState.initialized) return;
+  const canvas = document.getElementById('putting-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = 640, H = 400;
+
+  // Responsive sizing
+  function resize() {
+    const w = canvas.parentElement.clientWidth;
+    canvas.style.width = w + 'px';
+    canvas.style.height = (w * H/W) + 'px';
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  puttState = {
+    initialized: true, canvas, ctx, W, H,
+    currentHole: 0, currentThrow: 0,
+    scores: new Array(9).fill(null),
+    power: 55, aimAngle: -Math.PI/2,
+    disc: {x:0,y:0}, vel: {x:0,y:0},
+    isAnimating: false, inWater: false,
+    trail: [], particles: [], shake: 0,
+    animFrame: null, isDraggingPower: false
+  };
+
+  // Aim via canvas mouse/touch
+  function getPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const sx = W/rect.width, sy = H/rect.height;
+    const cx = e.touches ? e.touches[0].clientX : e.clientX;
+    const cy = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x:(cx-rect.left)*sx, y:(cy-rect.top)*sy };
+  }
+  canvas.addEventListener('mousemove', e => { if (!puttState.isAnimating) { const p=getPos(e); puttState.aimAngle=Math.atan2(p.y-puttState.disc.y,p.x-puttState.disc.x); drawHole(); } });
+  canvas.addEventListener('touchmove', e => { e.preventDefault(); if (!puttState.isAnimating) { const p=getPos(e); puttState.aimAngle=Math.atan2(p.y-puttState.disc.y,p.x-puttState.disc.x); drawHole(); } }, {passive:false});
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); if (!puttState.isAnimating) { const p=getPos(e); puttState.aimAngle=Math.atan2(p.y-puttState.disc.y,p.x-puttState.disc.x); drawHole(); } }, {passive:false});
+
+  // Power bar drag
+  const pt = document.getElementById('power-track');
+  function setPow(e) {
+    const r=pt.getBoundingClientRect();
+    const cx=e.touches?e.touches[0].clientX:e.clientX;
+    puttState.power = Math.max(5, Math.min(100, Math.round((cx-r.left)/r.width*100)));
+    document.getElementById('power-fill').style.width = puttState.power+'%';
+    document.getElementById('power-val').textContent = puttState.power;
+    drawHole();
+  }
+  pt.addEventListener('mousedown', e=>{puttState.isDraggingPower=true;setPow(e);});
+  pt.addEventListener('touchstart', e=>{puttState.isDraggingPower=true;setPow(e);},{passive:true});
+  document.addEventListener('mousemove', e=>{if(puttState.isDraggingPower)setPow(e);});
+  document.addEventListener('touchmove', e=>{if(puttState.isDraggingPower)setPow(e);},{passive:true});
+  document.addEventListener('mouseup', ()=>puttState.isDraggingPower=false);
+  document.addEventListener('touchend', ()=>puttState.isDraggingPower=false);
+
+  resetPutt();
+}
+
+function resetPutt() {
+  if (!puttState) return;
+  const s = puttState;
+  if (s.animFrame) { cancelAnimationFrame(s.animFrame); s.animFrame=null; }
+  const hole = HOLES[s.currentHole];
+  s.disc = {x: hole.tee.x*s.W, y: hole.tee.y*s.H};
+  s.vel = {x:0,y:0};
+  s.aimAngle = Math.atan2(hole.pin.y*s.H - s.disc.y, hole.pin.x*s.W - s.disc.x);
+  s.isAnimating = false; s.inWater = false;
+  s.trail = []; s.particles = [];
+  s.currentThrow = 0;
+
+  document.getElementById('throw-btn').disabled = false;
+  document.getElementById('throw-num').textContent = '0';
+  document.getElementById('putt-msg').textContent = '';
+  document.getElementById('putt-msg').className = 'putt-result-msg';
+  updateWindUI();
+  updateHoleUI();
+  drawHole();
+}
+
+function updateWindUI() {
+  if (!puttState) return;
+  const wind = HOLES[puttState.currentHole].wind;
+  const sp = wind.speed;
+  const lbl = document.getElementById('wind-label');
+  const arr = document.getElementById('wind-arrow');
+  const str = document.getElementById('wind-strength');
+  const desc = document.getElementById('wind-desc');
+  if (sp < 0.3) {
+    lbl.textContent='Calm'; arr.textContent='•'; str.textContent=''; desc.textContent='No effect';
+  } else {
+    const arrows=['→','↗','↑','↖','←','↙','↓','↘'];
+    const idx=Math.round(wind.angle/(Math.PI/4))&7;
+    arr.textContent = arrows[idx];
+    const labels=['Light','Moderate','Strong','Gusty'];
+    lbl.textContent = labels[Math.min(3,Math.floor(sp/1.2))] + ' Wind';
+    str.textContent = sp.toFixed(1)+' mph';
+    desc.textContent = sp>2.5?'Major drift':sp>1.2?'Noticeable drift':'Minor drift';
+  }
+}
+
+function updateHoleUI() {
+  if (!puttState) return;
+  const s = puttState;
+  document.getElementById('hole-num').textContent = s.currentHole+1;
+  document.getElementById('par-num').textContent = HOLES[s.currentHole].par;
+  const tot = s.scores.reduce((a,v)=>a+(v||0),0);
+  const par = s.scores.reduce((a,v,i)=>a+(v!=null?HOLE_PARS[i]:0),0);
+  const diff = tot-par;
+  document.getElementById('total-score-display').textContent = tot===0?'E':diff===0?'E':diff>0?'+'+diff:diff;
+}
+
+function throwDisc() {
+  if (!puttState || puttState.isAnimating) return;
+  const s = puttState;
+  s.isAnimating = true;
+  s.currentThrow++;
+  document.getElementById('throw-num').textContent = s.currentThrow;
+  document.getElementById('throw-btn').disabled = true;
+  document.getElementById('putt-msg').textContent = '';
+  const spd = (s.power/100)*16+2;
+  s.vel = {x:Math.cos(s.aimAngle)*spd, y:Math.sin(s.aimAngle)*spd};
+  s.trail = [];
+  animate();
+}
+
+function spawnParticles(x,y,color,n) {
+  const s = puttState;
+  for(let i=0;i<n;i++) s.particles.push({x,y,vx:(Math.random()-.5)*8,vy:(Math.random()-.5)*8,life:1,color,size:3+Math.random()*4});
+}
+
+function animate() {
+  const s = puttState;
+  if (!s.isAnimating) return;
+  const hole = HOLES[s.currentHole];
+  const W=s.W, H=s.H;
+  const pinX=hole.pin.x*W, pinY=hole.pin.y*H;
+  const wind=hole.wind;
+
+  // Wind + drag
+  s.vel.x += Math.cos(wind.angle)*wind.speed*0.015;
+  s.vel.y += Math.sin(wind.angle)*wind.speed*0.015;
+  const spd = Math.sqrt(s.vel.x**2+s.vel.y**2);
+  const drag = 0.974 - spd*0.001;
+  s.vel.x *= drag; s.vel.y *= drag;
+  s.disc.x += s.vel.x; s.disc.y += s.vel.y;
+
+  // Trail
+  s.trail.push({x:s.disc.x,y:s.disc.y,a:1});
+  if(s.trail.length>30) s.trail.shift();
+  s.trail.forEach(p=>p.a*=0.92);
+
+  // Particles
+  s.particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vx*=0.88;p.vy*=0.88;p.life*=0.88;});
+  s.particles=s.particles.filter(p=>p.life>0.05);
+  s.shake*=0.7;
+
+  // Water
+  for(const t of hole.terrain||[]) {
+    if(t.type==='water') {
+      const wx=t.x*W,wy=t.y*H,ww=t.w*W,wh=t.h*H;
+      if(s.disc.x>wx&&s.disc.x<wx+ww&&s.disc.y>wy&&s.disc.y<wy+wh) {
+        spawnParticles(s.disc.x,s.disc.y,'#60a5fa',12); s.shake=5;
+        s.isAnimating=false; s.inWater=true; s.vel={x:0,y:0};
+        drawHole();
+        setTimeout(()=>{
+          s.disc={x:hole.tee.x*W,y:hole.tee.y*H};
+          s.aimAngle=Math.atan2(pinY-s.disc.y,pinX-s.disc.x);
+          s.trail=[];s.particles=[];s.inWater=false;
+          document.getElementById('throw-btn').disabled=false;
+          showMsg('💦 Water! Back to tee.','bogey'); drawHole();
+        },1000);
         return;
       }
-      showMsg('Missed! ' + Math.round(distToPin / (W/20)) + 'm away — try again', 'bogey');
-      return;
     }
+  }
 
+  // Obstacles
+  for(const obs of hole.obstacles||[]) {
+    const ox=obs.x*W,oy=obs.y*H;
+    const dx=s.disc.x-ox,dy=s.disc.y-oy,dd=Math.sqrt(dx**2+dy**2);
+    const cr=obs.r+11;
+    if(dd<cr) {
+      const nx=dx/dd,ny=dy/dd;
+      const dot=s.vel.x*nx+s.vel.y*ny;
+      const bounce=obs.type==='rock'?.55:.35;
+      s.vel.x=(s.vel.x-2*dot*nx)*bounce; s.vel.y=(s.vel.y-2*dot*ny)*bounce;
+      s.disc.x=ox+(cr+1)*nx; s.disc.y=oy+(cr+1)*ny;
+      spawnParticles(s.disc.x,s.disc.y,obs.type==='rock'?'#94a3b8':'#22c55e',5);
+      s.shake=3;
+    }
+  }
+
+  // Walls
+  const mg=12;
+  if(s.disc.x<mg){s.disc.x=mg;s.vel.x=Math.abs(s.vel.x)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
+  if(s.disc.x>W-mg){s.disc.x=W-mg;s.vel.x=-Math.abs(s.vel.x)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
+  if(s.disc.y<mg){s.disc.y=mg;s.vel.y=Math.abs(s.vel.y)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
+  if(s.disc.y>H-mg){s.disc.y=H-mg;s.vel.y=-Math.abs(s.vel.y)*.5;spawnParticles(s.disc.x,s.disc.y,'#f97316',3);}
+
+  // Check basket
+  const dist=Math.sqrt((s.disc.x-pinX)**2+(s.disc.y-pinY)**2);
+  if(dist<24) {
+    spawnParticles(pinX,pinY,'#fbbf24',20);
+    s.disc={x:pinX,y:pinY}; s.vel={x:0,y:0};
+    s.isAnimating=false;
+    s.scores[s.currentHole]=s.currentThrow;
+    updateScorecard();
+    const par=hole.par;
+    const t=s.currentThrow;
+    if(t===1) showMsg('🌟 HOLE IN ONE!','ace');
+    else if(t<=par-2) showMsg('🦅 Eagle! Incredible!','birdie');
+    else if(t<par) showMsg('🎉 Birdie!','birdie');
+    else if(t===par) showMsg('👍 Par!','par');
+    else showMsg('😬 Bogey +' + (t-par),'bogey');
     drawHole();
-    animFrame = requestAnimationFrame(animateDisc);
+    setTimeout(()=>nextHole(),1800);
+    return;
   }
 
-  function showMsg(text, type) {
-    const el = document.getElementById('putt-msg');
-    el.textContent = text;
-    el.className = 'putt-result-msg ' + (type || '');
+  // Stopped
+  if(spd<0.35) {
+    s.isAnimating=false;
+    document.getElementById('throw-btn').disabled=false;
+    const maxT=hole.par+3;
+    if(s.currentThrow>=maxT) {
+      s.scores[s.currentHole]=s.currentThrow; updateScorecard();
+      showMsg('Max throws — next hole','bogey');
+      setTimeout(()=>nextHole(),1500); return;
+    }
+    const distM=(dist/(W/18)).toFixed(1);
+    showMsg('Missed! '+distM+'m away — try again','bogey');
+    drawHole(); return;
   }
 
-  function updateScoreCard() {
-    let total = 0, totalPar = 0;
-    scores.forEach((s, i) => {
-      if (s !== null) {
-        const cell = document.getElementById('sc-' + (i+1));
-        cell.textContent = s;
-        const par = HOLE_PARS[i];
-        const diff = s - par;
-        cell.className = 'sc-cell ' + (diff <= -2 ? 'eagle' : diff === -1 ? 'birdie' : diff === 0 ? 'par' : 'bogey');
-        total += s;
-        totalPar += par;
-      }
-    });
-    const diff = total - totalPar;
-    const totEl = document.getElementById('sc-total');
-    totEl.textContent = total > 0 ? (diff === 0 ? 'E' : diff > 0 ? '+'+diff : diff) : '–';
-    totEl.className = 'sc-cell total ' + (diff < 0 ? 'under' : diff > 0 ? 'over' : '');
-    updateHoleInfo();
-  }
+  drawHole();
+  s.animFrame=requestAnimationFrame(animate);
+}
 
-  function nextHole() {
-    if (currentHole < 8) {
-      currentHole++;
-      // Highlight active hole
-      document.querySelectorAll('[id^="sc-"]').forEach((c,i) => {
-        if (i <= 9) c.classList.remove('active');
-      });
-      const ac = document.getElementById('sc-' + (currentHole+1));
-      if (ac) ac.classList.add('active');
+function showMsg(txt,cls) {
+  const el=document.getElementById('putt-msg');
+  el.textContent=txt; el.className='putt-result-msg '+(cls||'');
+}
+
+function updateScorecard() {
+  const s=puttState;
+  let tot=0,totPar=0;
+  s.scores.forEach((v,i)=>{
+    if(v!=null) {
+      const cell=document.getElementById('sc-'+(i+1));
+      cell.textContent=v;
+      const par=HOLE_PARS[i],diff=v-par;
+      cell.className='sc-cell '+(diff<=-2?'eagle':diff===-1?'birdie':diff===0?'par':'bogey');
+      tot+=v; totPar+=par;
+    }
+  });
+  const diff=tot-totPar;
+  const totEl=document.getElementById('sc-total');
+  totEl.textContent=tot>0?(diff===0?'E':diff>0?'+'+diff:diff):'–';
+  totEl.className='sc-cell total '+(diff<0?'under':diff>0?'over':'');
+  updateHoleUI();
+}
+
+function nextHole() {
+  const s=puttState;
+  if(s.currentHole<8) {
+    s.currentHole++;
+    resetPutt();
+  } else {
+    const tot=s.scores.reduce((a,v)=>a+(v||0),0);
+    const par=HOLE_PARS.reduce((a,b)=>a+b,0);
+    const diff=tot-par;
+    showMsg(diff<0?'🏆 '+Math.abs(diff)+' under par! Amazing!':diff===0?'🎯 Even par! Solid!':'😤 +'+diff+' — try again!',diff<0?'birdie':diff===0?'par':'bogey');
+    document.getElementById('throw-btn').disabled=true;
+    setTimeout(()=>{
+      s.currentHole=0; s.scores=new Array(9).fill(null);
+      for(let i=1;i<=9;i++){const c=document.getElementById('sc-'+i);if(c){c.textContent='–';c.className='sc-cell';}}
+      document.getElementById('sc-total').textContent='–';
+      document.getElementById('sc-total').className='sc-cell total';
       resetPutt();
+    },4000);
+  }
+}
+
+function drawHole() {
+  if(!puttState||!puttState.initialized) return;
+  const s=puttState;
+  const {ctx,W,H} = s;
+  const hole=HOLES[s.currentHole];
+  const pinX=hole.pin.x*W,pinY=hole.pin.y*H;
+  const teeX=hole.tee.x*W,teeY=hole.tee.y*H;
+
+  ctx.save();
+  if(s.shake>0.3) ctx.translate((Math.random()-.5)*s.shake,(Math.random()-.5)*s.shake);
+
+  // Background
+  const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,W*.8);
+  bg.addColorStop(0,'#0d2010'); bg.addColorStop(.6,'#091a0c'); bg.addColorStop(1,'#060e08');
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // Grass lines
+  ctx.strokeStyle='rgba(255,255,255,0.018)'; ctx.lineWidth=1;
+  for(let x=0;x<W;x+=22){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x+8,H);ctx.stroke();}
+
+  // Fairway
+  const fg=ctx.createLinearGradient(teeX,teeY,pinX,pinY);
+  fg.addColorStop(0,'rgba(34,197,94,0.05)'); fg.addColorStop(.5,'rgba(34,197,94,0.1)'); fg.addColorStop(1,'rgba(34,197,94,0.05)');
+  ctx.beginPath(); ctx.moveTo(teeX,teeY); ctx.lineTo(pinX,pinY);
+  ctx.strokeStyle=fg; ctx.lineWidth=50; ctx.lineCap='round'; ctx.stroke();
+
+  // Water hazards
+  (hole.terrain||[]).forEach(t=>{
+    if(t.type!=='water') return;
+    const wx=t.x*W,wy=t.y*H,ww=t.w*W,wh=t.h*H;
+    const wg=ctx.createLinearGradient(wx,wy,wx,wy+wh);
+    wg.addColorStop(0,'rgba(59,130,246,0.5)'); wg.addColorStop(1,'rgba(29,78,216,0.7)');
+    ctx.fillStyle=wg; ctx.beginPath(); ctx.roundRect(wx,wy,ww,wh,8); ctx.fill();
+    ctx.strokeStyle='rgba(147,197,253,0.2)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.ellipse(wx+ww/2,wy+wh/2,ww*.35,wh*.3,0,0,Math.PI*2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(147,197,253,0.5)'; ctx.font='700 9px DM Sans'; ctx.textAlign='center';
+    ctx.fillText('OB',wx+ww/2,wy+wh/2+3);
+  });
+
+  // Obstacles
+  (hole.obstacles||[]).forEach(obs=>{
+    const ox=obs.x*W,oy=obs.y*H;
+    if(obs.type==='tree') {
+      ctx.beginPath(); ctx.ellipse(ox+4,oy+5,obs.r*.9,obs.r*.5,.3,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
+      ctx.fillStyle='#6b4226'; ctx.fillRect(ox-3,oy+obs.r*.3,6,obs.r*.5);
+      for(let li=0;li<3;li++){
+        const lr=obs.r*(1-li*.2),ly=oy-li*obs.r*.28;
+        const cg=ctx.createRadialGradient(ox-lr*.2,ly-lr*.2,1,ox,ly,lr);
+        cg.addColorStop(0,li===0?'#4ade80':'#22c55e'); cg.addColorStop(.6,'#16a34a'); cg.addColorStop(1,'#14532d');
+        ctx.beginPath(); ctx.arc(ox,ly,lr,0,Math.PI*2);
+        ctx.fillStyle=cg; ctx.fill();
+        ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1; ctx.stroke();
+      }
     } else {
-      // Round complete
-      const total = scores.reduce((s,v) => s+(v||0), 0);
-      const totalPar = HOLE_PARS.reduce((a,b) => a+b, 0);
-      const diff = total - totalPar;
-      const msg = diff < 0 ? '🏆 ' + Math.abs(diff) + ' under par! Amazing round!' :
-                  diff === 0 ? '🎯 Even par! Solid round!' :
-                  '😤 +' + diff + ' — come back for more!';
-      showMsg(msg, diff < 0 ? 'birdie' : diff === 0 ? 'par' : 'bogey');
-      document.getElementById('throw-btn').disabled = true;
-      setTimeout(() => {
-        // Reset everything
-        currentHole = 0;
-        scores = new Array(9).fill(null);
-        document.querySelectorAll('[id^="sc-"]').forEach(c => {
-          if (!['sc-total'].includes(c.id)) { c.textContent = '–'; c.className = 'sc-cell'; }
-        });
-        document.getElementById('sc-total').textContent = '–';
-        document.getElementById('sc-total').className = 'sc-cell total';
-        resetPutt();
-      }, 4000);
+      ctx.beginPath(); ctx.ellipse(ox+4,oy+4,obs.r*.9,obs.r*.6,.3,0,Math.PI*2);
+      ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fill();
+      const rg=ctx.createRadialGradient(ox-obs.r*.2,oy-obs.r*.2,2,ox,oy,obs.r);
+      rg.addColorStop(0,'#94a3b8'); rg.addColorStop(.5,'#64748b'); rg.addColorStop(1,'#334155');
+      ctx.beginPath(); ctx.arc(ox,oy,obs.r,0,Math.PI*2);
+      ctx.fillStyle=rg; ctx.fill();
+      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.stroke();
     }
+  });
+
+  // Hole name
+  ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='700 10px DM Sans'; ctx.textAlign='left';
+  ctx.fillText('H'+(s.currentHole+1)+' · '+hole.name, 10, H-10);
+
+  // Trail
+  for(let i=1;i<s.trail.length;i++){
+    const a=s.trail[i-1],b=s.trail[i];
+    ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+    ctx.strokeStyle='rgba(249,115,22,'+b.a*.6+')';
+    ctx.lineWidth=2.5*b.a; ctx.lineCap='round'; ctx.stroke();
   }
 
-  // ═══════════════════════════════════════
-  //  DRAWING ENGINE
-  // ═══════════════════════════════════════
-  function drawHole() {
-    if (!ctx) return;
-    const hole = HOLES[currentHole];
-    const pinX = hole.pin.x * W, pinY = hole.pin.y * H;
-    const teeX = hole.tee.x * W, teeY = hole.tee.y * H;
-    const wind = hole.wind;
+  // Particles
+  s.particles.forEach(p=>{
+    ctx.globalAlpha=p.life;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*p.life,0,Math.PI*2);
+    ctx.fillStyle=p.color; ctx.fill();
+    ctx.globalAlpha=1;
+  });
 
-    // Camera shake offset
-    const sx = cameraShake > 0.3 ? (Math.random()-0.5)*cameraShake : 0;
-    const sy = cameraShake > 0.3 ? (Math.random()-0.5)*cameraShake : 0;
-    ctx.save();
-    ctx.translate(sx, sy);
-
-    // ── BACKGROUND GRASS ──
-    const bgGrad = ctx.createRadialGradient(W/2,H/2,0, W/2,H/2,W*0.8);
-    bgGrad.addColorStop(0, '#0d2010');
-    bgGrad.addColorStop(0.6, '#091a0c');
-    bgGrad.addColorStop(1, '#060e08');
-    ctx.fillStyle = bgGrad;
-    ctx.fillRect(0,0,W,H);
-
-    // Grass texture lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.022)';
-    ctx.lineWidth = 1;
-    for (let gx = 0; gx < W; gx += 22) {
-      ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx+8, H); ctx.stroke();
-    }
-
-    // ── FAIRWAY PATH (visual guide) ──
-    const gradient = ctx.createLinearGradient(teeX, teeY, pinX, pinY);
-    gradient.addColorStop(0, 'rgba(34,197,94,0.06)');
-    gradient.addColorStop(0.5, 'rgba(34,197,94,0.12)');
-    gradient.addColorStop(1, 'rgba(34,197,94,0.06)');
-    ctx.beginPath();
-    ctx.moveTo(teeX, teeY);
-    ctx.lineTo(pinX, pinY);
-    ctx.strokeStyle = gradient;
-    ctx.lineWidth = 40;
-    ctx.lineCap = 'round';
-    ctx.stroke();
-    ctx.lineWidth = 1;
-
-    // ── WATER HAZARDS ──
-    (hole.terrain || []).forEach(t => {
-      if (t.type === 'water') {
-        const wx = t.x*W, wy = t.y*H, ww = t.w*W, wh = t.h*H;
-        // Water body
-        const wGrad = ctx.createLinearGradient(wx, wy, wx, wy+wh);
-        wGrad.addColorStop(0, 'rgba(59,130,246,0.5)');
-        wGrad.addColorStop(1, 'rgba(29,78,216,0.7)');
-        ctx.fillStyle = wGrad;
-        ctx.beginPath();
-        ctx.roundRect(wx, wy, ww, wh, 8);
-        ctx.fill();
-        // Water ripples
-        ctx.strokeStyle = 'rgba(147,197,253,0.25)';
-        ctx.lineWidth = 1;
-        ctx.setLineDash([4,4]);
-        for (let ri = 1; ri < 3; ri++) {
-          ctx.beginPath();
-          ctx.ellipse(wx+ww/2, wy+wh/2, (ww/2)*(0.4+ri*0.25), (wh/2)*(0.3+ri*0.2), 0, 0, Math.PI*2);
-          ctx.stroke();
-        }
-        ctx.setLineDash([]);
-        // OB label
-        ctx.fillStyle = 'rgba(147,197,253,0.6)';
-        ctx.font = '700 9px DM Sans, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('OB', wx+ww/2, wy+wh/2+3);
+  // Aim line + wind preview
+  if(!s.isAnimating&&!s.inWater) {
+    const al=(s.power/100)*55+40;
+    const tx=s.disc.x+Math.cos(s.aimAngle)*al,ty=s.disc.y+Math.sin(s.aimAngle)*al;
+    const ag=ctx.createLinearGradient(s.disc.x,s.disc.y,tx,ty);
+    ag.addColorStop(0,'rgba(249,115,22,0.9)'); ag.addColorStop(1,'rgba(249,115,22,0)');
+    ctx.beginPath(); ctx.moveTo(s.disc.x,s.disc.y); ctx.lineTo(tx,ty);
+    ctx.strokeStyle=ag; ctx.lineWidth=2; ctx.setLineDash([5,4]); ctx.stroke();
+    ctx.setLineDash([]);
+    // Arrow tip
+    ctx.save(); ctx.translate(tx,ty); ctx.rotate(s.aimAngle);
+    ctx.fillStyle='rgba(249,115,22,0.7)'; ctx.beginPath();
+    ctx.moveTo(8,0); ctx.lineTo(-4,-4); ctx.lineTo(-4,4); ctx.closePath(); ctx.fill();
+    ctx.restore();
+    // Wind drift preview
+    if(hole.wind.speed>0.5) {
+      let px=s.disc.x,py=s.disc.y;
+      let pvx=Math.cos(s.aimAngle)*(s.power/100*16+2)*.35;
+      let pvy=Math.sin(s.aimAngle)*(s.power/100*16+2)*.35;
+      ctx.beginPath(); ctx.moveTo(px,py);
+      for(let i=0;i<20;i++){
+        pvx+=Math.cos(hole.wind.angle)*hole.wind.speed*0.015;
+        pvy+=Math.sin(hole.wind.angle)*hole.wind.speed*0.015;
+        pvx*=0.97; pvy*=0.97; px+=pvx; py+=pvy; ctx.lineTo(px,py);
       }
-    });
-
-    // ── OBSTACLES ──
-    (hole.obstacles || []).forEach(obs => {
-      const ox = obs.x*W, oy = obs.y*H;
-      if (obs.type === 'tree') {
-        // Shadow
-        ctx.beginPath(); ctx.ellipse(ox+5, oy+6, obs.r*0.9, obs.r*0.5, 0.3, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.fill();
-        // Tree trunk
-        ctx.fillStyle = '#6b4226';
-        ctx.fillRect(ox-3, oy+obs.r*0.3, 6, obs.r*0.5);
-        // Canopy layers
-        const layers = 3;
-        for (let li = 0; li < layers; li++) {
-          const lr = obs.r * (1 - li*0.2);
-          const ly = oy - li*obs.r*0.28;
-          const cGrad = ctx.createRadialGradient(ox-lr*0.2, ly-lr*0.2, 1, ox, ly, lr);
-          cGrad.addColorStop(0, li===0 ? '#4ade80' : '#22c55e');
-          cGrad.addColorStop(0.6, '#16a34a');
-          cGrad.addColorStop(1, '#14532d');
-          ctx.beginPath(); ctx.arc(ox, ly, lr, 0, Math.PI*2);
-          ctx.fillStyle = cGrad; ctx.fill();
-          ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.lineWidth = 1; ctx.stroke();
-        }
-        // Highlight
-        ctx.beginPath(); ctx.arc(ox - obs.r*0.3, oy - obs.r*0.5, obs.r*0.25, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(255,255,255,0.07)'; ctx.fill();
-      } else {
-        // Rock
-        ctx.beginPath(); ctx.ellipse(ox+4, oy+4, obs.r*0.9, obs.r*0.6, 0.3, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fill();
-        const rGrad = ctx.createRadialGradient(ox-obs.r*0.2, oy-obs.r*0.2, 2, ox, oy, obs.r);
-        rGrad.addColorStop(0, '#94a3b8');
-        rGrad.addColorStop(0.5, '#64748b');
-        rGrad.addColorStop(1, '#334155');
-        ctx.beginPath(); ctx.arc(ox, oy, obs.r, 0, Math.PI*2);
-        ctx.fillStyle = rGrad; ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 1; ctx.stroke();
-        // Rock texture
-        ctx.beginPath(); ctx.arc(ox-obs.r*0.25, oy-obs.r*0.25, obs.r*0.2, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fill();
-      }
-    });
-
-    // ── WIND INDICATOR ON CANVAS ──
-    if (wind.speed > 0.3) {
-      const wx = W - 65, wy = 22;
-      ctx.save();
-      ctx.globalAlpha = 0.75;
-      ctx.fillStyle = 'rgba(8,11,18,0.7)';
-      ctx.beginPath(); ctx.roundRect(wx-10, wy-12, 55, 24, 8); ctx.fill();
-      const wStrength = Math.min(1, wind.speed / 4);
-      ctx.fillStyle = wStrength > 0.6 ? '#ef4444' : wStrength > 0.3 ? '#f97316' : '#fbbf24';
-      ctx.font = '700 10px DM Sans, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('💨 ' + wind.speed.toFixed(1), wx-4, wy+4);
-      ctx.restore();
-    }
-
-    // ── HOLE NAME ──
-    ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = '700 10px DM Sans, sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText('Hole ' + (currentHole+1) + ' — ' + hole.name, 10, H-10);
-
-    // ── TRAIL ──
-    if (trailPoints.length > 1) {
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      for (let i = 1; i < trailPoints.length; i++) {
-        const a = trailPoints[i-1], b = trailPoints[i];
-        const alpha = b.age * 0.6;
-        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
-        ctx.strokeStyle = 'rgba(249,115,22,' + alpha + ')';
-        ctx.lineWidth = 2.5 * b.age;
-        ctx.stroke();
-      }
-    }
-
-    // ── PARTICLES ──
-    particles.forEach(p => {
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2);
-      ctx.fillStyle = p.color.replace(')', ',' + p.life + ')').replace('rgb', 'rgba');
-      if (!p.color.includes('rgba')) {
-        ctx.globalAlpha = p.life;
-        ctx.fillStyle = p.color;
-      }
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    });
-
-    // ── AIM LINE ──
-    if (!isAnimating) {
-      const aimLen = 50 + power * 0.9;
-      const tx = discPos.x + Math.cos(aimAngle) * aimLen;
-      const ty = discPos.y + Math.sin(aimAngle) * aimLen;
-      const aGrad = ctx.createLinearGradient(discPos.x, discPos.y, tx, ty);
-      aGrad.addColorStop(0, 'rgba(249,115,22,0.9)');
-      aGrad.addColorStop(1, 'rgba(249,115,22,0)');
-      ctx.beginPath(); ctx.moveTo(discPos.x, discPos.y); ctx.lineTo(tx, ty);
-      ctx.strokeStyle = aGrad;
-      ctx.lineWidth = 2; ctx.setLineDash([5,4]); ctx.stroke();
+      ctx.strokeStyle='rgba(96,165,250,0.22)'; ctx.lineWidth=1.5; ctx.setLineDash([3,5]); ctx.stroke();
       ctx.setLineDash([]);
-
-      // Wind deflection preview (show where disc will curve)
-      if (wind.speed > 0.5) {
-        const steps = 20;
-        let px = discPos.x, py = discPos.y;
-        let pvx = Math.cos(aimAngle) * ((power/100)*16+2) * 0.35;
-        let pvy = Math.sin(aimAngle) * ((power/100)*16+2) * 0.35;
-        ctx.beginPath(); ctx.moveTo(px, py);
-        for (let i = 0; i < steps; i++) {
-          pvx += Math.cos(wind.angle) * wind.speed * 0.015;
-          pvy += Math.sin(wind.angle) * wind.speed * 0.015;
-          pvx *= 0.97; pvy *= 0.97;
-          px += pvx; py += pvy;
-          ctx.lineTo(px, py);
-        }
-        ctx.strokeStyle = 'rgba(96,165,250,0.25)';
-        ctx.lineWidth = 1.5; ctx.setLineDash([3,5]); ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      // Arrow tip
-      ctx.save();
-      ctx.translate(tx, ty);
-      ctx.rotate(aimAngle);
-      ctx.fillStyle = 'rgba(249,115,22,0.7)';
-      ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(-4,-4); ctx.lineTo(-4,4); ctx.closePath(); ctx.fill();
-      ctx.restore();
     }
-
-    // ── TEE BOX ──
-    ctx.beginPath(); ctx.ellipse(teeX, teeY, 22, 12, 0, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(34,197,94,0.2)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(34,197,94,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
-    ctx.fillStyle = 'rgba(255,255,255,0.3)'; ctx.font = '700 9px DM Sans'; ctx.textAlign = 'center';
-    ctx.fillText('TEE', teeX, teeY + 3.5);
-
-    // ── BASKET GLOW RINGS ──
-    const time = Date.now() * 0.003;
-    for (let ri = 0; ri < 3; ri++) {
-      const r = 28 + ri * 12 + Math.sin(time + ri) * 4;
-      ctx.beginPath(); ctx.arc(pinX, pinY, r, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(34,197,94,' + (0.06 - ri*0.015) + ')';
-      ctx.lineWidth = 1; ctx.stroke();
-    }
-
-    // Basket shadow
-    ctx.beginPath(); ctx.ellipse(pinX+4, pinY+5, 16, 8, 0, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(0,0,0,0.45)'; ctx.fill();
-
-    // Basket outer ring
-    ctx.beginPath(); ctx.arc(pinX, pinY, 20, 0, Math.PI*2);
-    const bGrad = ctx.createRadialGradient(pinX, pinY, 4, pinX, pinY, 20);
-    bGrad.addColorStop(0, 'rgba(34,197,94,0.3)');
-    bGrad.addColorStop(1, 'rgba(34,197,94,0.05)');
-    ctx.fillStyle = bGrad; ctx.fill();
-    ctx.strokeStyle = 'rgba(34,197,94,0.8)'; ctx.lineWidth = 2.5; ctx.stroke();
-
-    // Basket chains (8 chains)
-    for (let ci = 0; ci < 8; ci++) {
-      const ca = (ci/8) * Math.PI*2 + time*0.1;
-      const chainX = pinX + Math.cos(ca)*14;
-      const chainY = pinY + Math.sin(ca)*10;
-      ctx.beginPath(); ctx.moveTo(pinX, pinY-6); ctx.lineTo(chainX, chainY);
-      ctx.strokeStyle = 'rgba(203,213,225,0.45)'; ctx.lineWidth = 1; ctx.stroke();
-    }
-
-    // Inner basket
-    ctx.beginPath(); ctx.arc(pinX, pinY, 7, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(34,197,94,0.6)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.stroke();
-
-    // Basket pole
-    ctx.beginPath(); ctx.moveTo(pinX, pinY+8); ctx.lineTo(pinX, pinY+40);
-    ctx.strokeStyle = 'rgba(180,180,180,0.6)'; ctx.lineWidth = 2.5; ctx.stroke();
-
-    // Distance marker
-    const distToPin = Math.sqrt((discPos.x-pinX)**2 + (discPos.y-pinY)**2);
-    const distM = (distToPin / (W/18)).toFixed(1);
-    if (!isAnimating && distToPin > 30) {
-      ctx.fillStyle = 'rgba(255,255,255,0.35)';
-      ctx.font = '600 9px DM Sans';
-      ctx.textAlign = 'center';
-      ctx.fillText(distM + 'm', pinX, pinY - 26);
-    }
-
-    // ── DISC ──
-    if (!inWater) {
-      // Disc shadow
-      ctx.beginPath(); ctx.ellipse(discPos.x+4, discPos.y+4, 14, 7, isAnimating ? discSpin*0.05 : 0, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill();
-
-      // Disc glow when moving
-      if (isAnimating) {
-        const spd2 = Math.sqrt(discVel.x**2 + discVel.y**2);
-        ctx.beginPath(); ctx.arc(discPos.x, discPos.y, 22, 0, Math.PI*2);
-        ctx.fillStyle = 'rgba(249,115,22,' + Math.min(0.2, spd2*0.015) + ')';
-        ctx.fill();
-      }
-
-      ctx.save();
-      ctx.translate(discPos.x, discPos.y);
-      if (isAnimating) ctx.rotate(discSpin * 0.08);
-
-      // Disc body
-      const dGrad = ctx.createRadialGradient(-4,-4,1, 0,0, 13);
-      dGrad.addColorStop(0, '#fb923c');
-      dGrad.addColorStop(0.5, '#f97316');
-      dGrad.addColorStop(1, '#c2510f');
-      ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI*2);
-      ctx.fillStyle = dGrad; ctx.fill();
-
-      // Disc rim
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1.5; ctx.stroke();
-
-      // Flight rings
-      ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI*2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1; ctx.stroke();
-      ctx.beginPath(); ctx.arc(0, 0, 3, 0, Math.PI*2);
-      ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fill();
-
-      ctx.restore();
-    }
-
-    ctx.restore(); // camera shake
   }
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((e, i) => {
-      if (e.isIntersecting) setTimeout(() => e.target.classList.add('visible'), i * 100);
-    });
-  }, { threshold: 0.1 });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+  // Tee box
+  ctx.beginPath(); ctx.ellipse(teeX,teeY,22,12,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(34,197,94,0.18)'; ctx.fill();
+  ctx.strokeStyle='rgba(34,197,94,0.45)'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.28)'; ctx.font='700 9px DM Sans'; ctx.textAlign='center';
+  ctx.fillText('TEE',teeX,teeY+3.5);
 
-  </script>
+  // Basket glow
+  const t=Date.now()*.003;
+  for(let i=0;i<3;i++){
+    ctx.beginPath(); ctx.arc(pinX,pinY,28+i*12+Math.sin(t+i)*4,0,Math.PI*2);
+    ctx.strokeStyle='rgba(34,197,94,'+(0.06-i*.015)+')'; ctx.lineWidth=1; ctx.stroke();
+  }
+  ctx.beginPath(); ctx.ellipse(pinX+4,pinY+5,16,8,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(0,0,0,0.4)'; ctx.fill();
+  ctx.beginPath(); ctx.arc(pinX,pinY,20,0,Math.PI*2);
+  const bg2=ctx.createRadialGradient(pinX,pinY,4,pinX,pinY,20);
+  bg2.addColorStop(0,'rgba(34,197,94,0.28)'); bg2.addColorStop(1,'rgba(34,197,94,0.04)');
+  ctx.fillStyle=bg2; ctx.fill();
+  ctx.strokeStyle='rgba(34,197,94,0.8)'; ctx.lineWidth=2.5; ctx.stroke();
+  // Chains
+  for(let i=0;i<8;i++){
+    const ca=(i/8)*Math.PI*2+t*.1;
+    ctx.beginPath(); ctx.moveTo(pinX,pinY-6); ctx.lineTo(pinX+Math.cos(ca)*13,pinY+Math.sin(ca)*9);
+    ctx.strokeStyle='rgba(203,213,225,0.4)'; ctx.lineWidth=1; ctx.stroke();
+  }
+  ctx.beginPath(); ctx.arc(pinX,pinY,7,0,Math.PI*2);
+  ctx.fillStyle='rgba(34,197,94,0.6)'; ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.45)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pinX,pinY+8); ctx.lineTo(pinX,pinY+38);
+  ctx.strokeStyle='rgba(180,180,180,0.55)'; ctx.lineWidth=2.5; ctx.stroke();
+
+  // Dist label
+  if(!s.isAnimating) {
+    const distPx=Math.sqrt((s.disc.x-pinX)**2+(s.disc.y-pinY)**2);
+    if(distPx>32) {
+      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='600 9px DM Sans'; ctx.textAlign='center';
+      ctx.fillText((distPx/(W/18)).toFixed(1)+'m',pinX,pinY-26);
+    }
+  }
+
+  // Disc
+  if(!s.inWater) {
+    const spd2=Math.sqrt(s.vel.x**2+s.vel.y**2);
+    ctx.beginPath(); ctx.ellipse(s.disc.x+4,s.disc.y+4,13,7,s.isAnimating?spd2*.04:0,0,Math.PI*2);
+    ctx.fillStyle='rgba(0,0,0,0.45)'; ctx.fill();
+    if(s.isAnimating&&spd2>3) {
+      ctx.beginPath(); ctx.arc(s.disc.x,s.disc.y,22,0,Math.PI*2);
+      ctx.fillStyle='rgba(249,115,22,'+Math.min(0.18,spd2*.012)+')'; ctx.fill();
+    }
+    ctx.save(); ctx.translate(s.disc.x,s.disc.y);
+    if(s.isAnimating) ctx.rotate(spd2*.08);
+    const dg=ctx.createRadialGradient(-4,-4,1,0,0,12);
+    dg.addColorStop(0,'#fb923c'); dg.addColorStop(.5,'#f97316'); dg.addColorStop(1,'#c2510f');
+    ctx.beginPath(); ctx.arc(0,0,12,0,Math.PI*2); ctx.fillStyle=dg; ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.28)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,6,0,Math.PI*2); ctx.strokeStyle='rgba(255,255,255,0.18)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0,0,3,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.38)'; ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+
+  // Keep animating basket glow when idle
+  if(!s.isAnimating) requestAnimationFrame(()=>{ if(!puttState.isAnimating) drawHole(); });
+}
+
+// Scroll reveal
+const obs2=new IntersectionObserver((entries)=>{
+  entries.forEach((e,i)=>{ if(e.isIntersecting) setTimeout(()=>e.target.classList.add('visible'),i*100); });
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>obs2.observe(el));
+</script>
 </body>
 </html>
