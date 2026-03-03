@@ -118,8 +118,6 @@
     .leaderboard-card { background: var(--card); border: 1px solid var(--border); border-radius: 1.4rem; padding: 1.5rem; margin-top: 1.2rem; }
     .lb-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
     .lb-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.04em; }
-    .lb-clear { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.3rem 0.8rem; border-radius: 999px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; cursor: pointer; transition: all 0.2s; }
-    .lb-clear:hover { border-color: var(--red); color: var(--red); }
     .lb-empty { text-align: center; padding: 2rem; color: var(--muted2); font-size: 0.85rem; }
     .lb-row { display: grid; grid-template-columns: 2rem 1fr auto auto; gap: 0.8rem; align-items: center; padding: 0.6rem 0.8rem; border-radius: 0.6rem; transition: background 0.2s; }
     .lb-row:hover { background: var(--bg2); }
@@ -333,7 +331,6 @@
       <div class="leaderboard-card reveal">
         <div class="lb-header">
           <div class="lb-title">🏆 Top 10 Leaderboard</div>
-          <button class="lb-clear" onclick="clearLeaderboard()">Reset</button>
         </div>
         <div id="lb-list"></div>
       </div>
@@ -545,9 +542,6 @@ async function loadLeaderboardFromSupabase() {
   } catch (e) { return null; }
 }
 
-function clearLeaderboard() {
-  if (confirm('Reset the leaderboard?')) { localStorage.removeItem('gtd_lb'); renderLB(); }
-}
 function checkLeaderboard(sc, st) {
   const lb = loadLB();
   if (lb.length < 10 || sc > (lb[lb.length-1]?.score||0)) {
