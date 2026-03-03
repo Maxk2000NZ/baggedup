@@ -7,6 +7,7 @@
   <meta name="description" content="Complete plastic comparison chart for every major disc golf brand — Innova, Discraft, Dynamic Discs, Discmania, Latitude 64, MVP, and more. Base vs premium vs specialty."/>
   <link rel="canonical" href="https://baggedup.vercel.app/plastics.html"/>
   <link rel="icon" type="image/png" href="/icons/icon-192x192.png"/>
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png"/>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,600;0,800;1,400&display=swap" rel="stylesheet"/>
@@ -39,8 +40,9 @@
     .nav-mobile-btn { display: none; background: none; border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.7rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }
     .mobile-menu { display: none; flex-direction: column; background: var(--bg2); border-bottom: 1px solid var(--border); }
     .mobile-menu.open { display: flex; }
-    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); }
-    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; }
+    .mobile-menu a { padding: 0.9rem 2rem; color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); transition: color 0.2s; }
+    .mobile-menu a:hover { color: var(--text); }
+    .mobile-menu .mobile-cta { background: var(--orange); color: #fff; text-align: center; border-bottom: none; }
     @media (max-width: 768px) { .nav-links { display: none; } .nav-mobile-btn { display: flex; } }
 
     /* PAGE HEADER */
@@ -78,8 +80,14 @@
     .brand-tagline { font-size: 0.8rem; color: var(--muted); font-weight: 600; }
 
     /* TABLE */
-    .plastic-table-wrap { overflow-x: auto; border-radius: 1.2rem; border: 1px solid var(--border); background: var(--card); }
-    .plastic-table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    .table-wrap { overflow-x: auto; border-radius: 1.2rem; border: 1px solid var(--border); background: var(--card); -webkit-overflow-scrolling: touch; }
+    .plastic-table { width: 100%; border-collapse: collapse; min-width: 700px; table-layout: fixed; }
+    .plastic-table col.col-name  { width: 14%; }
+    .plastic-table col.col-tier  { width: 11%; }
+    .plastic-table col.col-dur   { width: 10%; }
+    .plastic-table col.col-grip  { width: 10%; }
+    .plastic-table col.col-wear  { width: 16%; }
+    .plastic-table col.col-notes { width: 39%; }
     .plastic-table thead tr { background: rgba(249,115,22,0.06); }
     .plastic-table th { padding: 0.8rem 1rem; text-align: left; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--orange); border-bottom: 1px solid var(--border); white-space: nowrap; }
     .plastic-table td { padding: 0.8rem 1rem; font-size: 0.82rem; color: var(--muted); border-bottom: 1px solid rgba(30,41,59,0.5); vertical-align: top; line-height: 1.5; }
@@ -129,9 +137,8 @@
       .tier-intro { grid-template-columns: 1fr !important; }
       .brand-section { margin-bottom: 2rem; }
       .brand-name { font-size: 1.4rem !important; }
-      .plastics-table { font-size: 0.75rem; }
-      .plastics-table th, .plastics-table td { padding: 0.5rem 0.6rem; }
-      .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 0.8rem; }
+      .plastic-table { font-size: 0.75rem; }
+      .plastic-table th, .plastic-table td { padding: 0.55rem 0.7rem; }
       .footer-inner { flex-direction: column; gap: 1rem; }
       .footer-links { gap: 0.8rem; flex-wrap: wrap; }
     }
@@ -154,8 +161,7 @@
       <li><a href="/flightpath.html">Flight Science</a></li>
       <li><a href="/plastics.html" class="active">Plastics</a></li>
       <li><a href="/games.html">Games</a></li>
-      
-    <li><a href="/about.html">About</a></li>
+      <li><a href="/about.html">About</a></li>
     </ul>
     <a href="/app" class="btn-nav">Get Started →</a>
     <button class="nav-mobile-btn" onclick="document.getElementById('mobile-menu').classList.toggle('open')">☰</button>
@@ -204,8 +210,12 @@
           <div class="brand-tagline">The world's largest disc golf manufacturer. Founded 1983.</div>
         </div>
       </div>
-      <div class="plastic-table-wrap">
+      <div class="table-wrap">
         <table class="plastic-table">
+          <colgroup>
+            <col class="col-name"/><col class="col-tier"/><col class="col-dur"/>
+            <col class="col-grip"/><col class="col-wear"/><col class="col-notes"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Plastic Name</th>
@@ -287,8 +297,12 @@
           <div class="brand-tagline">Michigan-made. Home of the Buzzz and the Z-line. Paul McBeth's brand.</div>
         </div>
       </div>
-      <div class="plastic-table-wrap">
+      <div class="table-wrap">
         <table class="plastic-table">
+          <colgroup>
+            <col class="col-name"/><col class="col-tier"/><col class="col-dur"/>
+            <col class="col-grip"/><col class="col-wear"/><col class="col-notes"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
@@ -357,8 +371,12 @@
           <div class="brand-tagline">Part of the Latitude 64 / Westside Discs family (Trilogy brands).</div>
         </div>
       </div>
-      <div class="plastic-table-wrap">
+      <div class="table-wrap">
         <table class="plastic-table">
+          <colgroup>
+            <col class="col-name"/><col class="col-tier"/><col class="col-dur"/>
+            <col class="col-grip"/><col class="col-wear"/><col class="col-notes"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
@@ -427,8 +445,12 @@
           <div class="brand-tagline">Finnish-born brand. Founded with Innova partnerships. Now independent.</div>
         </div>
       </div>
-      <div class="plastic-table-wrap">
+      <div class="table-wrap">
         <table class="plastic-table">
+          <colgroup>
+            <col class="col-name"/><col class="col-tier"/><col class="col-dur"/>
+            <col class="col-grip"/><col class="col-wear"/><col class="col-notes"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
@@ -489,8 +511,12 @@
           <div class="brand-tagline">Michigan-made. Famous for overmould rim technology and "gyro" physics.</div>
         </div>
       </div>
-      <div class="plastic-table-wrap">
+      <div class="table-wrap">
         <table class="plastic-table">
+          <colgroup>
+            <col class="col-name"/><col class="col-tier"/><col class="col-dur"/>
+            <col class="col-grip"/><col class="col-wear"/><col class="col-notes"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
@@ -543,8 +569,12 @@
           <div class="brand-tagline">Swedish manufacturer. Part of Trilogy alongside Dynamic Discs and Westside.</div>
         </div>
       </div>
-      <div class="plastic-table-wrap">
+      <div class="table-wrap">
         <table class="plastic-table">
+          <colgroup>
+            <col class="col-name"/><col class="col-tier"/><col class="col-dur"/>
+            <col class="col-grip"/><col class="col-wear"/><col class="col-notes"/>
+          </colgroup>
           <thead>
             <tr>
               <th>Plastic Name</th><th>Tier</th><th>Durability</th><th>Grip</th><th>Wear-In</th><th>Notes</th>
@@ -596,14 +626,18 @@
 
   <footer>
     <div class="footer-inner">
-      <div class="footer-brand"><img src="/baggedup.logo.png" alt="" style="height:28px;width:28px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'" />Bagged<span>Up</span></div>
+      <div class="footer-brand">
+        <img src="/baggedup.logo.png" alt="" style="height:26px;width:26px;object-fit:contain;border-radius:6px;" onerror="this.style.display='none'"/>
+        Bagged<span>Up</span>
+      </div>
       <ul class="footer-links">
         <li><a href="/">Home</a></li>
         <li><a href="/guide.html">Bag Guide</a></li>
         <li><a href="/blog.html">Blog</a></li>
         <li><a href="/flightpath.html">Flight Science</a></li>
+        <li><a href="/plastics.html">Plastics</a></li>
         <li><a href="/games.html">Games</a></li>
-        
+        <li><a href="/about.html">About</a></li>
         <li><a href="/app">Open App</a></li>
       </ul>
       <div class="footer-copy">© 2026 BaggedUp · Not affiliated with any disc manufacturer</div>
