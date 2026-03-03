@@ -498,23 +498,52 @@ let discQueue = []; // shuffled queue so all discs appear before repeats
 function loadLB() { try { return JSON.parse(localStorage.getItem('gtd_lb')||'[]'); } catch(e) { return []; } }
 function saveLB(lb) { try { localStorage.setItem('gtd_lb', JSON.stringify(lb)); } catch(e) {} }
 
-function renderLB() {
-  const lb = loadLB();
-  const el = document.getElementById('lb-list');
-  if (!lb.length) { el.innerHTML = '<div class="lb-empty">No scores yet — start playing!</div>'; return; }
-  const medals = ['🥇','🥈','🥉'];
-  const rankCls = ['top-1','top-2','top-3'];
-  const rankCol = ['gold','silver','bronze'];
-  el.innerHTML = lb.slice(0,10).map((e,i) => `
-    <div class="lb-row ${rankCls[i]||''}">
-      <div class="lb-rank ${rankCol[i]||''}">${medals[i]||(i+1)}</div>
-      <div class="lb-name">${escHtml(e.name)}<span>${e.date}</span></div>
-      <div class="lb-score">${e.score}</div>
-      <div class="lb-streak">🔥${e.streak}</div>
-    </div>${i===2&&lb.length>3?'<hr class="lb-divider"/>'  :''}
-  `).join('');
-}
+
 function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ─── SUPABASE CONFIG (replace with your project values) ───
+const SUPABASE_URL = 'https://YOUR_PROJECT.supabase.co';
+const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+
+async function saveScoreToSupabase(entry) {
+  try {
+    const res = await fetch(SUPABASE_URL + '/rest/v1/gtd_leaderboard', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        player_name: entry.name,
+        score: entry.score,
+        best_streak: entry.streak,
+        played_at: new Date().toISOString()
+      })
+    });
+    if (!res.ok) console.warn('Supabase save failed:', res.status);
+  } catch (e) {
+    console.warn('Supabase unavailable, score saved locally only');
+  }
+}
+
+async function loadLeaderboardFromSupabase() {
+  try {
+    const res = await fetch(
+      SUPABASE_URL + '/rest/v1/gtd_leaderboard?select=player_name,score,best_streak,played_at&order=score.desc&limit=10',
+      { headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': 'Bearer ' + SUPABASE_ANON_KEY } }
+    );
+    if (!res.ok) return null;
+    const rows = await res.json();
+    return rows.map(r => ({
+      name: r.player_name,
+      score: r.score,
+      streak: r.best_streak,
+      date: new Date(r.played_at).toLocaleDateString()
+    }));
+  } catch (e) { return null; }
+}
 
 function clearLeaderboard() {
   if (confirm('Reset the leaderboard?')) { localStorage.removeItem('gtd_lb'); renderLB(); }
@@ -527,17 +556,39 @@ function checkLeaderboard(sc, st) {
     setTimeout(() => document.getElementById('name-input').focus(), 100);
   }
 }
-function submitScore() {
+async function submitScore() {
   if (!pendingScore) return;
   const name = (document.getElementById('name-input').value.trim()||'Anonymous').slice(0,20);
+  const entry = { name, score: pendingScore.score, streak: pendingScore.streak, date: new Date().toLocaleDateString() };
+  // Save locally always
   const lb = loadLB();
-  lb.push({ name, score: pendingScore.score, streak: pendingScore.streak, date: new Date().toLocaleDateString() });
+  lb.push(entry);
   lb.sort((a,b) => b.score - a.score);
   saveLB(lb.slice(0,10));
+  // Save to Supabase (non-blocking)
+  saveScoreToSupabase(entry);
   renderLB();
   document.getElementById('name-prompt').classList.remove('show');
   document.getElementById('name-input').value = '';
   pendingScore = null;
+}
+async function renderLB() {
+  const el = document.getElementById('lb-list');
+  el.innerHTML = '<div class="lb-empty" style="opacity:0.5">Loading...</div>';
+  // Try Supabase first, fall back to localStorage
+  let lb = await loadLeaderboardFromSupabase();
+  if (!lb || !lb.length) lb = loadLB();
+  if (!lb.length) { el.innerHTML = '<div class="lb-empty">No scores yet — start playing!</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  const rankCls = ['top-1','top-2','top-3'];
+  const rankCol = ['gold','silver','bronze'];
+  el.innerHTML = lb.slice(0,10).map((e,i) => `
+    <div class="lb-row ${rankCls[i]||''}">
+      <div class="lb-rank ${rankCol[i]||''}">${medals[i]||(i+1)}</div>
+      <div class="lb-name">${escHtml(e.name)}<span>${e.date}</span></div>
+      <div class="lb-score">${e.score}</div>
+      <div class="lb-streak">🔥${e.streak}</div>
+    </div>${i===2&&lb.length>3?'<hr class="lb-divider"/>':''}`).join('');
 }
 
 // ─── DISC PICKING — shuffle queue ───
@@ -707,13 +758,17 @@ function showResult(won) {
   res.classList.add('show');
   document.getElementById('result-emoji').textContent = won ? '🎉' : '💀';
   document.getElementById('result-title').textContent = won ? 'Aced It!' : 'Disc Lost';
+  const scoreNote = (!won && score > 0)
+    ? '<br><span style="font-size:0.82rem;color:var(--muted);margin-top:0.4rem;display:block">You solved ' + score + ' disc' + (score!==1?'s':'') + ' this session</span>'
+    : '';
   document.getElementById('result-answer').innerHTML =
     (won ? 'You guessed the ' : 'The answer was the ') +
     '<strong>' + currentDisc.brand + ' ' + currentDisc.name + '</strong>' +
     '<br><span style="font-size:0.88rem;color:var(--muted)">' +
     currentDisc.speed + '/' + currentDisc.glide + '/' + currentDisc.turn + '/' + currentDisc.fade +
-    '</span>';
-  if (won) checkLeaderboard(score, streak);
+    '</span>' + scoreNote;
+  // Prompt leaderboard on BOTH win and loss if they scored anything
+  if (score > 0) checkLeaderboard(score, won ? streak : 0);
 }
 
 function updateScoreDisplay() {
